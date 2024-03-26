@@ -36,32 +36,46 @@ func Init(domain string, username string, password string, securityToken string,
 	return &Salesforce{auth: auth}
 }
 
+func doRequest(method string, uri string, auth Auth, body []byte) (*http.Response, error) {
+	var reader *strings.Reader
+	var req *http.Request
+	var err error
+	endpoint := auth.InstanceUrl + "/services/data/" + API_VERSION + uri
+
+	if body != nil {
+		reader = strings.NewReader(string(body))
+		req, err = http.NewRequest(method, endpoint, reader)
+	} else {
+		req, err = http.NewRequest(method, endpoint, nil)
+	}
+	if err != nil {
+		fmt.Println("Error creating request")
+		fmt.Println(err.Error())
+		return nil, err
+	}
+
+	req.Header.Set("User-Agent", "go-salesforce")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+auth.AccessToken)
+
+	return http.DefaultClient.Do(req)
+}
+
 func (sf *Salesforce) QueryUnstructured(query string) *QueryResponse {
 	if sf.auth == nil {
 		fmt.Println("Not authenticated. Please use salesforce.Init().")
 		return nil
 	}
 	query = url.QueryEscape(query)
-	endpoint := sf.auth.InstanceUrl + "/services/data/" + API_VERSION + "/query/?q=" + query
-	req, err := http.NewRequest("GET", endpoint, nil)
-	if err != nil {
-		fmt.Println("Error creating request")
-		fmt.Println(err.Error())
-		return nil
-	}
-
-	req.Header.Set("User-Agent", "go-salesforce")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+sf.auth.AccessToken)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := doRequest("GET", "/query/?q="+query, *sf.auth, nil)
 	if err != nil {
 		fmt.Println("Error authenticating")
 		fmt.Println(err.Error())
 		return nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		fmt.Println("Error with " + resp.Request.Method + " " + endpoint)
+		fmt.Println("Error with " + resp.Request.Method + " " + "/query/?q=" + query)
 		fmt.Println(resp.Status)
 		return nil
 	}
@@ -91,32 +105,20 @@ func (sf *Salesforce) Insert(sObject SObject) {
 		return
 	}
 	json, err := json.Marshal(sObject.Fields)
-	body := strings.NewReader(string(json))
 	if err != nil {
 		fmt.Println("Error converting object to json")
 		fmt.Println(err.Error())
 		return
 	}
-	endpoint := sf.auth.InstanceUrl + "/services/data/" + API_VERSION + "/sobjects/" + sObject.SObjectName
-	req, err := http.NewRequest("POST", endpoint, body)
-	if err != nil {
-		fmt.Println("Error creating request")
-		fmt.Println(err.Error())
-		return
-	}
 
-	req.Header.Set("User-Agent", "go-salesforce")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+sf.auth.AccessToken)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := doRequest("POST", "/sobjects/"+sObject.SObjectName, *sf.auth, json)
 	if err != nil {
 		fmt.Println("Error with DML operation")
 		fmt.Println(err.Error())
 		return
 	}
 	if resp.StatusCode != http.StatusCreated {
-		fmt.Println("Error with " + resp.Request.Method + " " + endpoint)
+		fmt.Println("Error with " + resp.Request.Method + " " + "/sobjects/" + sObject.SObjectName)
 		fmt.Println(resp.Status)
 		return
 	}
