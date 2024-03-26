@@ -11,11 +11,6 @@ import (
 
 const API_VERSION = "v60.0"
 
-type Attributes struct {
-	Type string `json:"type"`
-	Url  string `json:"url"`
-}
-
 type QueryResponse struct {
 	TotalSize int              `json:"totalSize"`
 	Done      bool             `json:"done"`
@@ -62,7 +57,7 @@ func Init(domain string, username string, password string, securityToken string,
 	return &Salesforce{auth: auth}
 }
 
-func (sf *Salesforce) QueryUnstructured(query string) *QueryResponse {
+func (sf *Salesforce) QueryUnstructured(query string) []SObject {
 	if sf.auth == nil {
 		fmt.Println("Not authenticated. Please use salesforce.Init().")
 		return nil
@@ -95,8 +90,17 @@ func (sf *Salesforce) QueryUnstructured(query string) *QueryResponse {
 		return nil
 	}
 
+	var results []SObject
+	for _, record := range queryResponse.Records {
+		newsObject := SObject{
+			SObjectName: record["attributes"].(map[string]any)["type"].(string),
+			Fields:      record,
+		}
+		results = append(results, newsObject)
+	}
+
 	defer resp.Body.Close()
-	return queryResponse
+	return results
 }
 
 func (sf *Salesforce) Insert(sObject SObject) {
