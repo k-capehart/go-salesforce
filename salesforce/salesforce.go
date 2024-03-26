@@ -31,11 +31,6 @@ type SObject struct {
 	Fields      map[string]string
 }
 
-func Init(domain string, username string, password string, securityToken string, consumerKey string, consumerSecret string) *Salesforce {
-	auth := loginPassword(domain, username, password, securityToken, consumerKey, consumerSecret)
-	return &Salesforce{auth: auth}
-}
-
 func doRequest(method string, uri string, auth Auth, body []byte) (*http.Response, error) {
 	var reader *strings.Reader
 	var req *http.Request
@@ -60,6 +55,11 @@ func doRequest(method string, uri string, auth Auth, body []byte) (*http.Respons
 	req.Header.Set("Authorization", "Bearer "+auth.AccessToken)
 
 	return http.DefaultClient.Do(req)
+}
+
+func Init(domain string, username string, password string, securityToken string, consumerKey string, consumerSecret string) *Salesforce {
+	auth := loginPassword(domain, username, password, securityToken, consumerKey, consumerSecret)
+	return &Salesforce{auth: auth}
 }
 
 func (sf *Salesforce) QueryUnstructured(query string) *QueryResponse {
