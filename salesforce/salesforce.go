@@ -28,7 +28,7 @@ type Salesforce struct {
 
 type SObject struct {
 	SObjectName string
-	Fields      map[string]string
+	Fields      map[string]any
 }
 
 func doRequest(method string, uri string, auth Auth, body []byte) (*http.Response, error) {
@@ -118,6 +118,35 @@ func (sf *Salesforce) Insert(sObject SObject) {
 		return
 	}
 	if resp.StatusCode != http.StatusCreated {
+		fmt.Println("Error with " + resp.Request.Method + " " + "/sobjects/" + sObject.SObjectName)
+		fmt.Println(resp.Status)
+		return
+	}
+}
+
+func (sf *Salesforce) Update(sObject SObject) {
+	if sf.auth == nil {
+		fmt.Println("Not authenticated. Please use salesforce.Init().")
+		return
+	}
+
+	recordId := sObject.Fields["Id"].(string)
+	delete(sObject.Fields, "Id")
+
+	json, err := json.Marshal(sObject.Fields)
+	if err != nil {
+		fmt.Println("Error converting object to json")
+		fmt.Println(err.Error())
+		return
+	}
+
+	resp, err := doRequest("PATCH", "/sobjects/"+sObject.SObjectName+"/"+recordId, *sf.auth, json)
+	if err != nil {
+		fmt.Println("Error with DML operation")
+		fmt.Println(err.Error())
+		return
+	}
+	if resp.StatusCode != http.StatusNoContent {
 		fmt.Println("Error with " + resp.Request.Method + " " + "/sobjects/" + sObject.SObjectName)
 		fmt.Println(resp.Status)
 		return
