@@ -49,7 +49,11 @@ func doRequest(method string, uri string, auth Auth, body []byte) (*http.Respons
 
 func Init(creds Creds) *Salesforce {
 	var auth *Auth
-	if creds.Domain != "" {
+	if creds != (Creds{}) &&
+		creds.Domain != "" && creds.Username != "" &&
+		creds.Password != "" && creds.SecurityToken != "" &&
+		creds.ConsumerKey != "" && creds.ConsumerSecret != "" {
+
 		auth = loginPassword(
 			creds.Domain,
 			creds.Username,
