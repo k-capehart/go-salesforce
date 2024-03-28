@@ -52,8 +52,22 @@ func doRequest(method string, uri string, auth Auth, body []byte) (*http.Respons
 	return http.DefaultClient.Do(req)
 }
 
-func Init(domain string, username string, password string, securityToken string, consumerKey string, consumerSecret string) *Salesforce {
-	auth := loginPassword(domain, username, password, securityToken, consumerKey, consumerSecret)
+func Init(creds Creds) *Salesforce {
+	var auth *Auth
+	if creds.Domain != "" {
+		auth = loginPassword(
+			creds.Domain,
+			creds.Username,
+			creds.Password,
+			creds.SecurityToken,
+			creds.ConsumerKey,
+			creds.ConsumerSecret,
+		)
+	}
+
+	if auth == nil {
+		panic("Please refer to Salesforce REST API Developer Guide for proper authentication: https://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/intro_using_oauth.htm")
+	}
 	return &Salesforce{auth: auth}
 }
 

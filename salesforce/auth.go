@@ -17,6 +17,15 @@ type Auth struct {
 	Signature   string `json:"signature"`
 }
 
+type Creds struct {
+	Domain         string
+	Username       string
+	Password       string
+	SecurityToken  string
+	ConsumerKey    string
+	ConsumerSecret string
+}
+
 func loginPassword(domain string, username string, password string, securityToken string, consumerKey string, consumerSecret string) *Auth {
 	payload := url.Values{
 		"grant_type":    {"password"},
