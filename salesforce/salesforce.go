@@ -66,7 +66,7 @@ func Init(creds Creds) *Salesforce {
 	return &Salesforce{auth: auth}
 }
 
-func (sf *Salesforce) QueryUnstructured(query string) *QueryResponse {
+func (sf *Salesforce) Query(query string) *QueryResponse {
 	if sf.auth == nil {
 		fmt.Println("Not authenticated. Please use salesforce.Init().")
 		return nil
