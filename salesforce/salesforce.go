@@ -21,11 +21,6 @@ type Salesforce struct {
 	auth *Auth
 }
 
-type SObject struct {
-	SObjectName string
-	Fields      map[string]any
-}
-
 func doRequest(method string, uri string, auth Auth, body []byte) (*http.Response, error) {
 	var reader *strings.Reader
 	var req *http.Request
@@ -66,12 +61,12 @@ func Init(creds Creds) *Salesforce {
 	}
 
 	if auth == nil {
-		panic("Please refer to Salesforce REST API Developer Guide for proper authentication: https://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/intro_using_oauth.htm")
+		panic("Please refer to Salesforce REST API Developer Guide for proper authentication: https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_flows.htm&type=5")
 	}
 	return &Salesforce{auth: auth}
 }
 
-func (sf *Salesforce) QueryUnstructured(query string) []SObject {
+func (sf *Salesforce) QueryUnstructured(query string) *QueryResponse {
 	if sf.auth == nil {
 		fmt.Println("Not authenticated. Please use salesforce.Init().")
 		return nil
@@ -104,68 +99,120 @@ func (sf *Salesforce) QueryUnstructured(query string) []SObject {
 		return nil
 	}
 
-	var results []SObject
-	for _, record := range queryResponse.Records {
-		newsObject := SObject{
-			SObjectName: record["attributes"].(map[string]any)["type"].(string),
-			Fields:      record,
-		}
-		results = append(results, newsObject)
-	}
-
-	defer resp.Body.Close()
-	return results
+	return queryResponse
 }
 
-func (sf *Salesforce) Insert(sObject SObject) {
+func (sf *Salesforce) InsertOne(sObjectName string, record map[string]any) {
 	if sf.auth == nil {
 		fmt.Println("Not authenticated. Please use salesforce.Init().")
 		return
 	}
-	json, err := json.Marshal(sObject.Fields)
+	json, err := json.Marshal(record)
 	if err != nil {
 		fmt.Println("Error converting object to json")
 		fmt.Println(err.Error())
 		return
 	}
 
-	resp, err := doRequest("POST", "/sobjects/"+sObject.SObjectName, *sf.auth, json)
+	resp, err := doRequest("POST", "/sobjects/"+sObjectName, *sf.auth, json)
 	if err != nil {
 		fmt.Println("Error with DML operation")
 		fmt.Println(err.Error())
 		return
 	}
 	if resp.StatusCode != http.StatusCreated {
-		fmt.Println("Error with " + resp.Request.Method + " " + "/sobjects/" + sObject.SObjectName)
+		fmt.Println("Error with " + resp.Request.Method + " " + "/sobjects/" + sObjectName)
 		fmt.Println(resp.Status)
 		return
 	}
 }
 
-func (sf *Salesforce) Update(sObject SObject) {
+func (sf *Salesforce) UpdateOne(record map[string]any) {
 	if sf.auth == nil {
 		fmt.Println("Not authenticated. Please use salesforce.Init().")
 		return
 	}
 
-	recordId := sObject.Fields["Id"].(string)
-	delete(sObject.Fields, "Id")
+	recordId := record["Id"].(string)
+	delete(record, "Id")
 
-	json, err := json.Marshal(sObject.Fields)
+	json, err := json.Marshal(record)
 	if err != nil {
 		fmt.Println("Error converting object to json")
 		fmt.Println(err.Error())
 		return
 	}
 
-	resp, err := doRequest("PATCH", "/sobjects/"+sObject.SObjectName+"/"+recordId, *sf.auth, json)
+	resp, err := doRequest("PATCH", "/sobjects/"+record["attributes"].(map[string]any)["type"].(string)+"/"+recordId, *sf.auth, json)
 	if err != nil {
 		fmt.Println("Error with DML operation")
 		fmt.Println(err.Error())
 		return
 	}
 	if resp.StatusCode != http.StatusNoContent {
-		fmt.Println("Error with " + resp.Request.Method + " " + "/sobjects/" + sObject.SObjectName)
+		fmt.Println("Error with " + resp.Request.Method + " " + "/sobjects/" + record["attributes"].(map[string]any)["type"].(string))
+		fmt.Println(resp.Status)
+		return
+	}
+}
+
+func (sf *Salesforce) InsertComposite(records []map[string]any, allOrNone bool) {
+	if sf.auth == nil {
+		fmt.Println("Not authenticated. Please use salesforce.Init().")
+		return
+	}
+
+	payload := map[string]any{
+		"allOrNone": allOrNone,
+		"records":   records,
+	}
+
+	json, err := json.Marshal(payload)
+	if err != nil {
+		fmt.Println("Error converting object to json")
+		fmt.Println(err.Error())
+		return
+	}
+
+	resp, err := doRequest("POST", "/composite/sobjects/", *sf.auth, json)
+	if err != nil {
+		fmt.Println("Error with DML operation")
+		fmt.Println(err.Error())
+		return
+	}
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("Error with " + resp.Request.Method + " " + "/composite/sobjects/")
+		fmt.Println(resp.Status)
+		return
+	}
+}
+
+func (sf *Salesforce) UpdateComposite(records []map[string]any, allOrNone bool) {
+	if sf.auth == nil {
+		fmt.Println("Not authenticated. Please use salesforce.Init().")
+		return
+	}
+
+	payload := map[string]any{
+		"allOrNone": allOrNone,
+		"records":   records,
+	}
+
+	json, err := json.Marshal(payload)
+	if err != nil {
+		fmt.Println("Error converting object to json")
+		fmt.Println(err.Error())
+		return
+	}
+
+	resp, err := doRequest("PATCH", "/composite/sobjects/", *sf.auth, json)
+	if err != nil {
+		fmt.Println("Error with DML operation")
+		fmt.Println(err.Error())
+		return
+	}
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("Error with " + resp.Request.Method + " " + "/composite/sobjects/")
 		fmt.Println(resp.Status)
 		return
 	}
