@@ -2,9 +2,9 @@
 
 A very simple REST API wrapper for interacting with Salesforce within the Go programming language.
 
-Read about the Salesforce REST API: https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_rest.htm
+- [Read about the Salesforce REST API](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_rest.htm)
 
-Read about Golang: https://go.dev/doc/
+- [Read about Golang](https://go.dev/doc/)
 
 ## Installation
 ```
@@ -43,7 +43,7 @@ type Creds struct {
 `func Init(creds Creds) *Salesforce {}`
 
 #### Username-Password Flow
-- Create a Connected App in your Salesforce org: https://help.salesforce.com/s/articleView?id=sf.connected_app_create.htm&type=5
+- [Create a Connected App in your Salesforce org](https://help.salesforce.com/s/articleView?id=sf.connected_app_create.htm&type=5)
 
 ```go
 sf := salesforce.Init(salesforce.Creds{
