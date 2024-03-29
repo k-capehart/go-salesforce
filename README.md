@@ -45,6 +45,8 @@ type Creds struct {
 #### Username-Password Flow
 - [Create a Connected App in your Salesforce org](https://help.salesforce.com/s/articleView?id=sf.connected_app_create.htm&type=5)
 
+Example:
+
 ```go
 sf := salesforce.Init(salesforce.Creds{
     Domain:         DOMAIN,
@@ -71,6 +73,8 @@ type QueryResponse struct {
 <br>
 
 `func (sf *Salesforce) Query(query string) *QueryResponse {}`
+
+Example:
 
 ```go
 type Opportunity struct {
