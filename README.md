@@ -36,7 +36,7 @@ type Creds struct {
 
 `func Init(creds Creds) *Salesforce {}`
 
-Username-Password Flow
+#### Username-Password Flow
 - Create a Connected App in your Salesforce org: https://help.salesforce.com/s/articleView?id=sf.connected_app_create.htm&type=5
 
 ```go
@@ -61,6 +61,8 @@ type QueryResponse struct {
 	Records   []map[string]any `json:"records"`
 }
 ```
+
+<br>
 
 `func (sf *Salesforce) Query(query string) *QueryResponse {}`
 
