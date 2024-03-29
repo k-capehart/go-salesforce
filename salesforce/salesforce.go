@@ -47,6 +47,50 @@ func doRequest(method string, uri string, auth Auth, body []byte) (*http.Respons
 	return http.DefaultClient.Do(req)
 }
 
+func convertToMap(obj any) map[string]any {
+	var recordMap map[string]any
+	if _, ok := obj.(map[string]any); ok {
+		recordMap = obj.(map[string]any)
+	} else {
+		jsonResult, err := json.Marshal(obj)
+		if err != nil {
+			fmt.Println("Error converting object to json")
+			fmt.Println(err.Error())
+			return nil
+		}
+
+		err = json.Unmarshal(jsonResult, &recordMap)
+		if err != nil {
+			fmt.Println("Error with json")
+			fmt.Println(err.Error())
+			return nil
+		}
+	}
+	return recordMap
+}
+
+func convertToSliceOfMaps(obj any) []map[string]any {
+	var recordMap []map[string]any
+	if _, ok := obj.(map[string]any); ok {
+		recordMap = obj.([]map[string]any)
+	} else {
+		jsonResult, err := json.Marshal(obj)
+		if err != nil {
+			fmt.Println("Error converting object to json")
+			fmt.Println(err.Error())
+			return nil
+		}
+
+		err = json.Unmarshal(jsonResult, &recordMap)
+		if err != nil {
+			fmt.Println("Error with json")
+			fmt.Println(err.Error())
+			return nil
+		}
+	}
+	return recordMap
+}
+
 func Init(creds Creds) *Salesforce {
 	var auth *Auth
 	if creds != (Creds{}) &&
@@ -65,7 +109,7 @@ func Init(creds Creds) *Salesforce {
 	}
 
 	if auth == nil {
-		panic("Please refer to Salesforce REST API Developer Guide for proper authentication: https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_flows.htm&type=5")
+		fmt.Println("Please refer to Salesforce REST API Developer Guide for proper authentication: https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_flows.htm&type=5")
 	}
 	return &Salesforce{auth: auth}
 }
@@ -106,19 +150,24 @@ func (sf *Salesforce) Query(query string) *QueryResponse {
 	return queryResponse
 }
 
-func (sf *Salesforce) InsertOne(sObjectName string, record map[string]any) {
+func (sf *Salesforce) InsertOne(sObjectName string, record any) {
 	if sf.auth == nil {
 		fmt.Println("Not authenticated. Please use salesforce.Init().")
 		return
 	}
-	json, err := json.Marshal(record)
+
+	recordMap := convertToMap(record)
+	recordMap["attributes"] = map[string]string{"type": sObjectName}
+	delete(recordMap, "Id")
+
+	payload, err := json.Marshal(recordMap)
 	if err != nil {
-		fmt.Println("Error converting object to json")
+		fmt.Println("Error with json")
 		fmt.Println(err.Error())
 		return
 	}
 
-	resp, err := doRequest("POST", "/sobjects/"+sObjectName, *sf.auth, json)
+	resp, err := doRequest("POST", "/sobjects/"+sObjectName, *sf.auth, payload)
 	if err != nil {
 		fmt.Println("Error with DML operation")
 		fmt.Println(err.Error())
@@ -131,44 +180,58 @@ func (sf *Salesforce) InsertOne(sObjectName string, record map[string]any) {
 	}
 }
 
-func (sf *Salesforce) UpdateOne(record map[string]any) {
+func (sf *Salesforce) UpdateOne(sObjectName string, record any) {
 	if sf.auth == nil {
 		fmt.Println("Not authenticated. Please use salesforce.Init().")
 		return
 	}
 
-	recordId := record["Id"].(string)
-	delete(record, "Id")
+	recordMap := convertToMap(record)
+	recordId := recordMap["Id"].(string)
+	recordMap["attributes"] = map[string]string{"type": sObjectName}
+	delete(recordMap, "Id")
 
-	json, err := json.Marshal(record)
+	payload, err := json.Marshal(recordMap)
 	if err != nil {
-		fmt.Println("Error converting object to json")
+		fmt.Println("Error with json")
 		fmt.Println(err.Error())
 		return
 	}
 
-	resp, err := doRequest("PATCH", "/sobjects/"+record["attributes"].(map[string]any)["type"].(string)+"/"+recordId, *sf.auth, json)
+	resp, err := doRequest("PATCH", "/sobjects/"+sObjectName+"/"+recordId, *sf.auth, payload)
 	if err != nil {
 		fmt.Println("Error with DML operation")
 		fmt.Println(err.Error())
 		return
 	}
 	if resp.StatusCode != http.StatusNoContent {
-		fmt.Println("Error with " + resp.Request.Method + " " + "/sobjects/" + record["attributes"].(map[string]any)["type"].(string))
+		fmt.Println("Error with " + resp.Request.Method + " " + "/sobjects/" + sObjectName)
 		fmt.Println(resp.Status)
 		return
 	}
 }
 
-func (sf *Salesforce) InsertComposite(records []map[string]any, allOrNone bool) {
+func (sf *Salesforce) InsertComposite(sObjectName string, records any, allOrNone bool) {
 	if sf.auth == nil {
 		fmt.Println("Not authenticated. Please use salesforce.Init().")
 		return
 	}
 
+	var recordMap []map[string]any
+	if _, ok := records.(map[string]any); ok {
+		recordMap = records.([]map[string]any)
+	} else {
+		recordMap = convertToSliceOfMaps(records)
+	}
+
+	for key := range recordMap {
+		delete(recordMap[key], "Id")
+		recordMap[key]["attributes"] = map[string]string{"type": sObjectName}
+	}
+
 	payload := map[string]any{
 		"allOrNone": allOrNone,
-		"records":   records,
+		"records":   recordMap,
 	}
 
 	json, err := json.Marshal(payload)
@@ -191,15 +254,26 @@ func (sf *Salesforce) InsertComposite(records []map[string]any, allOrNone bool) 
 	}
 }
 
-func (sf *Salesforce) UpdateComposite(records []map[string]any, allOrNone bool) {
+func (sf *Salesforce) UpdateComposite(sObjectName string, records any, allOrNone bool) {
 	if sf.auth == nil {
 		fmt.Println("Not authenticated. Please use salesforce.Init().")
 		return
 	}
 
+	var recordMap []map[string]any
+	if _, ok := records.(map[string]any); ok {
+		recordMap = records.([]map[string]any)
+	} else {
+		recordMap = convertToSliceOfMaps(records)
+	}
+
+	for key := range recordMap {
+		recordMap[key]["attributes"] = map[string]string{"type": sObjectName}
+	}
+
 	payload := map[string]any{
 		"allOrNone": allOrNone,
-		"records":   records,
+		"records":   recordMap,
 	}
 
 	json, err := json.Marshal(payload)
