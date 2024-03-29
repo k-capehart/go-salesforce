@@ -205,12 +205,7 @@ func (sf *Salesforce) InsertComposite(sObjectName string, records any, allOrNone
 		return
 	}
 
-	var recordMap []map[string]any
-	if _, ok := records.(map[string]any); ok {
-		recordMap = records.([]map[string]any)
-	} else {
-		recordMap = convertToSliceOfMaps(records)
-	}
+	recordMap := convertToSliceOfMaps(records)
 
 	if len(recordMap) > 200 {
 		fmt.Println("Composite API call supports lists up to 200 in length")
@@ -253,12 +248,7 @@ func (sf *Salesforce) UpdateComposite(sObjectName string, records any, allOrNone
 		return
 	}
 
-	var recordMap []map[string]any
-	if _, ok := records.(map[string]any); ok {
-		recordMap = records.([]map[string]any)
-	} else {
-		recordMap = convertToSliceOfMaps(records)
-	}
+	recordMap := convertToSliceOfMaps(records)
 
 	if len(recordMap) > 200 {
 		fmt.Println("Composite API call supports lists up to 200 in length")
