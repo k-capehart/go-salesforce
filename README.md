@@ -82,3 +82,4 @@ if err != nil {
     panic(err)
 }
 ```
+* Using `https://github.com/mitchellh/mapstructure` to decode map into struct

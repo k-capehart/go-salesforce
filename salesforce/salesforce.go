@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/mitchellh/mapstructure"
 )
 
 const API_VERSION = "v60.0"
@@ -52,16 +54,9 @@ func convertToMap(obj any) map[string]any {
 	if _, ok := obj.(map[string]any); ok {
 		recordMap = obj.(map[string]any)
 	} else {
-		jsonResult, err := json.Marshal(obj)
+		err := mapstructure.Decode(obj, &recordMap)
 		if err != nil {
-			fmt.Println("Error converting object to json")
-			fmt.Println(err.Error())
-			return nil
-		}
-
-		err = json.Unmarshal(jsonResult, &recordMap)
-		if err != nil {
-			fmt.Println("Error with json")
+			fmt.Println("Error converting object to map")
 			fmt.Println(err.Error())
 			return nil
 		}
@@ -74,16 +69,9 @@ func convertToSliceOfMaps(obj any) []map[string]any {
 	if _, ok := obj.(map[string]any); ok {
 		recordMap = obj.([]map[string]any)
 	} else {
-		jsonResult, err := json.Marshal(obj)
+		err := mapstructure.Decode(obj, &recordMap)
 		if err != nil {
-			fmt.Println("Error converting object to json")
-			fmt.Println(err.Error())
-			return nil
-		}
-
-		err = json.Unmarshal(jsonResult, &recordMap)
-		if err != nil {
-			fmt.Println("Error with json")
+			fmt.Println("Error converting object to map")
 			fmt.Println(err.Error())
 			return nil
 		}
