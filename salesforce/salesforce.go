@@ -212,6 +212,11 @@ func (sf *Salesforce) InsertComposite(sObjectName string, records any, allOrNone
 		recordMap = convertToSliceOfMaps(records)
 	}
 
+	if len(recordMap) > 200 {
+		fmt.Println("Composite API call supports lists up to 200 in length")
+		return
+	}
+
 	for key := range recordMap {
 		delete(recordMap[key], "Id")
 		recordMap[key]["attributes"] = map[string]string{"type": sObjectName}
@@ -253,6 +258,11 @@ func (sf *Salesforce) UpdateComposite(sObjectName string, records any, allOrNone
 		recordMap = records.([]map[string]any)
 	} else {
 		recordMap = convertToSliceOfMaps(records)
+	}
+
+	if len(recordMap) > 200 {
+		fmt.Println("Composite API call supports lists up to 200 in length")
+		return
 	}
 
 	for key := range recordMap {

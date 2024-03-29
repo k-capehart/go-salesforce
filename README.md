@@ -1,5 +1,11 @@
 # Salesforce REST API client written in Go
 
+A very simple REST API wrapper for interacting with Salesforce within the Go programming language.
+
+Read about the Salesforce REST API: https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_rest.htm
+
+Read about Golang: https://go.dev/doc/
+
 ## Installation
 ```
 go get github.com/k-capehart/go-salesforce
@@ -41,12 +47,12 @@ type Creds struct {
 
 ```go
 sf := salesforce.Init(salesforce.Creds{
-    Domain:         {DOMAIN},
-    Username:       {USERNAME},
-    Password:       {PASSWORD},
-    SecurityToken:  {SECURITY_TOKEN},
-    ConsumerKey:    {CONSUMER_KEY},
-    ConsumerSecret: {CONSUMER_SECRET},
+    Domain:         DOMAIN,
+    Username:       USERNAME,
+    Password:       PASSWORD,
+    SecurityToken:  SECURITY_TOKEN,
+    ConsumerKey:    CONSUMER_KEY,
+    ConsumerSecret: CONSUMER_SECRET,
 })
 ```
 
