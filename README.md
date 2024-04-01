@@ -79,7 +79,8 @@ type Opportunity struct {
 
 ```go
 opps := []Opportunity{}
-err := sf.Query("SELECT Id, Name, StageName FROM Opportunity WHERE StageName = 'Prospecting'", &opps)
+queryString := "SELECT Id, Name, StageName FROM Opportunity WHERE StageName = 'Prospecting'"
+err := sf.Query(queryString, &opps)
 if err != nil {
     fmt.Println(err)
 } else {
