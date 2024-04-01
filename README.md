@@ -42,7 +42,7 @@ type Creds struct {
 
 `func Init(creds Creds) *Salesforce {}`
 
-#### Username-Password Flow
+**Username-Password Flow**
 - [Create a Connected App in your Salesforce org](https://help.salesforce.com/s/articleView?id=sf.connected_app_create.htm&type=5)
 
 Example:
@@ -62,34 +62,66 @@ sf := salesforce.Init(salesforce.Creds{
 
 https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
 
-```go
-type QueryResponse struct {
-	TotalSize int              `json:"totalSize"`
-	Done      bool             `json:"done"`
-	Records   []map[string]any `json:"records"`
-}
-```
-
 <br>
 
 `func (sf *Salesforce) Query(query string) *QueryResponse {}`
 
-Example:
+Examples:
 
+**Passing a query string**
 ```go
 type Opportunity struct {
 	Id        string
 	Name      string
-	IsPrivate bool
+	StageName string
 }
 ```
 
 ```go
-queryResult := sf.Query("SELECT Id, Name, IsPrivate FROM Opportunity LIMIT 1")
-var opp []Opportunity
-err := mapstructure.Decode(queryResult.Records, &opp)
+opps := []Opportunity{}
+err := sf.Query("SELECT Id, Name, StageName FROM Opportunity WHERE StageName = 'Prospecting'", &opps)
 if err != nil {
-    panic(err)
+    fmt.Println(err)
+} else {
+    fmt.Println(opps)
 }
 ```
-* Using https://github.com/mitchellh/mapstructure to decode map into struct
+
+**Using go-soql**
+- Salesforce's package for marshalling go structs into SOQL
+- Review [forcedotcom/go-soql](https://github.com/forcedotcom/go-soql) for details
+- Eliminates need to separately maintain query string and struct
+- Helps prevent SOQL injection
+
+```go
+type Opportunity struct {
+	Id        string `soql:"selectColumn,fieldName=Id" json:"Id"`
+	Name      string `soql:"selectColumn,fieldName=Name" json:"Name"`
+	StageName string `soql:"selectColumn,fieldName=StageName" json:"StageName"`
+}
+
+type OpportunityQueryCriteria struct {
+	StageName string `soql:"equalsOperator,fieldName=StageName"`
+}
+
+type OpportunitySoqlQuery struct {
+	SelectClause Opportunity              `soql:"selectClause,tableName=Opportunity"`
+	WhereClause  OpportunityQueryCriteria `soql:"whereClause"`
+}
+```
+```go
+soqlStruct := OpportunitySoqlQuery{
+    SelectClause: Opportunity{},
+    WhereClause: OpportunityQueryCriteria{
+        StageName: "Prospecting",
+    },
+}
+
+opps := []Opportunity{}
+err := sf.QueryStruct(soqlStruct, &opps)
+if err != nil {
+    fmt.Println(err)
+} else {
+    fmt.Println(opps)
+}
+```

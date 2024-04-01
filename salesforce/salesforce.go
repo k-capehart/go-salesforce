@@ -2,12 +2,14 @@ package salesforce
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 
+	"github.com/forcedotcom/go-soql"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -102,7 +104,7 @@ func Init(creds Creds) *Salesforce {
 	return &Salesforce{auth: auth}
 }
 
-func (sf *Salesforce) Query(query string) *QueryResponse {
+func (sf *Salesforce) Query(query string, sObject any) error {
 	if sf.auth == nil {
 		fmt.Println("Not authenticated. Please use salesforce.Init().")
 		return nil
@@ -110,32 +112,38 @@ func (sf *Salesforce) Query(query string) *QueryResponse {
 	query = url.QueryEscape(query)
 	resp, err := doRequest("GET", "/query/?q="+query, *sf.auth, nil)
 	if err != nil {
-		fmt.Println("Error authenticating")
-		fmt.Println(err.Error())
-		return nil
+		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		fmt.Println("Error with " + resp.Request.Method + " " + "/query/?q=" + query)
-		fmt.Println(resp.Status)
-		return nil
+		return errors.New(string(resp.Status) + ":" + " failed to execute soql query")
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("Error reading response")
-		fmt.Println(err.Error())
-		return nil
+		return err
 	}
 
 	queryResponse := &QueryResponse{}
-	jsonError := json.Unmarshal(respBody, &queryResponse)
-	if jsonError != nil {
-		fmt.Println("Error decoding response")
-		fmt.Println(jsonError.Error())
-		return nil
+	queryResponseError := json.Unmarshal(respBody, &queryResponse)
+	if queryResponseError != nil {
+		return err
 	}
 
-	return queryResponse
+	sObjectError := mapstructure.Decode(queryResponse.Records, sObject)
+	if sObjectError != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (sf *Salesforce) QueryStruct(soqlStruct any, sObject any) error {
+	soqlQuery, err := soql.Marshal(soqlStruct)
+	if err != nil {
+		return err
+	}
+	sf.Query(soqlQuery, sObject)
+	return nil
 }
 
 func (sf *Salesforce) InsertOne(sObjectName string, record any) {
