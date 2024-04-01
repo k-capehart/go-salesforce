@@ -38,6 +38,8 @@ type Creds struct {
 }
 ```
 
+Examples:
+
 <br>
 
 `func Init(creds Creds) *Salesforce {}`
@@ -64,6 +66,8 @@ if err != nil {
 https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
 
 <br>
+
+Examples:
 
 **Passing a query string**
 
@@ -116,14 +120,13 @@ type OpportunitySoqlQuery struct {
 }
 ```
 ```go
+opps := []Opportunity{}
 soqlStruct := OpportunitySoqlQuery{
     SelectClause: Opportunity{},
     WhereClause: OpportunityQueryCriteria{
         StageName: "Prospecting",
     },
 }
-
-opps := []Opportunity{}
 err := sf.QueryStruct(soqlStruct, &opps)
 if err != nil {
     fmt.Println(err)
