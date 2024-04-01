@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/forcedotcom/go-soql"
@@ -74,6 +75,37 @@ func convertToSliceOfMaps(obj any) ([]map[string]any, error) {
 	return recordMap, nil
 }
 
+func processSalesforceError(resp http.Response) error {
+	var errorMessage string
+	responseData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		errorMessage = "error processing failed http call"
+	} else {
+		errorMessage = string(resp.Status) + ": " + string(responseData)
+	}
+	return errors.New(errorMessage)
+}
+
+func processSalesforceResponse(resp http.Response) error {
+	responseData, err := io.ReadAll(resp.Body)
+	responseMap := []map[string]any{}
+	salesforceErrors := "salesforce errors: "
+	if err != nil {
+		return errors.New("error processing http response")
+	}
+	jsonError := json.Unmarshal(responseData, &responseMap)
+	if jsonError != nil {
+		return errors.New("error processing http response")
+	}
+	for _, val := range responseMap {
+		if !val["success"].(bool) {
+			salesforceErrors = salesforceErrors + "{id: " + val["id"].(string) + " message: " + val["errors"].([]any)[0].(map[string]any)["message"].(string) + "}"
+		}
+	}
+
+	return errors.New(salesforceErrors)
+}
+
 func Init(creds Creds) (*Salesforce, error) {
 	var auth *Auth
 	var err error
@@ -108,7 +140,7 @@ func (sf *Salesforce) Query(query string, sObject any) error {
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(string(resp.Status) + ":" + " failed to execute soql query")
+		return processSalesforceError(*resp)
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
@@ -161,7 +193,7 @@ func (sf *Salesforce) InsertOne(sObjectName string, record any) error {
 		return err
 	}
 	if resp.StatusCode != http.StatusCreated {
-		return errors.New(string(resp.Status) + ":" + " failed to insert salesforce record")
+		return processSalesforceError(*resp)
 	}
 	return nil
 }
@@ -189,7 +221,28 @@ func (sf *Salesforce) UpdateOne(sObjectName string, record any) error {
 		return err
 	}
 	if resp.StatusCode != http.StatusNoContent {
-		return errors.New(string(resp.Status) + ":" + " failed to update salesforce records")
+		return processSalesforceError(*resp)
+	}
+	return nil
+}
+
+func (sf *Salesforce) DeleteOne(sObjectName string, record any) error {
+	if sf.auth == nil {
+		return errors.New("not authenticated: please use salesforce.Init()")
+	}
+
+	recordMap, err := convertToMap(record)
+	if err != nil {
+		return err
+	}
+	recordId := recordMap["Id"].(string)
+
+	resp, err := doRequest("DELETE", "/sobjects/"+sObjectName+"/"+recordId, *sf.auth, nil)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		return processSalesforceError(*resp)
 	}
 	return nil
 }
@@ -208,9 +261,9 @@ func (sf *Salesforce) InsertComposite(sObjectName string, records any, allOrNone
 		return errors.New("salesforce composite api call supports up to 200 records at once")
 	}
 
-	for key := range recordMap {
-		delete(recordMap[key], "Id")
-		recordMap[key]["attributes"] = map[string]string{"type": sObjectName}
+	for i := range recordMap {
+		delete(recordMap[i], "Id")
+		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
 	}
 
 	payload := map[string]any{
@@ -228,7 +281,11 @@ func (sf *Salesforce) InsertComposite(sObjectName string, records any, allOrNone
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(string(resp.Status) + ":" + " failed to insert salesforce record list")
+		return processSalesforceError(*resp)
+	}
+	salesforceErrors := processSalesforceResponse(*resp)
+	if salesforceErrors != nil {
+		return salesforceErrors
 	}
 	return nil
 }
@@ -247,8 +304,8 @@ func (sf *Salesforce) UpdateComposite(sObjectName string, records any, allOrNone
 		return errors.New("salesforce composite api call supports up to 200 records at once")
 	}
 
-	for key := range recordMap {
-		recordMap[key]["attributes"] = map[string]string{"type": sObjectName}
+	for i := range recordMap {
+		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
 	}
 
 	payload := map[string]any{
@@ -266,7 +323,48 @@ func (sf *Salesforce) UpdateComposite(sObjectName string, records any, allOrNone
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(string(resp.Status) + ":" + " failed to update salesforce record list")
+		return processSalesforceError(*resp)
+	}
+	salesforceErrors := processSalesforceResponse(*resp)
+	if salesforceErrors != nil {
+		return salesforceErrors
+	}
+	return nil
+}
+
+func (sf *Salesforce) DeleteComposite(sObjectName string, records any, allOrNone bool) error {
+	if sf.auth == nil {
+		return errors.New("not authenticated: please use salesforce.Init()")
+	}
+
+	recordMap, err := convertToSliceOfMaps(records)
+	if err != nil {
+		return err
+	}
+
+	if len(recordMap) > 200 {
+		return errors.New("salesforce composite api call supports up to 200 records at once")
+	}
+
+	var ids string
+	for i := 0; i < len(recordMap); i++ {
+		if i == len(recordMap)-1 {
+			ids = ids + recordMap[i]["Id"].(string)
+		} else {
+			ids = ids + recordMap[i]["Id"].(string) + ","
+		}
+	}
+
+	resp, err := doRequest("DELETE", "/composite/sobjects/?ids="+ids+"&allOrNone="+strconv.FormatBool(allOrNone), *sf.auth, nil)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return processSalesforceError(*resp)
+	}
+	salesforceErrors := processSalesforceResponse(*resp)
+	if salesforceErrors != nil {
+		return salesforceErrors
 	}
 	return nil
 }
