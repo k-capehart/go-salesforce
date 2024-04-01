@@ -2,7 +2,7 @@ package salesforce
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -26,7 +26,7 @@ type Creds struct {
 	ConsumerSecret string
 }
 
-func loginPassword(domain string, username string, password string, securityToken string, consumerKey string, consumerSecret string) *Auth {
+func loginPassword(domain string, username string, password string, securityToken string, consumerKey string, consumerSecret string) (*Auth, error) {
 	payload := url.Values{
 		"grant_type":    {"password"},
 		"client_id":     {consumerKey},
@@ -38,31 +38,23 @@ func loginPassword(domain string, username string, password string, securityToke
 	body := strings.NewReader(payload.Encode())
 	resp, err := http.Post(domain+endpoint, "application/x-www-form-urlencoded", body)
 	if err != nil {
-		fmt.Println("Error logging in")
-		fmt.Println(err.Error())
-		return nil
+		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		fmt.Println("Error with " + resp.Request.Method + " " + endpoint)
-		fmt.Println(resp.Status)
-		return nil
+		return nil, errors.New(string(resp.Status) + ":" + " failed authentication")
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("Error reading response")
-		fmt.Println(err.Error())
-		return nil
+		return nil, err
 	}
 
 	auth := &Auth{}
 	jsonError := json.Unmarshal(respBody, &auth)
 	if jsonError != nil {
-		fmt.Println("Error decoding response")
-		fmt.Println(jsonError.Error())
-		return nil
+		return nil, jsonError
 	}
 
 	defer resp.Body.Close()
-	return auth
+	return auth, nil
 }

@@ -3,7 +3,6 @@ package salesforce
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -38,8 +37,6 @@ func doRequest(method string, uri string, auth Auth, body []byte) (*http.Respons
 		req, err = http.NewRequest(method, endpoint, nil)
 	}
 	if err != nil {
-		fmt.Println("Error creating request")
-		fmt.Println(err.Error())
 		return nil, err
 	}
 
@@ -51,44 +48,41 @@ func doRequest(method string, uri string, auth Auth, body []byte) (*http.Respons
 	return http.DefaultClient.Do(req)
 }
 
-func convertToMap(obj any) map[string]any {
+func convertToMap(obj any) (map[string]any, error) {
 	var recordMap map[string]any
 	if _, ok := obj.(map[string]any); ok {
 		recordMap = obj.(map[string]any)
 	} else {
 		err := mapstructure.Decode(obj, &recordMap)
 		if err != nil {
-			fmt.Println("Error converting object to map")
-			fmt.Println(err.Error())
-			return nil
+			return nil, err
 		}
 	}
-	return recordMap
+	return recordMap, nil
 }
 
-func convertToSliceOfMaps(obj any) []map[string]any {
+func convertToSliceOfMaps(obj any) ([]map[string]any, error) {
 	var recordMap []map[string]any
 	if _, ok := obj.(map[string]any); ok {
 		recordMap = obj.([]map[string]any)
 	} else {
 		err := mapstructure.Decode(obj, &recordMap)
 		if err != nil {
-			fmt.Println("Error converting object to map")
-			fmt.Println(err.Error())
-			return nil
+			return nil, err
 		}
 	}
-	return recordMap
+	return recordMap, nil
 }
 
-func Init(creds Creds) *Salesforce {
+func Init(creds Creds) (*Salesforce, error) {
 	var auth *Auth
+	var err error
 	if creds != (Creds{}) &&
 		creds.Domain != "" && creds.Username != "" &&
 		creds.Password != "" && creds.SecurityToken != "" &&
 		creds.ConsumerKey != "" && creds.ConsumerSecret != "" {
 
-		auth = loginPassword(
+		auth, err = loginPassword(
 			creds.Domain,
 			creds.Username,
 			creds.Password,
@@ -98,16 +92,15 @@ func Init(creds Creds) *Salesforce {
 		)
 	}
 
-	if auth == nil {
-		fmt.Println("Please refer to Salesforce REST API Developer Guide for proper authentication: https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_flows.htm&type=5")
+	if err != nil || auth == nil {
+		return nil, errors.New("please refer to salesforce REST API developer guide for proper authentication: https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_flows.htm&type=5")
 	}
-	return &Salesforce{auth: auth}
+	return &Salesforce{auth: auth}, nil
 }
 
 func (sf *Salesforce) Query(query string, sObject any) error {
 	if sf.auth == nil {
-		fmt.Println("Not authenticated. Please use salesforce.Init().")
-		return nil
+		return errors.New("not authenticated: please use salesforce.Init()")
 	}
 	query = url.QueryEscape(query)
 	resp, err := doRequest("GET", "/query/?q="+query, *sf.auth, nil)
@@ -146,78 +139,73 @@ func (sf *Salesforce) QueryStruct(soqlStruct any, sObject any) error {
 	return nil
 }
 
-func (sf *Salesforce) InsertOne(sObjectName string, record any) {
+func (sf *Salesforce) InsertOne(sObjectName string, record any) error {
 	if sf.auth == nil {
-		fmt.Println("Not authenticated. Please use salesforce.Init().")
-		return
+		return errors.New("not authenticated: please use salesforce.Init()")
 	}
 
-	recordMap := convertToMap(record)
+	recordMap, err := convertToMap(record)
+	if err != nil {
+		return err
+	}
 	recordMap["attributes"] = map[string]string{"type": sObjectName}
 	delete(recordMap, "Id")
 
-	payload, err := json.Marshal(recordMap)
+	body, err := json.Marshal(recordMap)
 	if err != nil {
-		fmt.Println("Error with json")
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 
-	resp, err := doRequest("POST", "/sobjects/"+sObjectName, *sf.auth, payload)
+	resp, err := doRequest("POST", "/sobjects/"+sObjectName, *sf.auth, body)
 	if err != nil {
-		fmt.Println("Error with DML operation")
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 	if resp.StatusCode != http.StatusCreated {
-		fmt.Println("Error with " + resp.Request.Method + " " + "/sobjects/" + sObjectName)
-		fmt.Println(resp.Status)
-		return
+		return errors.New(string(resp.Status) + ":" + " failed to insert salesforce record")
 	}
+	return nil
 }
 
-func (sf *Salesforce) UpdateOne(sObjectName string, record any) {
+func (sf *Salesforce) UpdateOne(sObjectName string, record any) error {
 	if sf.auth == nil {
-		fmt.Println("Not authenticated. Please use salesforce.Init().")
-		return
+		return errors.New("not authenticated: please use salesforce.Init()")
 	}
 
-	recordMap := convertToMap(record)
+	recordMap, err := convertToMap(record)
+	if err != nil {
+		return err
+	}
 	recordId := recordMap["Id"].(string)
 	recordMap["attributes"] = map[string]string{"type": sObjectName}
 	delete(recordMap, "Id")
 
-	payload, err := json.Marshal(recordMap)
+	body, err := json.Marshal(recordMap)
 	if err != nil {
-		fmt.Println("Error with json")
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 
-	resp, err := doRequest("PATCH", "/sobjects/"+sObjectName+"/"+recordId, *sf.auth, payload)
+	resp, err := doRequest("PATCH", "/sobjects/"+sObjectName+"/"+recordId, *sf.auth, body)
 	if err != nil {
-		fmt.Println("Error with DML operation")
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 	if resp.StatusCode != http.StatusNoContent {
-		fmt.Println("Error with " + resp.Request.Method + " " + "/sobjects/" + sObjectName)
-		fmt.Println(resp.Status)
-		return
+		return errors.New(string(resp.Status) + ":" + " failed to update salesforce records")
 	}
+	return nil
 }
 
-func (sf *Salesforce) InsertComposite(sObjectName string, records any, allOrNone bool) {
+func (sf *Salesforce) InsertComposite(sObjectName string, records any, allOrNone bool) error {
 	if sf.auth == nil {
-		fmt.Println("Not authenticated. Please use salesforce.Init().")
-		return
+		return errors.New("not authenticated: please use salesforce.Init()")
 	}
 
-	recordMap := convertToSliceOfMaps(records)
+	recordMap, err := convertToSliceOfMaps(records)
+	if err != nil {
+		return err
+	}
 
 	if len(recordMap) > 200 {
-		fmt.Println("Composite API call supports lists up to 200 in length")
-		return
+		return errors.New("salesforce composite api call supports up to 200 records at once")
 	}
 
 	for key := range recordMap {
@@ -230,37 +218,33 @@ func (sf *Salesforce) InsertComposite(sObjectName string, records any, allOrNone
 		"records":   recordMap,
 	}
 
-	json, err := json.Marshal(payload)
+	body, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("Error converting object to json")
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 
-	resp, err := doRequest("POST", "/composite/sobjects/", *sf.auth, json)
+	resp, err := doRequest("POST", "/composite/sobjects/", *sf.auth, body)
 	if err != nil {
-		fmt.Println("Error with DML operation")
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		fmt.Println("Error with " + resp.Request.Method + " " + "/composite/sobjects/")
-		fmt.Println(resp.Status)
-		return
+		return errors.New(string(resp.Status) + ":" + " failed to insert salesforce record list")
 	}
+	return nil
 }
 
-func (sf *Salesforce) UpdateComposite(sObjectName string, records any, allOrNone bool) {
+func (sf *Salesforce) UpdateComposite(sObjectName string, records any, allOrNone bool) error {
 	if sf.auth == nil {
-		fmt.Println("Not authenticated. Please use salesforce.Init().")
-		return
+		return errors.New("not authenticated: please use salesforce.Init()")
 	}
 
-	recordMap := convertToSliceOfMaps(records)
+	recordMap, err := convertToSliceOfMaps(records)
+	if err != nil {
+		return err
+	}
 
 	if len(recordMap) > 200 {
-		fmt.Println("Composite API call supports lists up to 200 in length")
-		return
+		return errors.New("salesforce composite api call supports up to 200 records at once")
 	}
 
 	for key := range recordMap {
@@ -272,22 +256,17 @@ func (sf *Salesforce) UpdateComposite(sObjectName string, records any, allOrNone
 		"records":   recordMap,
 	}
 
-	json, err := json.Marshal(payload)
+	body, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("Error converting object to json")
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 
-	resp, err := doRequest("PATCH", "/composite/sobjects/", *sf.auth, json)
+	resp, err := doRequest("PATCH", "/composite/sobjects/", *sf.auth, body)
 	if err != nil {
-		fmt.Println("Error with DML operation")
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		fmt.Println("Error with " + resp.Request.Method + " " + "/composite/sobjects/")
-		fmt.Println(resp.Status)
-		return
+		return errors.New(string(resp.Status) + ":" + " failed to update salesforce record list")
 	}
+	return nil
 }

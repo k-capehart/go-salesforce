@@ -45,10 +45,8 @@ type Creds struct {
 **Username-Password Flow**
 - [Create a Connected App in your Salesforce org](https://help.salesforce.com/s/articleView?id=sf.connected_app_create.htm&type=5)
 
-Example:
-
 ```go
-sf := salesforce.Init(salesforce.Creds{
+sf, err := salesforce.Init(salesforce.Creds{
     Domain:         DOMAIN,
     Username:       USERNAME,
     Password:       PASSWORD,
@@ -56,6 +54,9 @@ sf := salesforce.Init(salesforce.Creds{
     ConsumerKey:    CONSUMER_KEY,
     ConsumerSecret: CONSUMER_SECRET,
 })
+if err != nil {
+    fmt.Println(err)
+}
 ```
 
 ## SOQL Query
@@ -64,11 +65,10 @@ https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resourc
 
 <br>
 
-`func (sf *Salesforce) Query(query string) *QueryResponse {}`
-
-Examples:
-
 **Passing a query string**
+
+`func (sf *Salesforce) Query(query string, sObject any) error {}`
+
 ```go
 type Opportunity struct {
 	Id        string
@@ -88,7 +88,12 @@ if err != nil {
 }
 ```
 
+<br/>
+
 **Using go-soql**
+
+`func (sf *Salesforce) QueryStruct(soqlStruct any, sObject any) error {}`
+
 - Salesforce's package for marshalling go structs into SOQL
 - Review [forcedotcom/go-soql](https://github.com/forcedotcom/go-soql) for details
 - Eliminates need to separately maintain query string and struct
