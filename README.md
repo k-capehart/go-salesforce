@@ -38,9 +38,9 @@ type Creds struct {
 }
 ```
 
-Examples:
-
 <br>
+
+Examples:
 
 `func Init(creds Creds) *Salesforce {}`
 
