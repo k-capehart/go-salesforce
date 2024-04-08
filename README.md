@@ -85,8 +85,6 @@ if err != nil {
 fmt.Println(opps)
 ```
 
-<br/>
-
 ### Using go-soql
 
 `func (sf *Salesforce) QueryStruct(soqlStruct any, sObject any) error {}`
