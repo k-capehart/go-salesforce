@@ -89,7 +89,7 @@ func processSalesforceError(resp http.Response) error {
 func processSalesforceResponse(resp http.Response) error {
 	responseData, err := io.ReadAll(resp.Body)
 	responseMap := []map[string]any{}
-	salesforceErrors := "salesforce errors: "
+	salesforceErrors := ""
 	if err != nil {
 		return errors.New("error processing http response")
 	}
@@ -99,11 +99,14 @@ func processSalesforceResponse(resp http.Response) error {
 	}
 	for _, val := range responseMap {
 		if !val["success"].(bool) {
-			salesforceErrors = salesforceErrors + "{id: " + val["id"].(string) + " message: " + val["errors"].([]any)[0].(map[string]any)["message"].(string) + "}"
+			salesforceErrors = salesforceErrors + "{id: " + val["id"].(string) + " message: " + val["errors"].([]any)[0].(map[string]any)["message"].(string) + "} "
 		}
 	}
-
-	return errors.New(salesforceErrors)
+	if salesforceErrors != "" {
+		strings.TrimSpace(salesforceErrors)
+		return errors.New("salesforce errors: " + salesforceErrors)
+	}
+	return nil
 }
 
 func Init(creds Creds) (*Salesforce, error) {
@@ -247,7 +250,7 @@ func (sf *Salesforce) DeleteOne(sObjectName string, record any) error {
 	return nil
 }
 
-func (sf *Salesforce) InsertComposite(sObjectName string, records any, allOrNone bool) error {
+func (sf *Salesforce) InsertCollection(sObjectName string, records any, allOrNone bool) error {
 	if sf.auth == nil {
 		return errors.New("not authenticated: please use salesforce.Init()")
 	}
@@ -290,7 +293,7 @@ func (sf *Salesforce) InsertComposite(sObjectName string, records any, allOrNone
 	return nil
 }
 
-func (sf *Salesforce) UpdateComposite(sObjectName string, records any, allOrNone bool) error {
+func (sf *Salesforce) UpdateCollection(sObjectName string, records any, allOrNone bool) error {
 	if sf.auth == nil {
 		return errors.New("not authenticated: please use salesforce.Init()")
 	}
@@ -332,7 +335,7 @@ func (sf *Salesforce) UpdateComposite(sObjectName string, records any, allOrNone
 	return nil
 }
 
-func (sf *Salesforce) DeleteComposite(sObjectName string, records any, allOrNone bool) error {
+func (sf *Salesforce) DeleteCollection(sObjectName string, records any, allOrNone bool) error {
 	if sf.auth == nil {
 		return errors.New("not authenticated: please use salesforce.Init()")
 	}
