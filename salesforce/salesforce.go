@@ -82,6 +82,9 @@ func processSalesforceError(resp http.Response) error {
 		errorMessage = "error processing failed http call"
 	} else {
 		errorMessage = string(resp.Status) + ": " + string(responseData)
+		if resp.StatusCode == http.StatusNotFound {
+			errorMessage = errorMessage + ".\nis the salesforce object name correct?"
+		}
 	}
 	return errors.New(errorMessage)
 }
@@ -210,7 +213,12 @@ func (sf *Salesforce) UpdateOne(sObjectName string, record any) error {
 	if err != nil {
 		return err
 	}
-	recordId := recordMap["Id"].(string)
+
+	recordId, ok := recordMap["Id"].(string)
+	if !ok || recordId == "" {
+		return errors.New("salesforce id not found in object data")
+	}
+
 	recordMap["attributes"] = map[string]string{"type": sObjectName}
 	delete(recordMap, "Id")
 
@@ -229,6 +237,41 @@ func (sf *Salesforce) UpdateOne(sObjectName string, record any) error {
 	return nil
 }
 
+func (sf *Salesforce) UpsertOne(sObjectName string, fieldName string, record any) error {
+	if sf.auth == nil {
+		return errors.New("not authenticated: please use salesforce.Init()")
+	}
+
+	recordMap, err := convertToMap(record)
+	if err != nil {
+		return err
+	}
+
+	externalIdValue, ok := recordMap[fieldName].(string)
+	if !ok || externalIdValue == "" {
+		return errors.New("salesforce externalId: " + fieldName + " not found in " + sObjectName + " data. make sure to append custom fields with '__c'")
+	}
+
+	recordMap["attributes"] = map[string]string{"type": sObjectName}
+	delete(recordMap, "Id")
+	delete(recordMap, fieldName)
+
+	body, err := json.Marshal(recordMap)
+	if err != nil {
+		return err
+	}
+
+	resp, err := doRequest("PATCH", "/sobjects/"+sObjectName+"/"+fieldName+"/"+externalIdValue, *sf.auth, body)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return processSalesforceError(*resp)
+	}
+	return nil
+}
+
 func (sf *Salesforce) DeleteOne(sObjectName string, record any) error {
 	if sf.auth == nil {
 		return errors.New("not authenticated: please use salesforce.Init()")
@@ -238,12 +281,17 @@ func (sf *Salesforce) DeleteOne(sObjectName string, record any) error {
 	if err != nil {
 		return err
 	}
-	recordId := recordMap["Id"].(string)
+
+	recordId, ok := recordMap["Id"].(string)
+	if !ok || recordId == "" {
+		return errors.New("salesforce id not found in object data")
+	}
 
 	resp, err := doRequest("DELETE", "/sobjects/"+sObjectName+"/"+recordId, *sf.auth, nil)
 	if err != nil {
 		return err
 	}
+
 	if resp.StatusCode != http.StatusNoContent {
 		return processSalesforceError(*resp)
 	}
@@ -283,6 +331,7 @@ func (sf *Salesforce) InsertCollection(sObjectName string, records any, allOrNon
 	if err != nil {
 		return err
 	}
+
 	if resp.StatusCode != http.StatusOK {
 		return processSalesforceError(*resp)
 	}
@@ -309,6 +358,10 @@ func (sf *Salesforce) UpdateCollection(sObjectName string, records any, allOrNon
 
 	for i := range recordMap {
 		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
+		recordId, ok := recordMap[i]["Id"].(string)
+		if !ok || recordId == "" {
+			return errors.New("salesforce id not found in object data")
+		}
 	}
 
 	payload := map[string]any{
@@ -325,6 +378,54 @@ func (sf *Salesforce) UpdateCollection(sObjectName string, records any, allOrNon
 	if err != nil {
 		return err
 	}
+
+	if resp.StatusCode != http.StatusOK {
+		return processSalesforceError(*resp)
+	}
+	salesforceErrors := processSalesforceResponse(*resp)
+	if salesforceErrors != nil {
+		return salesforceErrors
+	}
+	return nil
+}
+
+func (sf *Salesforce) UpsertCollection(sObjectName string, fieldName string, records any, allOrNone bool) error {
+	if sf.auth == nil {
+		return errors.New("not authenticated: please use salesforce.Init()")
+	}
+
+	recordMap, err := convertToSliceOfMaps(records)
+	if err != nil {
+		return err
+	}
+
+	if len(recordMap) > 200 {
+		return errors.New("salesforce composite api call supports up to 200 records at once")
+	}
+
+	for i := range recordMap {
+		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
+		externalIdValue, ok := recordMap[i][fieldName].(string)
+		if !ok || externalIdValue == "" {
+			return errors.New("salesforce externalId: " + fieldName + " not found in " + sObjectName + " data. make sure to append custom fields with '__c'")
+		}
+	}
+
+	payload := map[string]any{
+		"allOrNone": allOrNone,
+		"records":   recordMap,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	resp, err := doRequest("PATCH", "/composite/sobjects/"+sObjectName+"/"+fieldName, *sf.auth, body)
+	if err != nil {
+		return err
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return processSalesforceError(*resp)
 	}
@@ -351,10 +452,14 @@ func (sf *Salesforce) DeleteCollection(sObjectName string, records any, allOrNon
 
 	var ids string
 	for i := 0; i < len(recordMap); i++ {
+		recordId, ok := recordMap[i]["Id"].(string)
+		if !ok || recordId == "" {
+			return errors.New("salesforce id not found in object data")
+		}
 		if i == len(recordMap)-1 {
-			ids = ids + recordMap[i]["Id"].(string)
+			ids = ids + recordId
 		} else {
-			ids = ids + recordMap[i]["Id"].(string) + ","
+			ids = ids + recordId + ","
 		}
 	}
 
@@ -362,6 +467,7 @@ func (sf *Salesforce) DeleteCollection(sObjectName string, records any, allOrNon
 	if err != nil {
 		return err
 	}
+
 	if resp.StatusCode != http.StatusOK {
 		return processSalesforceError(*resp)
 	}

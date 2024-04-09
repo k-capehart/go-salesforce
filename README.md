@@ -138,6 +138,13 @@ type Contact struct {
 }
 ```
 
+```go
+type ContactWithExternalId struct {
+	Id       string
+	LastName string
+}
+```
+
 ### Insert One
 
 `func (sf *Salesforce) InsertOne(sObjectName string, record any) error {}`
@@ -169,17 +176,36 @@ if updateErr != nil {
 }
 ```
 
+### Upsert One
+
+`func (sf *Salesforce) UpsertOne(sObjectName string, fieldName string, record any) error {}`
+
+- fieldName: ExternalId to be used for upsert (can be Id)
+
+```go
+contacts := []ContactWithExternalId{}
+err := sf.Query("SELECT ContactExternalId__c, LastName FROM Contact LIMIT 1", &contacts)
+if err != nil {
+    panic(err)
+}
+contacts[0].LastName = "AnotherNewLastName"
+updateErr := sf.UpsertOne("Contact", "ContactExternalId__c", contacts[0])
+if updateErr != nil {
+    panic(updateErr)
+}
+```
+
 ### Delete One
 
 `func (sf *Salesforce) DeleteOne(sObjectName string, record any) error {}`
 
 ```go
-contact := []Contact{}
-err := sf.Query("SELECT Id, Name FROM Contact LIMIT 1", &contact)
+contacts := []Contact{}
+err := sf.Query("SELECT Id, Name FROM Contact LIMIT 1", &contacts)
 if err != nil {
     panic(err)
 }
-deleteErr := sf.DeleteOne("Contact", contact[0])
+deleteErr := sf.DeleteOne("Contact", contacts[0])
 if deleteErr != nil {
     panic(deleteErr)
 }
@@ -203,7 +229,7 @@ type Contact struct {
 `func (sf *Salesforce) InsertCollection(sObjectName string, records any, allOrNone bool) error {}`
 
 ```go
-con := []Contact{
+contacts := []Contact{
     {
         LastName: "Capehart1",
     },
@@ -211,7 +237,7 @@ con := []Contact{
         LastName: "Capehart2",
     },
 }
-err := sf.InsertCollection("Contact", con, true)
+err := sf.InsertCollection("Contact", contacts, true)
 if err != nil {
     panic(err)
 }
@@ -236,17 +262,38 @@ if updateErr != nil {
 }
 ```
 
+### Upsert Collection
+
+`func (sf *Salesforce) UpsertCollection(sObjectName string, fieldName string, records any, allOrNone bool) error {}`
+
+- fieldName: ExternalId to be used for upsert (can be Id)
+
+```go
+contacts := []ContactWithExternalId{}
+err := sf.Query("SELECT ContactExternalId__c, LastName FROM Contact LIMIT 3", &contacts)
+if err != nil {
+    panic(err)
+}
+for i := range contacts {
+    contacts[i].LastName = "AnotherNewLastName"
+}
+updateErr := sf.UpsertCollection("Contact", "ContactExternalId__c", contacts, true)
+if updateErr != nil {
+    panic(updateErr)
+}
+```
+
 ### Delete Collection
 
 `func (sf *Salesforce) DeleteCollection(sObjectName string, records any, allOrNone bool) error {}`
 
 ```go
-con := []Contact{}
-err := sf.Query("SELECT Id, Name FROM Contact LIMIT 3", &con)
+contacts := []Contact{}
+err := sf.Query("SELECT Id, Name FROM Contact LIMIT 3", &contacts)
 if err != nil {
     panic(err)
 }
-deleteErr := sf.DeleteCollection("Contact", con, true)
+deleteErr := sf.DeleteCollection("Contact", contacts, true)
 if deleteErr != nil {
     panic(deleteErr)
 }
