@@ -140,8 +140,8 @@ type Contact struct {
 
 ```go
 type ContactWithExternalId struct {
-	Id       string
-	LastName string
+	ContactExternalId__c string
+	LastName             string
 }
 ```
 
@@ -221,6 +221,13 @@ https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resourc
 type Contact struct {
 	Id       string
 	LastName string
+}
+```
+
+```go
+type ContactWithExternalId struct {
+	ContactExternalId__c string
+	LastName             string
 }
 ```
 
