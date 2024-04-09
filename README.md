@@ -63,6 +63,7 @@ if err != nil {
 
 https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
 
+<br/>SObject struct references
 ```go
 type Opportunity struct {
 	Id        string
@@ -131,6 +132,7 @@ https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/using_r
 
 - Work with one record at a time
 
+<br/>SObject struct references
 ```go
 type Contact struct {
 	Id       string
@@ -217,6 +219,7 @@ https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resourc
 
 - Work with arrays of up to 200 SObject records
 
+<br/>SObject struct references
 ```go
 type Contact struct {
 	Id       string
