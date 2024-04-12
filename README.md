@@ -166,6 +166,7 @@ if err != nil {
 `func (sf *Salesforce) UpdateOne(sObjectName string, record any) error {}`
 
 ```go
+// contact is of type Contact
 contact.LastName = "NewLastName"
 err := sf.UpdateOne("Contact", contact)
 if err != nil {
@@ -180,6 +181,7 @@ if err != nil {
 - fieldName: ExternalId to be used for upsert (can be Id)
 
 ```go
+// contact is of type ContactWithExternalId
 contact.ContactExternalId__c = "Con1"
 contact.LastName = "AnotherNewLastName"
 err := sf.UpsertOne("Contact", "ContactExternalId__c", contact)
@@ -193,6 +195,7 @@ if err != nil {
 `func (sf *Salesforce) DeleteOne(sObjectName string, record any) error {}`
 
 ```go
+// contact is of type Contact
 err := sf.DeleteOne("Contact", contact)
 if err != nil {
     panic(err)
@@ -244,9 +247,9 @@ if err != nil {
 `func (sf *Salesforce) UpdateCollection(sObjectName string, records any, allOrNone bool) error {}`
 
 ```go
-for i := range contacts {
-    contacts[i].LastName = "AnotherNewLastName"
-}
+// contact is of type []Contact
+contacts[0].LastName = "AnotherNewLastName1"
+contacts[1].LastName = "AnotherNewLastName2"
 err := sf.UpdateCollection("Contact", contacts, true)
 if err != nil {
     panic(err)
@@ -260,6 +263,7 @@ if err != nil {
 - fieldName: ExternalId to be used for upsert (can be Id)
 
 ```go
+// contact is of type []ContactWithExternalId
 contacts[0].ContactExternalId__c = "Con1"
 contacts[0].LastName = "AnotherNewLastName1"
 contacts[1].ContactExternalId__c = "Con2"
@@ -275,6 +279,7 @@ if err != nil {
 `func (sf *Salesforce) DeleteCollection(sObjectName string, records any, allOrNone bool) error {}`
 
 ```go
+// contact is of type []Contact
 err := sf.DeleteCollection("Contact", contacts, true)
 if err != nil {
     panic(err)
