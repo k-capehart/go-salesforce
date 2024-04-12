@@ -56,7 +56,7 @@ func convertToMap(obj any) (map[string]any, error) {
 	} else {
 		err := mapstructure.Decode(obj, &recordMap)
 		if err != nil {
-			return nil, err
+			return nil, errors.New("issue decoding salesforce object, need a key value pair (custom struct or map)")
 		}
 	}
 	return recordMap, nil
@@ -69,7 +69,7 @@ func convertToSliceOfMaps(obj any) ([]map[string]any, error) {
 	} else {
 		err := mapstructure.Decode(obj, &recordMap)
 		if err != nil {
-			return nil, err
+			return nil, errors.New("issue decoding salesforce object, need a key value pair (custom struct or map)")
 		}
 	}
 	return recordMap, nil
