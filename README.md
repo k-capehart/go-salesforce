@@ -247,7 +247,7 @@ if err != nil {
 `func (sf *Salesforce) UpdateCollection(sObjectName string, records any, allOrNone bool) error {}`
 
 ```go
-// contact is of type []Contact
+// contacts is of type []Contact
 contacts[0].LastName = "AnotherNewLastName1"
 contacts[1].LastName = "AnotherNewLastName2"
 err := sf.UpdateCollection("Contact", contacts, true)
@@ -263,7 +263,7 @@ if err != nil {
 - fieldName: ExternalId to be used for upsert (can be Id)
 
 ```go
-// contact is of type []ContactWithExternalId
+// contacts is of type []ContactWithExternalId
 contacts[0].ContactExternalId__c = "Con1"
 contacts[0].LastName = "AnotherNewLastName1"
 contacts[1].ContactExternalId__c = "Con2"
@@ -279,7 +279,7 @@ if err != nil {
 `func (sf *Salesforce) DeleteCollection(sObjectName string, records any, allOrNone bool) error {}`
 
 ```go
-// contact is of type []Contact
+// contacts is of type []Contact
 err := sf.DeleteCollection("Contact", contacts, true)
 if err != nil {
     panic(err)
