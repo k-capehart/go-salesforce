@@ -166,15 +166,10 @@ if err != nil {
 `func (sf *Salesforce) UpdateOne(sObjectName string, record any) error {}`
 
 ```go
-contacts := []Contact{}
-err := sf.Query("SELECT Id, LastName FROM Contact LIMIT 1", &contacts)
+contact.LastName = "NewLastName"
+err := sf.UpdateOne("Contact", contact)
 if err != nil {
     panic(err)
-}
-contacts[0].LastName = "NewLastName"
-updateErr := sf.UpdateOne("Contact", contacts[0])
-if updateErr != nil {
-    panic(updateErr)
 }
 ```
 
@@ -185,15 +180,11 @@ if updateErr != nil {
 - fieldName: ExternalId to be used for upsert (can be Id)
 
 ```go
-contacts := []ContactWithExternalId{}
-err := sf.Query("SELECT ContactExternalId__c, LastName FROM Contact LIMIT 1", &contacts)
+contact.ContactExternalId__c = "Con1"
+contact.LastName = "AnotherNewLastName"
+err := sf.UpsertOne("Contact", "ContactExternalId__c", contact)
 if err != nil {
     panic(err)
-}
-contacts[0].LastName = "AnotherNewLastName"
-updateErr := sf.UpsertOne("Contact", "ContactExternalId__c", contacts[0])
-if updateErr != nil {
-    panic(updateErr)
 }
 ```
 
@@ -202,14 +193,9 @@ if updateErr != nil {
 `func (sf *Salesforce) DeleteOne(sObjectName string, record any) error {}`
 
 ```go
-contacts := []Contact{}
-err := sf.Query("SELECT Id, Name FROM Contact LIMIT 1", &contacts)
+err := sf.DeleteOne("Contact", contact)
 if err != nil {
     panic(err)
-}
-deleteErr := sf.DeleteOne("Contact", contacts[0])
-if deleteErr != nil {
-    panic(deleteErr)
 }
 ```
 
@@ -258,17 +244,12 @@ if err != nil {
 `func (sf *Salesforce) UpdateCollection(sObjectName string, records any, allOrNone bool) error {}`
 
 ```go
-contacts := []Contact{}
-err := sf.Query("SELECT Id, LastName FROM Contact LIMIT 3", &contacts)
+for i := range contacts {
+    contacts[i].LastName = "AnotherNewLastName"
+}
+err := sf.UpdateCollection("Contact", contacts, true)
 if err != nil {
     panic(err)
-}
-for i := range contacts {
-    contacts[i].LastName = "Example"
-}
-updateErr := sf.UpdateCollection("Contact", contacts, true)
-if updateErr != nil {
-    panic(updateErr)
 }
 ```
 
@@ -279,17 +260,13 @@ if updateErr != nil {
 - fieldName: ExternalId to be used for upsert (can be Id)
 
 ```go
-contacts := []ContactWithExternalId{}
-err := sf.Query("SELECT ContactExternalId__c, LastName FROM Contact LIMIT 3", &contacts)
+contacts[0].ContactExternalId__c = "Con1"
+contacts[0].LastName = "AnotherNewLastName1"
+contacts[1].ContactExternalId__c = "Con2"
+contacts[1].LastName = "AnotherNewLastName2"
+err := sf.UpsertCollection("Contact", "ContactExternalId__c", contacts, true)
 if err != nil {
     panic(err)
-}
-for i := range contacts {
-    contacts[i].LastName = "AnotherNewLastName"
-}
-updateErr := sf.UpsertCollection("Contact", "ContactExternalId__c", contacts, true)
-if updateErr != nil {
-    panic(updateErr)
 }
 ```
 
@@ -298,13 +275,8 @@ if updateErr != nil {
 `func (sf *Salesforce) DeleteCollection(sObjectName string, records any, allOrNone bool) error {}`
 
 ```go
-contacts := []Contact{}
-err := sf.Query("SELECT Id, Name FROM Contact LIMIT 3", &contacts)
+err := sf.DeleteCollection("Contact", contacts, true)
 if err != nil {
     panic(err)
-}
-deleteErr := sf.DeleteCollection("Contact", contacts, true)
-if deleteErr != nil {
-    panic(deleteErr)
 }
 ```
