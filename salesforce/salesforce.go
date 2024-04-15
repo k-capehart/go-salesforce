@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -13,7 +14,9 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-const API_VERSION = "v60.0"
+type Salesforce struct {
+	auth *Auth
+}
 
 type QueryResponse struct {
 	TotalSize int              `json:"totalSize"`
@@ -21,17 +24,24 @@ type QueryResponse struct {
 	Records   []map[string]any `json:"records"`
 }
 
-type Salesforce struct {
-	auth *Auth
+type SObjectCollection struct {
+	AllOrNone string           `json:"allOrNone"`
+	Records   []map[string]any `json:"records"`
 }
 
-func doRequest(method string, uri string, auth Auth, body []byte) (*http.Response, error) {
+const (
+	ApiVersion = "v60.0"
+	JSONType   = "application/json"
+	CSVType    = "text/csv"
+)
+
+func doRequest(method string, uri string, content string, auth Auth, body string) (*http.Response, error) {
 	var reader *strings.Reader
 	var req *http.Request
 	var err error
-	endpoint := auth.InstanceUrl + "/services/data/" + API_VERSION + uri
+	endpoint := auth.InstanceUrl + "/services/data/" + ApiVersion + uri
 
-	if body != nil {
+	if body != "" {
 		reader = strings.NewReader(string(body))
 		req, err = http.NewRequest(method, endpoint, reader)
 	} else {
@@ -42,8 +52,8 @@ func doRequest(method string, uri string, auth Auth, body []byte) (*http.Respons
 	}
 
 	req.Header.Set("User-Agent", "go-salesforce")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", content)
+	req.Header.Set("Accept", content)
 	req.Header.Set("Authorization", "Bearer "+auth.AccessToken)
 
 	return http.DefaultClient.Do(req)
@@ -75,6 +85,14 @@ func convertToSliceOfMaps(obj any) ([]map[string]any, error) {
 	return recordMap, nil
 }
 
+func validateOfTypeSlice(data any) error {
+	t := reflect.TypeOf(data).Kind().String()
+	if t != "slice" {
+		return errors.New("expected a slice of salesforce objects")
+	}
+	return nil
+}
+
 func processSalesforceError(resp http.Response) error {
 	var errorMessage string
 	responseData, err := io.ReadAll(resp.Body)
@@ -83,7 +101,7 @@ func processSalesforceError(resp http.Response) error {
 	} else {
 		errorMessage = string(resp.Status) + ": " + string(responseData)
 		if resp.StatusCode == http.StatusNotFound {
-			errorMessage = errorMessage + ".\nis the salesforce object name correct?"
+			errorMessage = errorMessage + ".\nis there a typo in the request?"
 		}
 	}
 	return errors.New(errorMessage)
@@ -102,11 +120,15 @@ func processSalesforceResponse(resp http.Response) error {
 	}
 	for _, val := range responseMap {
 		if !val["success"].(bool) {
-			salesforceErrors = salesforceErrors + "{id: " + val["id"].(string) + " message: " + val["errors"].([]any)[0].(map[string]any)["message"].(string) + "} "
+			if id, ok := val["id"]; ok {
+				salesforceErrors = salesforceErrors + "{id: " + id.(string) + " message: " + val["errors"].([]any)[0].(map[string]any)["message"].(string) + "} "
+			} else {
+				salesforceErrors = salesforceErrors + "{message: " + val["errors"].([]any)[0].(map[string]any)["message"].(string) + "} "
+			}
 		}
 	}
 	if salesforceErrors != "" {
-		strings.TrimSpace(salesforceErrors)
+		salesforceErrors = strings.TrimSpace(salesforceErrors)
 		return errors.New("salesforce errors: " + salesforceErrors)
 	}
 	return nil
@@ -137,11 +159,13 @@ func Init(creds Creds) (*Salesforce, error) {
 }
 
 func (sf *Salesforce) Query(query string, sObject any) error {
-	if sf.auth == nil {
-		return errors.New("not authenticated: please use salesforce.Init()")
+	authErr := validateAuth(*sf)
+	if authErr != nil {
+		return authErr
 	}
+
 	query = url.QueryEscape(query)
-	resp, err := doRequest("GET", "/query/?q="+query, *sf.auth, nil)
+	resp, err := doRequest("GET", "/query/?q="+query, JSONType, *sf.auth, "")
 	if err != nil {
 		return err
 	}
@@ -178,8 +202,9 @@ func (sf *Salesforce) QueryStruct(soqlStruct any, sObject any) error {
 }
 
 func (sf *Salesforce) InsertOne(sObjectName string, record any) error {
-	if sf.auth == nil {
-		return errors.New("not authenticated: please use salesforce.Init()")
+	authErr := validateAuth(*sf)
+	if authErr != nil {
+		return authErr
 	}
 
 	recordMap, err := convertToMap(record)
@@ -194,7 +219,7 @@ func (sf *Salesforce) InsertOne(sObjectName string, record any) error {
 		return err
 	}
 
-	resp, err := doRequest("POST", "/sobjects/"+sObjectName, *sf.auth, body)
+	resp, err := doRequest("POST", "/sobjects/"+sObjectName, JSONType, *sf.auth, string(body))
 	if err != nil {
 		return err
 	}
@@ -205,8 +230,9 @@ func (sf *Salesforce) InsertOne(sObjectName string, record any) error {
 }
 
 func (sf *Salesforce) UpdateOne(sObjectName string, record any) error {
-	if sf.auth == nil {
-		return errors.New("not authenticated: please use salesforce.Init()")
+	authErr := validateAuth(*sf)
+	if authErr != nil {
+		return authErr
 	}
 
 	recordMap, err := convertToMap(record)
@@ -227,7 +253,7 @@ func (sf *Salesforce) UpdateOne(sObjectName string, record any) error {
 		return err
 	}
 
-	resp, err := doRequest("PATCH", "/sobjects/"+sObjectName+"/"+recordId, *sf.auth, body)
+	resp, err := doRequest("PATCH", "/sobjects/"+sObjectName+"/"+recordId, JSONType, *sf.auth, string(body))
 	if err != nil {
 		return err
 	}
@@ -238,8 +264,9 @@ func (sf *Salesforce) UpdateOne(sObjectName string, record any) error {
 }
 
 func (sf *Salesforce) UpsertOne(sObjectName string, fieldName string, record any) error {
-	if sf.auth == nil {
-		return errors.New("not authenticated: please use salesforce.Init()")
+	authErr := validateAuth(*sf)
+	if authErr != nil {
+		return authErr
 	}
 
 	recordMap, err := convertToMap(record)
@@ -261,7 +288,7 @@ func (sf *Salesforce) UpsertOne(sObjectName string, fieldName string, record any
 		return err
 	}
 
-	resp, err := doRequest("PATCH", "/sobjects/"+sObjectName+"/"+fieldName+"/"+externalIdValue, *sf.auth, body)
+	resp, err := doRequest("PATCH", "/sobjects/"+sObjectName+"/"+fieldName+"/"+externalIdValue, JSONType, *sf.auth, string(body))
 	if err != nil {
 		return err
 	}
@@ -273,8 +300,9 @@ func (sf *Salesforce) UpsertOne(sObjectName string, fieldName string, record any
 }
 
 func (sf *Salesforce) DeleteOne(sObjectName string, record any) error {
-	if sf.auth == nil {
-		return errors.New("not authenticated: please use salesforce.Init()")
+	authErr := validateAuth(*sf)
+	if authErr != nil {
+		return authErr
 	}
 
 	recordMap, err := convertToMap(record)
@@ -287,7 +315,7 @@ func (sf *Salesforce) DeleteOne(sObjectName string, record any) error {
 		return errors.New("salesforce id not found in object data")
 	}
 
-	resp, err := doRequest("DELETE", "/sobjects/"+sObjectName+"/"+recordId, *sf.auth, nil)
+	resp, err := doRequest("DELETE", "/sobjects/"+sObjectName+"/"+recordId, JSONType, *sf.auth, "")
 	if err != nil {
 		return err
 	}
@@ -299,8 +327,13 @@ func (sf *Salesforce) DeleteOne(sObjectName string, record any) error {
 }
 
 func (sf *Salesforce) InsertCollection(sObjectName string, records any, allOrNone bool) error {
-	if sf.auth == nil {
-		return errors.New("not authenticated: please use salesforce.Init()")
+	authErr := validateAuth(*sf)
+	if authErr != nil {
+		return authErr
+	}
+	typErr := validateOfTypeSlice(records)
+	if typErr != nil {
+		return typErr
 	}
 
 	recordMap, err := convertToSliceOfMaps(records)
@@ -317,9 +350,9 @@ func (sf *Salesforce) InsertCollection(sObjectName string, records any, allOrNon
 		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
 	}
 
-	payload := map[string]any{
-		"allOrNone": allOrNone,
-		"records":   recordMap,
+	payload := SObjectCollection{
+		AllOrNone: strconv.FormatBool(allOrNone),
+		Records:   recordMap,
 	}
 
 	body, err := json.Marshal(payload)
@@ -327,7 +360,7 @@ func (sf *Salesforce) InsertCollection(sObjectName string, records any, allOrNon
 		return err
 	}
 
-	resp, err := doRequest("POST", "/composite/sobjects/", *sf.auth, body)
+	resp, err := doRequest("POST", "/composite/sobjects/", JSONType, *sf.auth, string(body))
 	if err != nil {
 		return err
 	}
@@ -343,8 +376,13 @@ func (sf *Salesforce) InsertCollection(sObjectName string, records any, allOrNon
 }
 
 func (sf *Salesforce) UpdateCollection(sObjectName string, records any, allOrNone bool) error {
-	if sf.auth == nil {
-		return errors.New("not authenticated: please use salesforce.Init()")
+	authErr := validateAuth(*sf)
+	if authErr != nil {
+		return authErr
+	}
+	typErr := validateOfTypeSlice(records)
+	if typErr != nil {
+		return typErr
 	}
 
 	recordMap, err := convertToSliceOfMaps(records)
@@ -364,9 +402,9 @@ func (sf *Salesforce) UpdateCollection(sObjectName string, records any, allOrNon
 		}
 	}
 
-	payload := map[string]any{
-		"allOrNone": allOrNone,
-		"records":   recordMap,
+	payload := SObjectCollection{
+		AllOrNone: strconv.FormatBool(allOrNone),
+		Records:   recordMap,
 	}
 
 	body, err := json.Marshal(payload)
@@ -374,7 +412,7 @@ func (sf *Salesforce) UpdateCollection(sObjectName string, records any, allOrNon
 		return err
 	}
 
-	resp, err := doRequest("PATCH", "/composite/sobjects/", *sf.auth, body)
+	resp, err := doRequest("PATCH", "/composite/sobjects/", JSONType, *sf.auth, string(body))
 	if err != nil {
 		return err
 	}
@@ -390,8 +428,13 @@ func (sf *Salesforce) UpdateCollection(sObjectName string, records any, allOrNon
 }
 
 func (sf *Salesforce) UpsertCollection(sObjectName string, fieldName string, records any, allOrNone bool) error {
-	if sf.auth == nil {
-		return errors.New("not authenticated: please use salesforce.Init()")
+	authErr := validateAuth(*sf)
+	if authErr != nil {
+		return authErr
+	}
+	typErr := validateOfTypeSlice(records)
+	if typErr != nil {
+		return typErr
 	}
 
 	recordMap, err := convertToSliceOfMaps(records)
@@ -411,9 +454,9 @@ func (sf *Salesforce) UpsertCollection(sObjectName string, fieldName string, rec
 		}
 	}
 
-	payload := map[string]any{
-		"allOrNone": allOrNone,
-		"records":   recordMap,
+	payload := SObjectCollection{
+		AllOrNone: strconv.FormatBool(allOrNone),
+		Records:   recordMap,
 	}
 
 	body, err := json.Marshal(payload)
@@ -421,7 +464,7 @@ func (sf *Salesforce) UpsertCollection(sObjectName string, fieldName string, rec
 		return err
 	}
 
-	resp, err := doRequest("PATCH", "/composite/sobjects/"+sObjectName+"/"+fieldName, *sf.auth, body)
+	resp, err := doRequest("PATCH", "/composite/sobjects/"+sObjectName+"/"+fieldName, JSONType, *sf.auth, string(body))
 	if err != nil {
 		return err
 	}
@@ -437,8 +480,13 @@ func (sf *Salesforce) UpsertCollection(sObjectName string, fieldName string, rec
 }
 
 func (sf *Salesforce) DeleteCollection(sObjectName string, records any, allOrNone bool) error {
-	if sf.auth == nil {
-		return errors.New("not authenticated: please use salesforce.Init()")
+	authErr := validateAuth(*sf)
+	if authErr != nil {
+		return authErr
+	}
+	typErr := validateOfTypeSlice(records)
+	if typErr != nil {
+		return typErr
 	}
 
 	recordMap, err := convertToSliceOfMaps(records)
@@ -463,7 +511,7 @@ func (sf *Salesforce) DeleteCollection(sObjectName string, records any, allOrNon
 		}
 	}
 
-	resp, err := doRequest("DELETE", "/composite/sobjects/?ids="+ids+"&allOrNone="+strconv.FormatBool(allOrNone), *sf.auth, nil)
+	resp, err := doRequest("DELETE", "/composite/sobjects/?ids="+ids+"&allOrNone="+strconv.FormatBool(allOrNone), JSONType, *sf.auth, "")
 	if err != nil {
 		return err
 	}

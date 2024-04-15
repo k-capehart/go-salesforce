@@ -26,6 +26,13 @@ type Creds struct {
 	ConsumerSecret string
 }
 
+func validateAuth(sf Salesforce) error {
+	if sf.auth == nil {
+		return errors.New("not authenticated: please use salesforce.Init()")
+	}
+	return nil
+}
+
 func loginPassword(domain string, username string, password string, securityToken string, consumerKey string, consumerSecret string) (*Auth, error) {
 	payload := url.Values{
 		"grant_type":    {"password"},
