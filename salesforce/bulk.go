@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -130,11 +129,9 @@ func waitForJobResult(auth Auth, bulkJobId string) error {
 	err := wait.PollUntilContextTimeout(context.Background(), time.Second, time.Minute, false, func(context.Context) (bool, error) {
 		bulkJob, reqErr := getJobResults(auth, bulkJobId)
 		if reqErr != nil {
-			fmt.Println("test")
 			return true, reqErr
 		}
 		if bulkJob.State == JobStateJobComplete || bulkJob.State == JobStateFailed {
-			fmt.Println(bulkJob)
 			if bulkJob.ErrorMessage != "" {
 				return true, errors.New(bulkJob.ErrorMessage)
 			}
