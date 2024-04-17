@@ -1,12 +1,16 @@
 package salesforce
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/gocarina/gocsv"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type BulkJobCreationRequest struct {
@@ -20,6 +24,13 @@ type BulkJob struct {
 	State string `json:"state"`
 }
 
+type BulkJobResults struct {
+	Id                  string `json:"id"`
+	State               string `json:"state"`
+	NumberRecordsFailed int    `json:"numberRecordsFailed"`
+	ErrorMessage        string `json:"errorMessage"`
+}
+
 type BulkJobData struct {
 	Data string `json:"data"`
 }
@@ -27,14 +38,19 @@ type BulkJobData struct {
 const (
 	JobStateAborted        = "Aborted"
 	JobStateUploadComplete = "UploadComplete"
+	JobStateJobComplete    = "JobComplete"
+	JobStateFailed         = "Failed"
 )
 
-func updateJobState(jobId string, state string, auth Auth) error {
-	abortJob := BulkJob{State: state}
-	abortBody, _ := json.Marshal(abortJob)
-	_, abortErr := doRequest("PATCH", "/jobs/ingest/"+jobId, JSONType, auth, string(abortBody))
-	if abortErr != nil {
-		return abortErr
+func updateJobState(job BulkJob, state string, auth Auth) error {
+	job.State = state
+	body, _ := json.Marshal(job)
+	resp, err := doRequest("PATCH", "/jobs/ingest/"+job.Id, JSONType, auth, string(body))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return processSalesforceError(*resp)
 	}
 	return nil
 }
@@ -66,25 +82,93 @@ func uploadJobData(auth Auth, records any, bulkJob BulkJob) error {
 	sObjects := records
 	csvContent, csvErr := gocsv.MarshalString(sObjects)
 	if csvErr != nil {
-		updateJobState(bulkJob.Id, JobStateAborted, auth)
+		updateJobState(bulkJob, JobStateAborted, auth)
 		return csvErr
 	}
 
 	resp, uploadDataErr := doRequest("PUT", "/jobs/ingest/"+bulkJob.Id+"/batches", CSVType, auth, csvContent)
 	if uploadDataErr != nil {
-		updateJobState(bulkJob.Id, JobStateAborted, auth)
+		updateJobState(bulkJob, JobStateAborted, auth)
 		return uploadDataErr
 	}
 	if resp.StatusCode != http.StatusCreated {
-		updateJobState(bulkJob.Id, JobStateAborted, auth)
+		updateJobState(bulkJob, JobStateAborted, auth)
 		return processSalesforceError(*resp)
 	}
-	stateErr := updateJobState(bulkJob.Id, JobStateUploadComplete, auth)
+	stateErr := updateJobState(bulkJob, JobStateUploadComplete, auth)
 	if stateErr != nil {
 		return stateErr
 	}
 
 	return nil
+}
+
+func getJobResults(auth Auth, bulkJobId string) (BulkJobResults, error) {
+	resp, err := doRequest("GET", "/jobs/ingest/"+bulkJobId, JSONType, auth, "")
+	if err != nil {
+		return BulkJobResults{}, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return BulkJobResults{}, processSalesforceError(*resp)
+	}
+
+	respBody, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return BulkJobResults{}, readErr
+	}
+
+	bulkJobResults := &BulkJobResults{}
+	jsonError := json.Unmarshal(respBody, bulkJobResults)
+	if jsonError != nil {
+		return BulkJobResults{}, jsonError
+	}
+
+	return *bulkJobResults, nil
+}
+
+func waitForJobResult(auth Auth, bulkJobId string) error {
+	err := wait.PollUntilContextTimeout(context.Background(), time.Second, time.Minute, false, func(context.Context) (bool, error) {
+		bulkJob, reqErr := getJobResults(auth, bulkJobId)
+		if reqErr != nil {
+			fmt.Println("test")
+			return true, reqErr
+		}
+		if bulkJob.State == JobStateJobComplete || bulkJob.State == JobStateFailed {
+			fmt.Println(bulkJob)
+			if bulkJob.ErrorMessage != "" {
+				return true, errors.New(bulkJob.ErrorMessage)
+			}
+			if bulkJob.NumberRecordsFailed > 0 {
+				failedRecords, getRecordsErr := getFailedRecords(auth, bulkJobId)
+				if getRecordsErr != nil {
+					return true, errors.New("failed to retrieve failed records from bulk operation")
+				}
+				return true, errors.New(failedRecords)
+			}
+			return true, nil
+		}
+		if bulkJob.State == JobStateAborted {
+			return true, errors.New("bulk job aborted")
+		}
+		return false, nil
+	})
+	return err
+}
+
+func getFailedRecords(auth Auth, bulkJobId string) (string, error) {
+	resp, err := doRequest("GET", "/jobs/ingest/"+bulkJobId+"/failedResults", JSONType, auth, "")
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", processSalesforceError(*resp)
+	}
+
+	respBody, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return "", readErr
+	}
+	return string(respBody), nil
 }
 
 func (sf *Salesforce) InsertBulk(sObjectName string, records any) error {
@@ -117,6 +201,11 @@ func (sf *Salesforce) InsertBulk(sObjectName string, records any) error {
 	uploadErr := uploadJobData(*sf.auth, records, *bulkJob)
 	if uploadErr != nil {
 		return uploadErr
+	}
+
+	pollErr := waitForJobResult(*sf.auth, bulkJob.Id)
+	if pollErr != nil {
+		return pollErr
 	}
 
 	return nil
@@ -152,6 +241,11 @@ func (sf *Salesforce) UpdateBulk(sObjectName string, records any) error {
 	uploadErr := uploadJobData(*sf.auth, records, *bulkJob)
 	if uploadErr != nil {
 		return uploadErr
+	}
+
+	pollErr := waitForJobResult(*sf.auth, bulkJob.Id)
+	if pollErr != nil {
+		return pollErr
 	}
 
 	return nil
@@ -190,6 +284,11 @@ func (sf *Salesforce) UpsertBulk(sObjectName string, fieldName string, records a
 		return uploadErr
 	}
 
+	pollErr := waitForJobResult(*sf.auth, bulkJob.Id)
+	if pollErr != nil {
+		return pollErr
+	}
+
 	return nil
 }
 
@@ -223,6 +322,11 @@ func (sf *Salesforce) DeleteBulk(sObjectName string, records any) error {
 	uploadErr := uploadJobData(*sf.auth, records, *bulkJob)
 	if uploadErr != nil {
 		return uploadErr
+	}
+
+	pollErr := waitForJobResult(*sf.auth, bulkJob.Id)
+	if pollErr != nil {
+		return pollErr
 	}
 
 	return nil
