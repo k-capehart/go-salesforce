@@ -13,13 +13,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-type BulkJobCreationRequest struct {
+type bulkJobCreationRequest struct {
 	Object              string `json:"object"`
 	Operation           string `json:"operation"`
 	ExternalIdFieldName string `json:"externalIdFieldName"`
 }
 
-type BulkJob struct {
+type bulkJob struct {
 	Id    string `json:"id"`
 	State string `json:"state"`
 }
@@ -31,7 +31,7 @@ type BulkJobResults struct {
 	ErrorMessage        string `json:"errorMessage"`
 }
 
-type BulkJobData struct {
+type bulkJobData struct {
 	Data string `json:"data"`
 }
 
@@ -42,10 +42,10 @@ const (
 	JobStateFailed         = "Failed"
 )
 
-func updateJobState(job BulkJob, state string, auth Auth) error {
+func updateJobState(job bulkJob, state string, auth Auth) error {
 	job.State = state
 	body, _ := json.Marshal(job)
-	resp, err := doRequest("PATCH", "/jobs/ingest/"+job.Id, JSONType, auth, string(body))
+	resp, err := doRequest("PATCH", "/jobs/ingest/"+job.Id, jsonType, auth, string(body))
 	if err != nil {
 		return err
 	}
@@ -55,8 +55,8 @@ func updateJobState(job BulkJob, state string, auth Auth) error {
 	return nil
 }
 
-func createBulkJob(auth Auth, body []byte) (*BulkJob, error) {
-	resp, err := doRequest("POST", "/jobs/ingest", JSONType, auth, string(body))
+func createBulkJob(auth Auth, body []byte) (*bulkJob, error) {
+	resp, err := doRequest("POST", "/jobs/ingest", jsonType, auth, string(body))
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func createBulkJob(auth Auth, body []byte) (*BulkJob, error) {
 		return nil, readErr
 	}
 
-	bulkJob := &BulkJob{}
+	bulkJob := &bulkJob{}
 	jsonError := json.Unmarshal(respBody, bulkJob)
 	if jsonError != nil {
 		return nil, jsonError
@@ -78,7 +78,7 @@ func createBulkJob(auth Auth, body []byte) (*BulkJob, error) {
 	return bulkJob, nil
 }
 
-func uploadJobData(auth Auth, records any, bulkJob BulkJob) error {
+func uploadJobData(auth Auth, records any, bulkJob bulkJob) error {
 	sObjects := records
 	csvContent, csvErr := gocsv.MarshalString(sObjects)
 	if csvErr != nil {
@@ -86,7 +86,7 @@ func uploadJobData(auth Auth, records any, bulkJob BulkJob) error {
 		return csvErr
 	}
 
-	resp, uploadDataErr := doRequest("PUT", "/jobs/ingest/"+bulkJob.Id+"/batches", CSVType, auth, csvContent)
+	resp, uploadDataErr := doRequest("PUT", "/jobs/ingest/"+bulkJob.Id+"/batches", csvType, auth, csvContent)
 	if uploadDataErr != nil {
 		updateJobState(bulkJob, JobStateAborted, auth)
 		return uploadDataErr
@@ -104,7 +104,7 @@ func uploadJobData(auth Auth, records any, bulkJob BulkJob) error {
 }
 
 func getJobResults(auth Auth, bulkJobId string) (BulkJobResults, error) {
-	resp, err := doRequest("GET", "/jobs/ingest/"+bulkJobId, JSONType, auth, "")
+	resp, err := doRequest("GET", "/jobs/ingest/"+bulkJobId, jsonType, auth, "")
 	if err != nil {
 		return BulkJobResults{}, err
 	}
@@ -158,7 +158,7 @@ func processJobResults(auth Auth, bulkJob BulkJobResults) (bool, error) {
 }
 
 func getFailedRecords(auth Auth, bulkJobId string) (string, error) {
-	resp, err := doRequest("GET", "/jobs/ingest/"+bulkJobId+"/failedResults", JSONType, auth, "")
+	resp, err := doRequest("GET", "/jobs/ingest/"+bulkJobId+"/failedResults", jsonType, auth, "")
 	if err != nil {
 		return "", err
 	}
@@ -173,8 +173,8 @@ func getFailedRecords(auth Auth, bulkJobId string) (string, error) {
 	return string(respBody), nil
 }
 
-func (sf *Salesforce) GetJobResults(bulkJobId string) (BulkJobResults, error) {
-	bulkJob, reqErr := getJobResults(*sf.auth, bulkJobId)
+func doGetJobResults(auth Auth, bulkJobId string) (BulkJobResults, error) {
+	bulkJob, reqErr := getJobResults(auth, bulkJobId)
 	if reqErr != nil {
 		return BulkJobResults{}, reqErr
 	}
@@ -182,17 +182,8 @@ func (sf *Salesforce) GetJobResults(bulkJobId string) (BulkJobResults, error) {
 	return bulkJob, nil
 }
 
-func (sf *Salesforce) InsertBulk(sObjectName string, records any, waitForResults bool) (string, error) {
-	authErr := validateAuth(*sf)
-	if authErr != nil {
-		return "", authErr
-	}
-	typErr := validateOfTypeSlice(records)
-	if typErr != nil {
-		return "", typErr
-	}
-
-	job := BulkJobCreationRequest{
+func doInsertBulk(auth Auth, sObjectName string, records any, waitForResults bool) (string, error) {
+	job := bulkJobCreationRequest{
 		Object:    sObjectName,
 		Operation: "insert",
 	}
@@ -201,7 +192,7 @@ func (sf *Salesforce) InsertBulk(sObjectName string, records any, waitForResults
 		return "", jsonError
 	}
 
-	bulkJob, err := createBulkJob(*sf.auth, body)
+	bulkJob, err := createBulkJob(auth, body)
 	if err != nil {
 		return "", err
 	}
@@ -209,13 +200,13 @@ func (sf *Salesforce) InsertBulk(sObjectName string, records any, waitForResults
 		return bulkJob.Id, errors.New("error creating bulk data job. Id does not exist or job closed prematurely")
 	}
 
-	uploadErr := uploadJobData(*sf.auth, records, *bulkJob)
+	uploadErr := uploadJobData(auth, records, *bulkJob)
 	if uploadErr != nil {
 		return bulkJob.Id, uploadErr
 	}
 
 	if waitForResults {
-		pollErr := waitForJobResult(*sf.auth, bulkJob.Id)
+		pollErr := waitForJobResult(auth, bulkJob.Id)
 		if pollErr != nil {
 			return bulkJob.Id, pollErr
 		}
@@ -224,17 +215,8 @@ func (sf *Salesforce) InsertBulk(sObjectName string, records any, waitForResults
 	return bulkJob.Id, nil
 }
 
-func (sf *Salesforce) UpdateBulk(sObjectName string, records any, waitForResults bool) (string, error) {
-	authErr := validateAuth(*sf)
-	if authErr != nil {
-		return "", authErr
-	}
-	typErr := validateOfTypeSlice(records)
-	if typErr != nil {
-		return "", typErr
-	}
-
-	job := BulkJobCreationRequest{
+func doUpdateBulk(auth Auth, sObjectName string, records any, waitForResults bool) (string, error) {
+	job := bulkJobCreationRequest{
 		Object:    sObjectName,
 		Operation: "update",
 	}
@@ -243,7 +225,7 @@ func (sf *Salesforce) UpdateBulk(sObjectName string, records any, waitForResults
 		return "", jsonError
 	}
 
-	bulkJob, err := createBulkJob(*sf.auth, body)
+	bulkJob, err := createBulkJob(auth, body)
 	if err != nil {
 		return "", err
 	}
@@ -251,13 +233,13 @@ func (sf *Salesforce) UpdateBulk(sObjectName string, records any, waitForResults
 		return bulkJob.Id, errors.New("error creating bulk data job. Id does not exist or job closed prematurely")
 	}
 
-	uploadErr := uploadJobData(*sf.auth, records, *bulkJob)
+	uploadErr := uploadJobData(auth, records, *bulkJob)
 	if uploadErr != nil {
 		return bulkJob.Id, uploadErr
 	}
 
 	if waitForResults {
-		pollErr := waitForJobResult(*sf.auth, bulkJob.Id)
+		pollErr := waitForJobResult(auth, bulkJob.Id)
 		if pollErr != nil {
 			return bulkJob.Id, pollErr
 		}
@@ -266,17 +248,8 @@ func (sf *Salesforce) UpdateBulk(sObjectName string, records any, waitForResults
 	return bulkJob.Id, nil
 }
 
-func (sf *Salesforce) UpsertBulk(sObjectName string, fieldName string, records any, waitForResults bool) (string, error) {
-	authErr := validateAuth(*sf)
-	if authErr != nil {
-		return "", authErr
-	}
-	typErr := validateOfTypeSlice(records)
-	if typErr != nil {
-		return "", typErr
-	}
-
-	job := BulkJobCreationRequest{
+func doUpsertBulk(auth Auth, sObjectName string, fieldName string, records any, waitForResults bool) (string, error) {
+	job := bulkJobCreationRequest{
 		Object:              sObjectName,
 		Operation:           "upsert",
 		ExternalIdFieldName: fieldName,
@@ -286,7 +259,7 @@ func (sf *Salesforce) UpsertBulk(sObjectName string, fieldName string, records a
 		return "", jsonError
 	}
 
-	bulkJob, err := createBulkJob(*sf.auth, body)
+	bulkJob, err := createBulkJob(auth, body)
 	if err != nil {
 		return "", err
 	}
@@ -294,13 +267,13 @@ func (sf *Salesforce) UpsertBulk(sObjectName string, fieldName string, records a
 		return bulkJob.Id, errors.New("error creating bulk data job. Id does not exist or job closed prematurely")
 	}
 
-	uploadErr := uploadJobData(*sf.auth, records, *bulkJob)
+	uploadErr := uploadJobData(auth, records, *bulkJob)
 	if uploadErr != nil {
 		return bulkJob.Id, uploadErr
 	}
 
 	if waitForResults {
-		pollErr := waitForJobResult(*sf.auth, bulkJob.Id)
+		pollErr := waitForJobResult(auth, bulkJob.Id)
 		if pollErr != nil {
 			return bulkJob.Id, pollErr
 		}
@@ -309,17 +282,8 @@ func (sf *Salesforce) UpsertBulk(sObjectName string, fieldName string, records a
 	return bulkJob.Id, nil
 }
 
-func (sf *Salesforce) DeleteBulk(sObjectName string, records any, waitForResults bool) (string, error) {
-	authErr := validateAuth(*sf)
-	if authErr != nil {
-		return "", authErr
-	}
-	typErr := validateOfTypeSlice(records)
-	if typErr != nil {
-		return "", typErr
-	}
-
-	job := BulkJobCreationRequest{
+func doDeleteBulk(auth Auth, sObjectName string, records any, waitForResults bool) (string, error) {
+	job := bulkJobCreationRequest{
 		Object:    sObjectName,
 		Operation: "delete",
 	}
@@ -328,7 +292,7 @@ func (sf *Salesforce) DeleteBulk(sObjectName string, records any, waitForResults
 		return "", jsonError
 	}
 
-	bulkJob, err := createBulkJob(*sf.auth, body)
+	bulkJob, err := createBulkJob(auth, body)
 	if err != nil {
 		return "", err
 	}
@@ -336,13 +300,13 @@ func (sf *Salesforce) DeleteBulk(sObjectName string, records any, waitForResults
 		return bulkJob.Id, errors.New("error creating bulk data job. Id does not exist or job closed prematurely")
 	}
 
-	uploadErr := uploadJobData(*sf.auth, records, *bulkJob)
+	uploadErr := uploadJobData(auth, records, *bulkJob)
 	if uploadErr != nil {
 		return bulkJob.Id, uploadErr
 	}
 
 	if waitForResults {
-		pollErr := waitForJobResult(*sf.auth, bulkJob.Id)
+		pollErr := waitForJobResult(auth, bulkJob.Id)
 		if pollErr != nil {
 			return bulkJob.Id, pollErr
 		}
