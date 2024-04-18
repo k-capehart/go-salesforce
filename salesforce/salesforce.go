@@ -374,7 +374,7 @@ func (sf *Salesforce) GetJobResults(bulkJobId string) (BulkJobResults, error) {
 		return BulkJobResults{}, authErr
 	}
 
-	job, err := doGetJobResults(*sf.auth, bulkJobId)
+	job, err := getJobResults(*sf.auth, bulkJobId)
 	if err != nil {
 		return BulkJobResults{}, err
 	}

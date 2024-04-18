@@ -31,10 +31,6 @@ type BulkJobResults struct {
 	ErrorMessage        string `json:"errorMessage"`
 }
 
-type bulkJobData struct {
-	Data string `json:"data"`
-}
-
 const (
 	JobStateAborted        = "Aborted"
 	JobStateUploadComplete = "UploadComplete"
@@ -171,15 +167,6 @@ func getFailedRecords(auth Auth, bulkJobId string) (string, error) {
 		return "", readErr
 	}
 	return string(respBody), nil
-}
-
-func doGetJobResults(auth Auth, bulkJobId string) (BulkJobResults, error) {
-	bulkJob, reqErr := getJobResults(auth, bulkJobId)
-	if reqErr != nil {
-		return BulkJobResults{}, reqErr
-	}
-
-	return bulkJob, nil
 }
 
 func doInsertBulk(auth Auth, sObjectName string, records any, waitForResults bool) (string, error) {
