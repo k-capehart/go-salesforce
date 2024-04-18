@@ -149,14 +149,10 @@ func doDeleteOne(auth Auth, sObjectName string, record any) error {
 	return nil
 }
 
-func doInsertCollection(auth Auth, sObjectName string, records any, allOrNone bool) error {
+func doInsertCollection(auth Auth, sObjectName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
-	}
-
-	if len(recordMap) > 200 {
-		return errors.New("salesforce composite api call supports up to 200 records at once")
 	}
 
 	for i := range recordMap {
@@ -164,40 +160,49 @@ func doInsertCollection(auth Auth, sObjectName string, records any, allOrNone bo
 		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
 	}
 
-	payload := sObjectCollection{
-		AllOrNone: strconv.FormatBool(allOrNone),
-		Records:   recordMap,
+	var dmlErrors error
+
+	for len(recordMap) > 0 {
+		var batch, remaining []map[string]any
+		if len(recordMap) > batchSize {
+			batch, remaining = recordMap[:batchSize], recordMap[batchSize:]
+		} else {
+			batch = recordMap
+		}
+
+		payload := sObjectCollection{
+			AllOrNone: strconv.FormatBool(allOrNone),
+			Records:   batch,
+		}
+
+		body, err := json.Marshal(payload)
+		if err != nil {
+			dmlErrors = errors.Join(dmlErrors, err)
+		}
+
+		resp, err := doRequest(http.MethodPost, "/composite/sobjects/", jsonType, auth, string(body))
+		if err != nil {
+			dmlErrors = errors.Join(dmlErrors, err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			dmlErrors = errors.Join(dmlErrors, processSalesforceError(*resp))
+		}
+		salesforceErrors := processSalesforceResponse(*resp)
+		if salesforceErrors != nil {
+			dmlErrors = errors.Join(dmlErrors, salesforceErrors)
+		}
+
+		recordMap = remaining
 	}
 
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	resp, err := doRequest(http.MethodPost, "/composite/sobjects/", jsonType, auth, string(body))
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return processSalesforceError(*resp)
-	}
-	salesforceErrors := processSalesforceResponse(*resp)
-	if salesforceErrors != nil {
-		return salesforceErrors
-	}
-
-	return nil
+	return dmlErrors
 }
 
-func doUpdateCollection(auth Auth, sObjectName string, records any, allOrNone bool) error {
+func doUpdateCollection(auth Auth, sObjectName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
-	}
-
-	if len(recordMap) > 200 {
-		return errors.New("salesforce composite api call supports up to 200 records at once")
 	}
 
 	for i := range recordMap {
@@ -208,40 +213,49 @@ func doUpdateCollection(auth Auth, sObjectName string, records any, allOrNone bo
 		}
 	}
 
-	payload := sObjectCollection{
-		AllOrNone: strconv.FormatBool(allOrNone),
-		Records:   recordMap,
+	var dmlErrors error
+
+	for len(recordMap) > 0 {
+		var batch, remaining []map[string]any
+		if len(recordMap) > batchSize {
+			batch, remaining = recordMap[:batchSize], recordMap[batchSize:]
+		} else {
+			batch = recordMap
+		}
+
+		payload := sObjectCollection{
+			AllOrNone: strconv.FormatBool(allOrNone),
+			Records:   batch,
+		}
+
+		body, err := json.Marshal(payload)
+		if err != nil {
+			dmlErrors = errors.Join(dmlErrors, err)
+		}
+
+		resp, err := doRequest(http.MethodPatch, "/composite/sobjects/", jsonType, auth, string(body))
+		if err != nil {
+			dmlErrors = errors.Join(dmlErrors, err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			dmlErrors = errors.Join(dmlErrors, processSalesforceError(*resp))
+		}
+		salesforceErrors := processSalesforceResponse(*resp)
+		if salesforceErrors != nil {
+			dmlErrors = errors.Join(dmlErrors, salesforceErrors)
+		}
+
+		recordMap = remaining
 	}
 
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	resp, err := doRequest(http.MethodPatch, "/composite/sobjects/", jsonType, auth, string(body))
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return processSalesforceError(*resp)
-	}
-	salesforceErrors := processSalesforceResponse(*resp)
-	if salesforceErrors != nil {
-		return salesforceErrors
-	}
-
-	return nil
+	return dmlErrors
 }
 
-func doUpsertCollection(auth Auth, sObjectName string, fieldName string, records any, allOrNone bool) error {
+func doUpsertCollection(auth Auth, sObjectName string, fieldName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
-	}
-
-	if len(recordMap) > 200 {
-		return errors.New("salesforce composite api call supports up to 200 records at once")
 	}
 
 	for i := range recordMap {
@@ -252,67 +266,89 @@ func doUpsertCollection(auth Auth, sObjectName string, fieldName string, records
 		}
 	}
 
-	payload := sObjectCollection{
-		AllOrNone: strconv.FormatBool(allOrNone),
-		Records:   recordMap,
+	var dmlErrors error
+
+	for len(recordMap) > 0 {
+		var batch, remaining []map[string]any
+		if len(recordMap) > batchSize {
+			batch, remaining = recordMap[:batchSize], recordMap[batchSize:]
+		} else {
+			batch = batch
+		}
+
+		payload := sObjectCollection{
+			AllOrNone: strconv.FormatBool(allOrNone),
+			Records:   recordMap,
+		}
+
+		body, err := json.Marshal(payload)
+		if err != nil {
+			dmlErrors = errors.Join(dmlErrors, err)
+		}
+
+		resp, err := doRequest(http.MethodPatch, "/composite/sobjects/"+sObjectName+"/"+fieldName, jsonType, auth, string(body))
+		if err != nil {
+			dmlErrors = errors.Join(dmlErrors, err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			dmlErrors = errors.Join(dmlErrors, processSalesforceError(*resp))
+		}
+		salesforceErrors := processSalesforceResponse(*resp)
+		if salesforceErrors != nil {
+			dmlErrors = errors.Join(dmlErrors, salesforceErrors)
+		}
+
+		recordMap = remaining
 	}
 
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	resp, err := doRequest(http.MethodPatch, "/composite/sobjects/"+sObjectName+"/"+fieldName, jsonType, auth, string(body))
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return processSalesforceError(*resp)
-	}
-	salesforceErrors := processSalesforceResponse(*resp)
-	if salesforceErrors != nil {
-		return salesforceErrors
-	}
-
-	return nil
+	return dmlErrors
 }
 
-func doDeleteCollection(auth Auth, sObjectName string, records any, allOrNone bool) error {
+func doDeleteCollection(auth Auth, sObjectName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
 	}
 
-	if len(recordMap) > 200 {
-		return errors.New("salesforce composite api call supports up to 200 records at once")
-	}
+	var dmlErrors error
 
-	var ids string
-	for i := 0; i < len(recordMap); i++ {
-		recordId, ok := recordMap[i]["Id"].(string)
-		if !ok || recordId == "" {
-			return errors.New("salesforce id not found in object data")
-		}
-		if i == len(recordMap)-1 {
-			ids = ids + recordId
+	for len(recordMap) > 0 {
+		var batch, remaining []map[string]any
+		if len(recordMap) > batchSize {
+			batch, remaining = recordMap[:batchSize], recordMap[batchSize:]
 		} else {
-			ids = ids + recordId + ","
+			batch = recordMap
 		}
+
+		var ids string
+		for i := 0; i < len(batch); i++ {
+			recordId, ok := batch[i]["Id"].(string)
+			if !ok || recordId == "" {
+				return errors.New("salesforce id not found in object data")
+			}
+			if i == len(batch)-1 {
+				ids = ids + recordId
+			} else {
+				ids = ids + recordId + ","
+			}
+		}
+
+		resp, err := doRequest(http.MethodDelete, "/composite/sobjects/?ids="+ids+"&allOrNone="+strconv.FormatBool(allOrNone), jsonType, auth, "")
+		if err != nil {
+			return err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return processSalesforceError(*resp)
+		}
+		salesforceErrors := processSalesforceResponse(*resp)
+		if salesforceErrors != nil {
+			return salesforceErrors
+		}
+
+		recordMap = remaining
 	}
 
-	resp, err := doRequest(http.MethodDelete, "/composite/sobjects/?ids="+ids+"&allOrNone="+strconv.FormatBool(allOrNone), jsonType, auth, "")
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return processSalesforceError(*resp)
-	}
-	salesforceErrors := processSalesforceResponse(*resp)
-	if salesforceErrors != nil {
-		return salesforceErrors
-	}
-
-	return nil
+	return dmlErrors
 }
