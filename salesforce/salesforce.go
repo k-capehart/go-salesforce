@@ -124,6 +124,20 @@ func Init(creds Creds) (*Salesforce, error) {
 	return &Salesforce{auth: auth}, nil
 }
 
+func (sf *Salesforce) DoRequest(method string, uri string, body []byte) (*http.Response, error) {
+	authErr := validateAuth(*sf)
+	if authErr != nil {
+		return nil, authErr
+	}
+
+	resp, err := doRequest(method, uri, jsonType, *sf.auth, string(body))
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 func (sf *Salesforce) Query(query string, sObject any) error {
 	authErr := validateAuth(*sf)
 	if authErr != nil {

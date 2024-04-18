@@ -53,7 +53,7 @@ func doInsertOne(auth Auth, sObjectName string, record any) error {
 		return err
 	}
 
-	resp, err := doRequest("POST", "/sobjects/"+sObjectName, jsonType, auth, string(body))
+	resp, err := doRequest(http.MethodPost, "/sobjects/"+sObjectName, jsonType, auth, string(body))
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func doUpdateOne(auth Auth, sObjectName string, record any) error {
 		return err
 	}
 
-	resp, err := doRequest("PATCH", "/sobjects/"+sObjectName+"/"+recordId, jsonType, auth, string(body))
+	resp, err := doRequest(http.MethodPatch, "/sobjects/"+sObjectName+"/"+recordId, jsonType, auth, string(body))
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func doUpsertOne(auth Auth, sObjectName string, fieldName string, record any) er
 		return err
 	}
 
-	resp, err := doRequest("PATCH", "/sobjects/"+sObjectName+"/"+fieldName+"/"+externalIdValue, jsonType, auth, string(body))
+	resp, err := doRequest(http.MethodPatch, "/sobjects/"+sObjectName+"/"+fieldName+"/"+externalIdValue, jsonType, auth, string(body))
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func doDeleteOne(auth Auth, sObjectName string, record any) error {
 		return errors.New("salesforce id not found in object data")
 	}
 
-	resp, err := doRequest("DELETE", "/sobjects/"+sObjectName+"/"+recordId, jsonType, auth, "")
+	resp, err := doRequest(http.MethodDelete, "/sobjects/"+sObjectName+"/"+recordId, jsonType, auth, "")
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func doInsertCollection(auth Auth, sObjectName string, records any, allOrNone bo
 		return err
 	}
 
-	resp, err := doRequest("POST", "/composite/sobjects/", jsonType, auth, string(body))
+	resp, err := doRequest(http.MethodPost, "/composite/sobjects/", jsonType, auth, string(body))
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func doUpdateCollection(auth Auth, sObjectName string, records any, allOrNone bo
 		return err
 	}
 
-	resp, err := doRequest("PATCH", "/composite/sobjects/", jsonType, auth, string(body))
+	resp, err := doRequest(http.MethodPatch, "/composite/sobjects/", jsonType, auth, string(body))
 	if err != nil {
 		return err
 	}
@@ -262,7 +262,7 @@ func doUpsertCollection(auth Auth, sObjectName string, fieldName string, records
 		return err
 	}
 
-	resp, err := doRequest("PATCH", "/composite/sobjects/"+sObjectName+"/"+fieldName, jsonType, auth, string(body))
+	resp, err := doRequest(http.MethodPatch, "/composite/sobjects/"+sObjectName+"/"+fieldName, jsonType, auth, string(body))
 	if err != nil {
 		return err
 	}
@@ -301,7 +301,7 @@ func doDeleteCollection(auth Auth, sObjectName string, records any, allOrNone bo
 		}
 	}
 
-	resp, err := doRequest("DELETE", "/composite/sobjects/?ids="+ids+"&allOrNone="+strconv.FormatBool(allOrNone), jsonType, auth, "")
+	resp, err := doRequest(http.MethodDelete, "/composite/sobjects/?ids="+ids+"&allOrNone="+strconv.FormatBool(allOrNone), jsonType, auth, "")
 	if err != nil {
 		return err
 	}

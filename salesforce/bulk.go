@@ -41,7 +41,7 @@ const (
 func updateJobState(job bulkJob, state string, auth Auth) error {
 	job.State = state
 	body, _ := json.Marshal(job)
-	resp, err := doRequest("PATCH", "/jobs/ingest/"+job.Id, jsonType, auth, string(body))
+	resp, err := doRequest(http.MethodPatch, "/jobs/ingest/"+job.Id, jsonType, auth, string(body))
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func updateJobState(job bulkJob, state string, auth Auth) error {
 }
 
 func createBulkJob(auth Auth, body []byte) (*bulkJob, error) {
-	resp, err := doRequest("POST", "/jobs/ingest", jsonType, auth, string(body))
+	resp, err := doRequest(http.MethodPost, "/jobs/ingest", jsonType, auth, string(body))
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func uploadJobData(auth Auth, records any, bulkJob bulkJob) error {
 }
 
 func getJobResults(auth Auth, bulkJobId string) (BulkJobResults, error) {
-	resp, err := doRequest("GET", "/jobs/ingest/"+bulkJobId, jsonType, auth, "")
+	resp, err := doRequest(http.MethodGet, "/jobs/ingest/"+bulkJobId, jsonType, auth, "")
 	if err != nil {
 		return BulkJobResults{}, err
 	}
@@ -154,7 +154,7 @@ func processJobResults(auth Auth, bulkJob BulkJobResults) (bool, error) {
 }
 
 func getFailedRecords(auth Auth, bulkJobId string) (string, error) {
-	resp, err := doRequest("GET", "/jobs/ingest/"+bulkJobId+"/failedResults", jsonType, auth, "")
+	resp, err := doRequest(http.MethodGet, "/jobs/ingest/"+bulkJobId+"/failedResults", jsonType, auth, "")
 	if err != nil {
 		return "", err
 	}
@@ -272,7 +272,7 @@ func doUpsertBulk(auth Auth, sObjectName string, fieldName string, records any, 
 func doDeleteBulk(auth Auth, sObjectName string, records any, waitForResults bool) (string, error) {
 	job := bulkJobCreationRequest{
 		Object:    sObjectName,
-		Operation: "delete",
+		Operation: http.MethodDelete,
 	}
 	body, jsonError := json.Marshal(job)
 	if jsonError != nil {

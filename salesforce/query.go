@@ -18,7 +18,7 @@ type queryResponse struct {
 
 func performQuery(auth Auth, query string, sObject any) error {
 	query = url.QueryEscape(query)
-	resp, err := doRequest("GET", "/query/?q="+query, jsonType, auth, "")
+	resp, err := doRequest(http.MethodGet, "/query/?q="+query, jsonType, auth, "")
 	if err != nil {
 		return err
 	}
