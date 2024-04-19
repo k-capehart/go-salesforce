@@ -3,6 +3,7 @@ package salesforce
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -10,8 +11,31 @@ import (
 )
 
 type sObjectCollection struct {
-	AllOrNone string           `json:"allOrNone"`
+	AllOrNone bool             `json:"allOrNone"`
 	Records   []map[string]any `json:"records"`
+}
+
+type compositeRequest struct {
+	AllOrNone        bool                  `json:"allOrNone"`
+	CompositeRequest []compositeSubRequest `json:"compositeRequest"`
+}
+
+type compositeSubRequest struct {
+	Body        any    `json:"body"`
+	Method      string `json:"method"`
+	Url         string `json:"url"`
+	ReferenceId string `json:"referenceId"`
+}
+
+type compositeRequestResult struct {
+	CompositeResponse []composteSubRequestResult `json:"compositeResponse"`
+}
+
+type composteSubRequestResult struct {
+	Body           []salesforceError `json:"body"`
+	HttpHeaders    map[string]string `json:"httpHeaders"`
+	HttpStatusCode int               `json:"httpStatusCode"`
+	ReferenceId    string            `json:"referenceId"`
 }
 
 func convertToMap(obj any) (map[string]any, error) {
@@ -38,6 +62,91 @@ func convertToSliceOfMaps(obj any) ([]map[string]any, error) {
 		}
 	}
 	return recordMap, nil
+}
+
+func doCompositeRequest(auth Auth, compReq compositeRequest) error {
+	body, jsonErr := json.Marshal(compReq)
+	if jsonErr != nil {
+		return jsonErr
+	}
+	resp, httpErr := doRequest(http.MethodPost, "/composite", jsonType, auth, string(body))
+	if httpErr != nil {
+		return httpErr
+	}
+	if resp.StatusCode != http.StatusOK {
+		return processSalesforceError(*resp)
+	}
+	salesforceErrors := processCompositeResponse(*resp)
+	if salesforceErrors != nil {
+		return salesforceErrors
+	}
+	return nil
+}
+
+func createCompositeRequest(method string, url string, allOrNone bool, batchSize int, recordMap []map[string]any) (compositeRequest, error) {
+	var subReqs []compositeSubRequest
+	batchNumber := 0
+
+	for len(recordMap) > 0 {
+		var batch, remaining []map[string]any
+		if len(recordMap) > batchSize {
+			batch, remaining = recordMap[:batchSize], recordMap[batchSize:]
+		} else {
+			batch = recordMap
+		}
+
+		payload := sObjectCollection{
+			AllOrNone: allOrNone,
+			Records:   batch,
+		}
+
+		subReq := compositeSubRequest{
+			Body:        payload,
+			Method:      method,
+			Url:         url,
+			ReferenceId: "refObj" + strconv.Itoa(batchNumber),
+		}
+		subReqs = append(subReqs, subReq)
+		recordMap = remaining
+		batchNumber++
+	}
+
+	return compositeRequest{
+		AllOrNone:        allOrNone,
+		CompositeRequest: subReqs,
+	}, nil
+}
+
+func processCompositeResponse(resp http.Response) error {
+	compositeResults := compositeRequestResult{}
+	var errorResponse error
+
+	responseData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	jsonError := json.Unmarshal(responseData, &compositeResults)
+	if jsonError != nil {
+		return jsonError
+	}
+
+	for _, subResult := range compositeResults.CompositeResponse {
+		for _, sfError := range subResult.Body {
+			if !sfError.Success {
+				if len(sfError.Errors) > 0 {
+					for _, errorMessage := range sfError.Errors {
+						newError := errorMessage.StatusCode + ": " + errorMessage.Message + " " + sfError.Id
+						errorResponse = errors.Join(errorResponse, errors.New(newError))
+					}
+				} else {
+					newError := "an unknown error occurred: " + strconv.Itoa(subResult.HttpStatusCode)
+					errorResponse = errors.Join(errorResponse, errors.New(newError))
+				}
+			}
+		}
+	}
+
+	return errorResponse
 }
 
 func doInsertOne(auth Auth, sObjectName string, record any) error {
@@ -160,43 +269,17 @@ func doInsertCollection(auth Auth, sObjectName string, records any, allOrNone bo
 		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
 	}
 
-	var dmlErrors error
-
-	for len(recordMap) > 0 {
-		var batch, remaining []map[string]any
-		if len(recordMap) > batchSize {
-			batch, remaining = recordMap[:batchSize], recordMap[batchSize:]
-		} else {
-			batch = recordMap
-		}
-
-		payload := sObjectCollection{
-			AllOrNone: strconv.FormatBool(allOrNone),
-			Records:   batch,
-		}
-
-		body, err := json.Marshal(payload)
-		if err != nil {
-			dmlErrors = errors.Join(dmlErrors, err)
-		}
-
-		resp, err := doRequest(http.MethodPost, "/composite/sobjects/", jsonType, auth, string(body))
-		if err != nil {
-			dmlErrors = errors.Join(dmlErrors, err)
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			dmlErrors = errors.Join(dmlErrors, processSalesforceError(*resp))
-		}
-		salesforceErrors := processSalesforceResponse(*resp)
-		if salesforceErrors != nil {
-			dmlErrors = errors.Join(dmlErrors, salesforceErrors)
-		}
-
-		recordMap = remaining
+	uri := "/services/data/" + apiVersion + "/composite/sobjects"
+	compReq, compositeErr := createCompositeRequest(http.MethodPost, uri, allOrNone, batchSize, recordMap)
+	if compositeErr != nil {
+		return compositeErr
+	}
+	compositeReqErr := doCompositeRequest(auth, compReq)
+	if compositeReqErr != nil {
+		return compositeReqErr
 	}
 
-	return dmlErrors
+	return nil
 }
 
 func doUpdateCollection(auth Auth, sObjectName string, records any, allOrNone bool, batchSize int) error {
@@ -213,43 +296,17 @@ func doUpdateCollection(auth Auth, sObjectName string, records any, allOrNone bo
 		}
 	}
 
-	var dmlErrors error
-
-	for len(recordMap) > 0 {
-		var batch, remaining []map[string]any
-		if len(recordMap) > batchSize {
-			batch, remaining = recordMap[:batchSize], recordMap[batchSize:]
-		} else {
-			batch = recordMap
-		}
-
-		payload := sObjectCollection{
-			AllOrNone: strconv.FormatBool(allOrNone),
-			Records:   batch,
-		}
-
-		body, err := json.Marshal(payload)
-		if err != nil {
-			dmlErrors = errors.Join(dmlErrors, err)
-		}
-
-		resp, err := doRequest(http.MethodPatch, "/composite/sobjects/", jsonType, auth, string(body))
-		if err != nil {
-			dmlErrors = errors.Join(dmlErrors, err)
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			dmlErrors = errors.Join(dmlErrors, processSalesforceError(*resp))
-		}
-		salesforceErrors := processSalesforceResponse(*resp)
-		if salesforceErrors != nil {
-			dmlErrors = errors.Join(dmlErrors, salesforceErrors)
-		}
-
-		recordMap = remaining
+	uri := "/services/data/" + apiVersion + "/composite/sobjects"
+	compReq, compositeErr := createCompositeRequest(http.MethodPatch, uri, allOrNone, batchSize, recordMap)
+	if compositeErr != nil {
+		return compositeErr
+	}
+	compositeReqErr := doCompositeRequest(auth, compReq)
+	if compositeReqErr != nil {
+		return compositeReqErr
 	}
 
-	return dmlErrors
+	return nil
 }
 
 func doUpsertCollection(auth Auth, sObjectName string, fieldName string, records any, allOrNone bool, batchSize int) error {
@@ -266,43 +323,17 @@ func doUpsertCollection(auth Auth, sObjectName string, fieldName string, records
 		}
 	}
 
-	var dmlErrors error
-
-	for len(recordMap) > 0 {
-		var batch, remaining []map[string]any
-		if len(recordMap) > batchSize {
-			batch, remaining = recordMap[:batchSize], recordMap[batchSize:]
-		} else {
-			batch = batch
-		}
-
-		payload := sObjectCollection{
-			AllOrNone: strconv.FormatBool(allOrNone),
-			Records:   recordMap,
-		}
-
-		body, err := json.Marshal(payload)
-		if err != nil {
-			dmlErrors = errors.Join(dmlErrors, err)
-		}
-
-		resp, err := doRequest(http.MethodPatch, "/composite/sobjects/"+sObjectName+"/"+fieldName, jsonType, auth, string(body))
-		if err != nil {
-			dmlErrors = errors.Join(dmlErrors, err)
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			dmlErrors = errors.Join(dmlErrors, processSalesforceError(*resp))
-		}
-		salesforceErrors := processSalesforceResponse(*resp)
-		if salesforceErrors != nil {
-			dmlErrors = errors.Join(dmlErrors, salesforceErrors)
-		}
-
-		recordMap = remaining
+	uri := "/services/data/" + apiVersion + "/composite/sobjects/" + sObjectName + "/" + fieldName
+	compReq, compositeErr := createCompositeRequest(http.MethodPatch, uri, allOrNone, batchSize, recordMap)
+	if compositeErr != nil {
+		return compositeErr
+	}
+	compositeReqErr := doCompositeRequest(auth, compReq)
+	if compositeReqErr != nil {
+		return compositeReqErr
 	}
 
-	return dmlErrors
+	return nil
 }
 
 func doDeleteCollection(auth Auth, sObjectName string, records any, allOrNone bool, batchSize int) error {
@@ -311,7 +342,8 @@ func doDeleteCollection(auth Auth, sObjectName string, records any, allOrNone bo
 		return err
 	}
 
-	var dmlErrors error
+	var subReqs []compositeSubRequest
+	batchNumber := 0
 
 	for len(recordMap) > 0 {
 		var batch, remaining []map[string]any
@@ -334,21 +366,25 @@ func doDeleteCollection(auth Auth, sObjectName string, records any, allOrNone bo
 			}
 		}
 
-		resp, err := doRequest(http.MethodDelete, "/composite/sobjects/?ids="+ids+"&allOrNone="+strconv.FormatBool(allOrNone), jsonType, auth, "")
-		if err != nil {
-			return err
+		uri := "/services/data/" + apiVersion + "/composite/sobjects/?ids=" + ids + "&allOrNone=" + strconv.FormatBool(allOrNone)
+		subReq := compositeSubRequest{
+			Method:      http.MethodDelete,
+			Url:         uri,
+			ReferenceId: "refObj" + strconv.Itoa(batchNumber),
 		}
-
-		if resp.StatusCode != http.StatusOK {
-			return processSalesforceError(*resp)
-		}
-		salesforceErrors := processSalesforceResponse(*resp)
-		if salesforceErrors != nil {
-			return salesforceErrors
-		}
-
+		subReqs = append(subReqs, subReq)
 		recordMap = remaining
+		batchNumber++
 	}
 
-	return dmlErrors
+	compReq := compositeRequest{
+		AllOrNone:        allOrNone,
+		CompositeRequest: subReqs,
+	}
+	compositeReqErr := doCompositeRequest(auth, compReq)
+	if compositeReqErr != nil {
+		return compositeReqErr
+	}
+
+	return nil
 }
