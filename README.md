@@ -276,6 +276,7 @@ Updates a list of salesforce records of the given type
 ```go
 type Contact struct {
 	Id       string
+    LastName string
 }
 ```
 ```go
@@ -300,6 +301,7 @@ if err != nil {
 
 Updates (or inserts) a list of salesforce records using the given ExternalId
 - `sObjectName`: API name of Salesforce object
+- `externalIdFieldName`: field API name for an external Id that exists on the given object
 - `records`: a slice of salesforce records
     - A value for the External Id is required
 - `batchSize`: `1 <= batchSize <= 200`
@@ -406,6 +408,7 @@ Updates a list of salesforce records in a single request
 ```go
 type Contact struct {
 	Id       string
+    LastName string
 }
 ```
 ```go
@@ -430,6 +433,7 @@ if err != nil {
 
 Updates (or inserts) a list of salesforce records using the given ExternalId in a single request
 - `sObjectName`: API name of Salesforce object
+- `externalIdFieldName`: field API name for an external Id that exists on the given object
 - `records`: a slice of salesforce records
     - A value for the External Id is required
 - `batchSize`: `1 <= batchSize <= 200`
