@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"net/http"
 	"strconv"
 
@@ -122,14 +123,23 @@ func doBatchedRequestsForCollection(auth Auth, method string, url string, batchS
 	return dmlErrors
 }
 
+func validateNumberOfSubrequests(dataSize int, batchSize int) error {
+	numberOfBatches := int(math.Ceil(float64(float64(dataSize) / float64(batchSize))))
+	if numberOfBatches > 25 {
+		errorMessage := strconv.Itoa(numberOfBatches) + " subrequests exceed max of 25. number of subrequests = (number of records) / (batch size)"
+		return errors.New(errorMessage)
+	}
+	return nil
+}
+
 func createCompositeRequestForCollection(method string, url string, allOrNone bool, batchSize int, recordMap []map[string]any) (compositeRequest, error) {
+	validateErr := validateNumberOfSubrequests(len(recordMap), batchSize)
+	if validateErr != nil {
+		return compositeRequest{}, validateErr
+	}
+
 	var subReqs []compositeSubRequest
 	batchNumber := 0
-
-	if len(recordMap)/batchSize > 25 {
-		errorMessage := "compsite requests cannot have more than 25 subrequests. number of subrequests = (number of records) / (batch size)"
-		return compositeRequest{}, errors.New(errorMessage)
-	}
 
 	for len(recordMap) > 0 {
 		var batch, remaining []map[string]any

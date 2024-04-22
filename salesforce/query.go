@@ -5,41 +5,57 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/forcedotcom/go-soql"
 	"github.com/mitchellh/mapstructure"
 )
 
 type queryResponse struct {
-	TotalSize int              `json:"totalSize"`
-	Done      bool             `json:"done"`
-	Records   []map[string]any `json:"records"`
+	TotalSize      int              `json:"totalSize"`
+	Done           bool             `json:"done"`
+	NextRecordsUrl string           `json:"nextRecordsUrl"`
+	Records        []map[string]any `json:"records"`
 }
 
 func performQuery(auth Auth, query string, sObject any) error {
 	query = url.QueryEscape(query)
-	resp, err := doRequest(http.MethodGet, "/query/?q="+query, jsonType, auth, "")
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return processSalesforceError(*resp)
+	queryResp := &queryResponse{
+		Done:           false,
+		NextRecordsUrl: "/query/?q=" + query,
 	}
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
+	for !queryResp.Done {
+		resp, err := doRequest(http.MethodGet, queryResp.NextRecordsUrl, jsonType, auth, "")
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode != http.StatusOK {
+			return processSalesforceError(*resp)
+		}
+
+		respBody, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return readErr
+		}
+
+		tempQueryResp := &queryResponse{}
+		queryResponseError := json.Unmarshal(respBody, &tempQueryResp)
+		if queryResponseError != nil {
+			return err
+		}
+
+		queryResp.TotalSize = queryResp.TotalSize + tempQueryResp.TotalSize
+		queryResp.Records = append(queryResp.Records, tempQueryResp.Records...)
+		queryResp.Done = tempQueryResp.Done
+		if !tempQueryResp.Done && tempQueryResp.NextRecordsUrl != "" {
+			queryResp.NextRecordsUrl = strings.TrimPrefix(tempQueryResp.NextRecordsUrl, "/services/data/"+apiVersion)
+		}
 	}
 
-	queryResponse := &queryResponse{}
-	queryResponseError := json.Unmarshal(respBody, &queryResponse)
-	if queryResponseError != nil {
-		return err
-	}
-
-	sObjectError := mapstructure.Decode(queryResponse.Records, sObject)
+	sObjectError := mapstructure.Decode(queryResp.Records, sObject)
 	if sObjectError != nil {
-		return err
+		return sObjectError
 	}
 
 	return nil

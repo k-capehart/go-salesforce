@@ -14,7 +14,7 @@ go get github.com/k-capehart/go-salesforce
 ```
 
 ## Authentication
-- To begin using, create an instance of the `Salesforce` type by calling `salesforce.Init()` and passing your credentials as arguments
+- To begin using, create an instance of the `Salesforce` type by calling `Init()` and passing your credentials as arguments
     - [Review Salesforce oauth flows](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_flows.htm&type=5)
 - Once authenticated, all other functions can be called as methods using the resulting `Salesforce` instance
 
@@ -41,8 +41,6 @@ type Creds struct {
     ConsumerSecret string
 }
 ```
-
-<br>
 
 ### Init
 `func Init(creds Creds) *Salesforce`
