@@ -47,7 +47,8 @@ type Creds struct {
 ### Init
 `func Init(creds Creds) *Salesforce`
 
-Init returns a new Salesforce instance given a user's credentials.
+Returns a new Salesforce instance given a user's credentials.
+- `creds`: a struct containing the necessary credentials to authenticate into a Salesforce org
 
 Username-Password Flow
 - [Create a Connected App in your Salesforce org](https://help.salesforce.com/s/articleView?id=sf.connected_app_create.htm&type=5)
@@ -72,8 +73,9 @@ Query Salesforce records
 ### Query 
 `func (sf *Salesforce) Query(query string, sObject any) error`
 
-Query performs a SOQL query given a query string and decodes the response into the given struct
-- `sObject`: should be a slice of a custom struct type representing a Salesforce Object 
+Performs a SOQL query given a query string and decodes the response into the given struct
+- `query`: a SOQL query
+- `sObject`: a slice of a custom struct type representing a Salesforce Object 
 ```go
 type Contact struct {
 	Id       string
@@ -91,10 +93,10 @@ if err != nil {
 ### QueryStruct 
 `func (sf *Salesforce) QueryStruct(soqlStruct any, sObject any) error`
 
-QueryStruct performs a SOQL query given a go-soql struct and decodes the response into the given struct
-- `soqlStruct`: should be a custom struct using `soql` tags
+Pperforms a SOQL query given a go-soql struct and decodes the response into the given struct
+- `soqlStruct`: a custom struct using `soql` tags
     - Review [forcedotcom/go-soql](https://github.com/forcedotcom/go-soql)
-- `sObject`: should be a slice of a custom struct type representing a Salesforce Object
+- `sObject`: a slice of a custom struct type representing a Salesforce Object
 - Eliminates need to separately maintain query string and struct
 - Helps prevent SOQL injection
 
@@ -135,7 +137,8 @@ Insert, Update, Upsert, or Delete one record at a time
 `func (sf *Salesforce) InsertOne(sObjectName string, record any) error`
 
 InsertOne inserts one salesforce record of the given type
-- `record`: should be a custom struct type representing a Salesforce object
+- `sObjectName`: API name of Salesforce object
+- `record`: a Salesforce object record
 
 ```go
 type Contact struct {
@@ -155,9 +158,10 @@ if err != nil {
 ### UpdateOne
 `func (sf *Salesforce) UpdateOne(sObjectName string, record any) error`
 
-UpdateOne updates one salesforce record of the given type
-- `record`: should be a custom struct type representing a Salesforce object
-- An Id value is required
+Updates one salesforce record of the given type
+- `sObjectName`: API name of Salesforce object
+- `record`: a Salesforce object record
+    - An Id is required
 
 ```go
 type Contact struct {
@@ -179,10 +183,11 @@ if err != nil {
 ### UpsertOne
 `func (sf *Salesforce) UpsertOne(sObjectName string, externalIdFieldName string, record any) error`
 
-UpsertOne updates (or inserts) one salesforce record using the given external Id
+Updates (or inserts) one salesforce record using the given external Id
+- `sObjectName`: API name of Salesforce object
 - `externalIdFieldName`: field API name for an external Id that exists on the given object
-- `record`: should be a custom struct type representing a Salesforce object
-- A value for the External Id is required
+- `record`: a Salesforce object record
+    - A value for the External Id is required
 
 ```go
 type ContactWithExternalId struct {
@@ -192,7 +197,7 @@ type ContactWithExternalId struct {
 ```
 ```go
 contact := ContactWithExternalId{
-    ContactExternalId__c: "Contact123",
+    ContactExternalId__c: "Avng0",
     LastName:             "Rogers",
 }
 err := sf.UpsertOne("Contact", "ContactExternalId__c", contact)
@@ -204,9 +209,10 @@ if err != nil {
 ### DeleteOne
 `func (sf *Salesforce) DeleteOne(sObjectName string, record any) error`
 
-DeleteOne deletes a Salesforce record
-- `record`: should be a custom struct type representing a Salesforce object
-- An Id value is required
+Deletes a Salesforce record
+- `sObjectName`: API name of Salesforce object
+- `record`: a Salesforce object record
+    - An Id is required
 
 ```go
 type Contact struct {
@@ -228,22 +234,15 @@ Insert, Update, Upsert, or Delete collections of records
 - [Review Salesforce REST API resources for working with collections](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_composite_sobjects_collections.htm
 )
 - Perform operations in batches of up to 200 records at a time
-- Utilizes [Composite](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_composite_composite_post.htm) requests by nesting subrequests into a single composite request
-- Some operations might perform slowly, consider making a Bulk request for lists with more than 5000 records
+- Some operations might perform slowly, consider making a Bulk request for very large operations
 
 ### InsertCollection
-`func (sf *Salesforce) InsertCollection(sObjectName string, records any, allOrNone bool, batchSize int, combineRequests bool) error`
+`func (sf *Salesforce) InsertCollection(sObjectName string, records any, batchSize int) error`
 
-InsertCollection inserts a list of salesforce objects of the given type
-- `records`: should be a slice of custom structs representing a list of Salesforce objects
-- `allOrNone`: designates whether to rollback changes if any record fails to succeed
-- `batchSize`: designates the size of batches of records that will be split up
-    - `1 <= batchSize <= 200` 
-- `combineRequests`:
-    - if true, combine http requests into one composite request to limit transaction to a single api call
-        - maximum 25 subrequests per composite request
-        - `number of subrequests = len(records)/batchSize`
-    - if false, a separate api call will be made for each batch
+Inserts a list of salesforce records of the given type
+- `sObjectName`: API name of Salesforce object
+- `records`: a slice of salesforce records
+- `batchSize`: `1 <= batchSize <= 200`
 
 ```go
 type Contact struct {
@@ -259,26 +258,20 @@ contacts := []Contact{
         LastName: "Romanoff",
     },
 }
-err := sf.InsertCollection("Contact", contacts, true, 200, true)
+err := sf.InsertCollection("Contact", contacts, 200)
 if err != nil {
     panic(err)
 }
 ```
 
 ### UpdateCollection
-`func (sf *Salesforce) UpdateCollection(sObjectName string, records any, allOrNone bool, batchSize int, combineRequests bool) error`
+`func (sf *Salesforce) UpdateCollection(sObjectName string, records any, batchSize int) error`
 
-UpdateCollection updates a list of salesforce objects of the given type
-- `records`: should be a slice of custom structs representing a list of Salesforce objects
-- `allOrNone`: designates whether to rollback changes if any record fails to succeed
-- `batchSize`: designates the size of batches of records that will be split up
-    - `1 <= batchSize <= 200` 
-- `combineRequests`:
-    - if true, combine http requests into one composite request to limit transaction to a single api call
-        - maximum 25 subrequests per composite request
-        - `number of subrequests = len(records)/batchSize`
-    - if false, a separate api call will be made for each batch
-- An Id value is required
+Updates a list of salesforce records of the given type
+- `sObjectName`: API name of Salesforce object
+- `records`: a slice of salesforce records
+    - An Id is required
+- `batchSize`: `1 <= batchSize <= 200`
 
 ```go
 type Contact struct {
@@ -288,35 +281,28 @@ type Contact struct {
 ```go
 contacts := []Contact{
     {
-        Id:       "003Dn00000pEYvvIAG",
+        Id:       "003Dn00000pEfyAIAS",
         LastName: "Fury",
     },
     {
-        Id:       "003Dn00000pEYnnIAG",
+        Id:       "003Dn00000pEfy9IAC",
         LastName: "Odinson",
     },
 }
-err := sf.UpdateCollection("Contact", contacts, true, 200, false)
+err := sf.UpdateCollection("Contact", contacts, 200)
 if err != nil {
     panic(err)
 }
 ```
 
 ### UpsertCollection 
-`func (sf *Salesforce) UpsertCollection(sObjectName string, externalIdFieldName string, records any, allOrNone bool, batchSize int, combineRequests bool) error`
+`func (sf *Salesforce) UpsertCollection(sObjectName string, externalIdFieldName string, records any, batchSize int) error`
 
-UpsertCollection updates (or inserts) a list of salesforce objects using the given ExternalId
-- `externalIdFieldName`: field API name for an external Id that exists on the given object
-- `records`: should be a slice of custom structs representing a list of Salesforce objects
-- `allOrNone`: designates whether to rollback changes if any record fails to succeed
-- `batchSize`: designates the size of batches of records that will be split up
-    - `1 <= batchSize <= 200` 
-- `combineRequests`:
-    - if true, combine http requests into one composite request to limit transaction to a single api call
-        - maximum 25 subrequests per composite request
-        - `number of subrequests = len(records)/batchSize`
-    - if false, a separate api call will be made for each batch
-- A value for the External Id is required
+Updates (or inserts) a list of salesforce records using the given ExternalId
+- `sObjectName`: API name of Salesforce object
+- `records`: a slice of salesforce records
+    - A value for the External Id is required
+- `batchSize`: `1 <= batchSize <= 200`
 
 ```go
 type ContactWithExternalId struct {
@@ -335,26 +321,20 @@ contacts := []ContactWithExternalId{
         LastName:             "Pym",
     },
 }
-err := sf.UpsertCollection("Contact", "ContactExternalId__c", contacts, true, 200, false)
+err := sf.UpsertCollection("Contact", "ContactExternalId__c", contacts, 200)
 if err != nil {
     panic(err)
 }
 ```
 
 ### DeleteCollection
-`func (sf *Salesforce) DeleteCollection(sObjectName string, records any, allOrNone bool, batchSize int, combineRequests bool) error`
+`func (sf *Salesforce) DeleteCollection(sObjectName string, records any, batchSize int) error`
 
-DeleteCollection deletes a list of salesforce records
-- `records`: should be a slice of custom structs representing a list of Salesforce objects
-- `allOrNone`: designates whether to rollback changes if any record fails to succeed
-- `batchSize`: designates the size of batches of records that will be split up
-    - `1 <= batchSize <= 200` 
-- `combineRequests`:
-    - if true, combine http requests into one composite request to limit transaction to a single api call
-        - maximum 25 subrequests per composite request
-        - `number of subrequests = len(records)/batchSize`
-    - if false, a separate api call will be made for each batch
-- An Id value is required
+Deletes a list of salesforce records
+- `sObjectName`: API name of Salesforce object
+- `records`: a slice of salesforce records
+    - An Id is required
+- `batchSize`: `1 <= batchSize <= 200`
 
 ```go
 type Contact struct {
@@ -364,14 +344,150 @@ type Contact struct {
 ```go
 contacts := []Contact{
     {
-        Id: "003Dn00000pEYvvIAG",
+        Id: "003Dn00000pEfyAIAS",
     },
     {
-        Id: "003Dn00000pEYnnIAG",
+        Id: "003Dn00000pEfy9IAC",
     },
 }
-err := sf.DeleteCollection("Contact", contacts, true, 200, false)
+err := sf.DeleteCollection("Contact", contacts, 200)
 if err != nil {
     panic(err)
 }
 ```
+
+## Composite Requests
+Make numerous 'subrequests' contained within a single 'composite request', reducing the overall number of calls to Salesforce
+- [Review Salesforce REST API resources for making composite requests](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/requests_composite.htm)
+- Up to 25 subrequests may be included in a single composite request
+    - For DML operations, size of subrequest is determined by batch size (`number of records / batch size`)
+    - So if batch size is 1, then max number of records to be included in request is 25
+    - If batch size is 200, then max is 5000
+
+### InsertComposite
+`func (sf *Salesforce) InsertComposite(sObjectName string, records any, batchSize int, allOrNone bool) error`
+
+Inserts a list of salesforce records in a single request
+- `sObjectName`: API name of Salesforce object
+- `records`: a slice of salesforce records
+- `batchSize`: `1 <= batchSize <= 200`
+- `allOrNone`: denotes whether to roll back entire operation if a record fails
+
+```go
+type Contact struct {
+	LastName string
+}
+```
+```go
+contacts := []Contact{
+    {
+        LastName: "Parker",
+    },
+    {
+        LastName: "Murdock",
+    },
+}
+err := sf.InsertComposite("Contact", contacts, 200, true)
+if err != nil {
+    panic(err)
+}
+```
+
+### UpdateComposite
+`func (sf *Salesforce) UpdateComposite(sObjectName string, records any, batchSize int, allOrNone bool) error`
+
+Updates a list of salesforce records in a single request
+- `sObjectName`: API name of Salesforce object
+- `records`: a slice of salesforce records
+    - An Id is required
+- `batchSize`: `1 <= batchSize <= 200`
+- `allOrNone`: denotes whether to roll back entire operation if a record fails
+
+```go
+type Contact struct {
+	Id       string
+}
+```
+```go
+contacts := []Contact{
+    {
+        Id:       "003Dn00000pEi32IAC",
+        LastName: "Richards",
+    },
+    {
+        Id:       "003Dn00000pEi31IAC",
+        LastName: "Storm",
+    },
+}
+err := sf.UpdateComposite("Contact", contacts, 200, true)
+if err != nil {
+    panic(err)
+}
+```
+
+### UpsertComposite
+`func (sf *Salesforce) UpsertComposite(sObjectName string, externalIdFieldName string, records any, batchSize int, allOrNone bool) error`
+
+Updates (or inserts) a list of salesforce records using the given ExternalId in a single request
+- `sObjectName`: API name of Salesforce object
+- `records`: a slice of salesforce records
+    - A value for the External Id is required
+- `batchSize`: `1 <= batchSize <= 200`
+- `allOrNone`: denotes whether to roll back entire operation if a record fails
+
+```go
+type ContactWithExternalId struct {
+	ContactExternalId__c string
+	LastName             string
+}
+```
+```go
+contacts := []ContactWithExternalId{
+    {
+        ContactExternalId__c: "Avng3",
+        LastName:             "Maximoff",
+    },
+    {
+        ContactExternalId__c: "Avng4",
+        LastName:             "Wilson",
+    },
+}
+updateErr := sf.UpsertComposite("Contact", "ContactExternalId__c", contacts, 200, true)
+if updateErr != nil {
+    panic(updateErr)
+}
+```
+
+### DeleteComposite
+`func (sf *Salesforce) DeleteComposite(sObjectName string, records any, batchSize int, allOrNone bool) error`
+
+Deletes a list of salesforce records in a single request
+- `sObjectName`: API name of Salesforce object
+- `records`: a slice of salesforce records
+    - An Id is required
+- `batchSize`: `1 <= batchSize <= 200`
+- `allOrNone`: denotes whether to roll back entire operation if a record fails
+
+```go
+type Contact struct {
+	Id       string
+}
+```
+```go
+contacts := []Contact{
+    {
+        Id: "003Dn00000pEi0OIAS",
+    },
+    {
+        Id: "003Dn00000pEi0NIAS",
+    },
+}
+err := sf.DeleteComposite("Contact", contacts, 200, true)
+if err != nil {
+    panic(err)
+}
+```
+
+## Bulk v2
+Create Bulk API Jobs to query, insert, update, upsert, and delete large collections of records
+- [Review Salesforce REST API resources for Bulk v2](https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/bulk_api_2_0.htm)

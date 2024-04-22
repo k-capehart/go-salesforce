@@ -75,7 +75,7 @@ func validateOfTypeStruct(data any) error {
 
 func validateBatchSizeWithinRange(batchSize int) error {
 	if batchSize < 1 || batchSize > batchSizeMax {
-		return errors.New(strconv.Itoa(batchSize) + " is not within: 1 <= batchSize <= " + strconv.Itoa(batchSizeMax))
+		return errors.New("batch size = " + strconv.Itoa(batchSize) + " but must be 1 <= batchSize <= " + strconv.Itoa(batchSizeMax))
 	}
 	return nil
 }
@@ -269,7 +269,63 @@ func (sf *Salesforce) DeleteOne(sObjectName string, record any) error {
 	return nil
 }
 
-func (sf *Salesforce) InsertCollection(sObjectName string, records any, allOrNone bool, batchSize int, combineRequests bool) error {
+func (sf *Salesforce) InsertCollection(sObjectName string, records any, batchSize int) error {
+	validationErr := validateCollections(*sf, records, batchSize)
+	if validationErr != nil {
+		return validationErr
+	}
+
+	dmlErr := doInsertCollection(*sf.auth, sObjectName, records, batchSize)
+	if dmlErr != nil {
+		return dmlErr
+	}
+
+	return nil
+}
+
+func (sf *Salesforce) UpdateCollection(sObjectName string, records any, batchSize int) error {
+	validationErr := validateCollections(*sf, records, batchSize)
+	if validationErr != nil {
+		return validationErr
+	}
+
+	dmlErr := doUpdateCollection(*sf.auth, sObjectName, records, batchSize)
+	if dmlErr != nil {
+		return dmlErr
+	}
+
+	return nil
+}
+
+func (sf *Salesforce) UpsertCollection(sObjectName string, externalIdFieldName string, records any, batchSize int) error {
+	validationErr := validateCollections(*sf, records, batchSize)
+	if validationErr != nil {
+		return validationErr
+	}
+
+	dmlErr := doUpsertCollection(*sf.auth, sObjectName, externalIdFieldName, records, batchSize)
+	if dmlErr != nil {
+		return dmlErr
+	}
+
+	return nil
+}
+
+func (sf *Salesforce) DeleteCollection(sObjectName string, records any, batchSize int) error {
+	validationErr := validateCollections(*sf, records, batchSize)
+	if validationErr != nil {
+		return validationErr
+	}
+
+	dmlErr := doDeleteCollection(*sf.auth, sObjectName, records, batchSize)
+	if dmlErr != nil {
+		return dmlErr
+	}
+
+	return nil
+}
+
+func (sf *Salesforce) InsertComposite(sObjectName string, records any, batchSize int, allOrNone bool) error {
 	validationErr := validateCollections(*sf, records, batchSize)
 	if validationErr != nil {
 		return validationErr
@@ -283,7 +339,7 @@ func (sf *Salesforce) InsertCollection(sObjectName string, records any, allOrNon
 	return nil
 }
 
-func (sf *Salesforce) UpdateCollection(sObjectName string, records any, allOrNone bool, batchSize int, combineRequests bool) error {
+func (sf *Salesforce) UpdateComposite(sObjectName string, records any, batchSize int, allOrNone bool) error {
 	validationErr := validateCollections(*sf, records, batchSize)
 	if validationErr != nil {
 		return validationErr
@@ -297,7 +353,7 @@ func (sf *Salesforce) UpdateCollection(sObjectName string, records any, allOrNon
 	return nil
 }
 
-func (sf *Salesforce) UpsertCollection(sObjectName string, externalIdFieldName string, records any, allOrNone bool, batchSize int, combineRequests bool) error {
+func (sf *Salesforce) UpsertComposite(sObjectName string, externalIdFieldName string, records any, batchSize int, allOrNone bool) error {
 	validationErr := validateCollections(*sf, records, batchSize)
 	if validationErr != nil {
 		return validationErr
@@ -311,7 +367,7 @@ func (sf *Salesforce) UpsertCollection(sObjectName string, externalIdFieldName s
 	return nil
 }
 
-func (sf *Salesforce) DeleteCollection(sObjectName string, records any, allOrNone bool, batchSize int, combineRequests bool) error {
+func (sf *Salesforce) DeleteComposite(sObjectName string, records any, batchSize int, allOrNone bool) error {
 	validationErr := validateCollections(*sf, records, batchSize)
 	if validationErr != nil {
 		return validationErr

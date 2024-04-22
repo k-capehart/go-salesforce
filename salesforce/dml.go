@@ -83,9 +83,53 @@ func doCompositeRequest(auth Auth, compReq compositeRequest) error {
 	return nil
 }
 
-func createCompositeRequest(method string, url string, allOrNone bool, batchSize int, recordMap []map[string]any) (compositeRequest, error) {
+func doBatchedRequestsForCollection(auth Auth, method string, url string, batchSize int, recordMap []map[string]any) error {
+	var dmlErrors error
+
+	for len(recordMap) > 0 {
+		var batch, remaining []map[string]any
+		if len(recordMap) > batchSize {
+			batch, remaining = recordMap[:batchSize], recordMap[batchSize:]
+		} else {
+			batch = recordMap
+		}
+
+		payload := sObjectCollection{
+			AllOrNone: false,
+			Records:   batch,
+		}
+
+		body, err := json.Marshal(payload)
+		if err != nil {
+			dmlErrors = errors.Join(dmlErrors, err)
+		}
+
+		resp, err := doRequest(method, url, jsonType, auth, string(body))
+		if err != nil {
+			dmlErrors = errors.Join(dmlErrors, err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			dmlErrors = errors.Join(dmlErrors, processSalesforceError(*resp))
+		}
+		salesforceErrors := processSalesforceResponse(*resp)
+		if salesforceErrors != nil {
+			dmlErrors = errors.Join(dmlErrors, salesforceErrors)
+		}
+		recordMap = remaining
+	}
+
+	return dmlErrors
+}
+
+func createCompositeRequestForCollection(method string, url string, allOrNone bool, batchSize int, recordMap []map[string]any) (compositeRequest, error) {
 	var subReqs []compositeSubRequest
 	batchNumber := 0
+
+	if len(recordMap)/batchSize > 25 {
+		errorMessage := "compsite requests cannot have more than 25 subrequests. number of subrequests = (number of records) / (batch size)"
+		return compositeRequest{}, errors.New(errorMessage)
+	}
 
 	for len(recordMap) > 0 {
 		var batch, remaining []map[string]any
@@ -258,6 +302,100 @@ func doDeleteOne(auth Auth, sObjectName string, record any) error {
 	return nil
 }
 
+func doInsertCollection(auth Auth, sObjectName string, records any, batchSize int) error {
+	recordMap, err := convertToSliceOfMaps(records)
+	if err != nil {
+		return err
+	}
+	for i := range recordMap {
+		delete(recordMap[i], "Id")
+		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
+	}
+
+	return doBatchedRequestsForCollection(auth, http.MethodPost, "/composite/sobjects/", batchSize, recordMap)
+}
+
+func doUpdateCollection(auth Auth, sObjectName string, records any, batchSize int) error {
+	recordMap, err := convertToSliceOfMaps(records)
+	if err != nil {
+		return err
+	}
+	for i := range recordMap {
+		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
+		recordId, ok := recordMap[i]["Id"].(string)
+		if !ok || recordId == "" {
+			return errors.New("salesforce id not found in object data")
+		}
+	}
+
+	return doBatchedRequestsForCollection(auth, http.MethodPatch, "/composite/sobjects/", batchSize, recordMap)
+}
+
+func doUpsertCollection(auth Auth, sObjectName string, fieldName string, records any, batchSize int) error {
+	recordMap, err := convertToSliceOfMaps(records)
+	if err != nil {
+		return err
+	}
+	for i := range recordMap {
+		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
+		externalIdValue, ok := recordMap[i][fieldName].(string)
+		if !ok || externalIdValue == "" {
+			return errors.New("salesforce externalId: " + fieldName + " not found in " + sObjectName + " data. make sure to append custom fields with '__c'")
+		}
+	}
+
+	uri := "/composite/sobjects/" + sObjectName + "/" + fieldName
+	return doBatchedRequestsForCollection(auth, http.MethodPatch, uri, batchSize, recordMap)
+
+}
+
+func doDeleteCollection(auth Auth, sObjectName string, records any, batchSize int) error {
+	recordMap, err := convertToSliceOfMaps(records)
+	if err != nil {
+		return err
+	}
+
+	var dmlErrors error
+
+	for len(recordMap) > 0 {
+		var batch, remaining []map[string]any
+		if len(recordMap) > batchSize {
+			batch, remaining = recordMap[:batchSize], recordMap[batchSize:]
+		} else {
+			batch = recordMap
+		}
+		var ids string
+		for i := 0; i < len(batch); i++ {
+			recordId, ok := batch[i]["Id"].(string)
+			if !ok || recordId == "" {
+				return errors.New("salesforce id not found in object data")
+			}
+			if i == len(batch)-1 {
+				ids = ids + recordId
+			} else {
+				ids = ids + recordId + ","
+			}
+		}
+
+		resp, err := doRequest(http.MethodDelete, "/composite/sobjects/?ids="+ids+"&allOrNone=false", jsonType, auth, "")
+		if err != nil {
+			return err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return processSalesforceError(*resp)
+		}
+		salesforceErrors := processSalesforceResponse(*resp)
+		if salesforceErrors != nil {
+			return salesforceErrors
+		}
+
+		recordMap = remaining
+	}
+
+	return dmlErrors
+}
+
 func doInsertComposite(auth Auth, sObjectName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
@@ -270,7 +408,7 @@ func doInsertComposite(auth Auth, sObjectName string, records any, allOrNone boo
 	}
 
 	uri := "/services/data/" + apiVersion + "/composite/sobjects"
-	compReq, compositeErr := createCompositeRequest(http.MethodPost, uri, allOrNone, batchSize, recordMap)
+	compReq, compositeErr := createCompositeRequestForCollection(http.MethodPost, uri, allOrNone, batchSize, recordMap)
 	if compositeErr != nil {
 		return compositeErr
 	}
@@ -297,7 +435,7 @@ func doUpdateComposite(auth Auth, sObjectName string, records any, allOrNone boo
 	}
 
 	uri := "/services/data/" + apiVersion + "/composite/sobjects"
-	compReq, compositeErr := createCompositeRequest(http.MethodPatch, uri, allOrNone, batchSize, recordMap)
+	compReq, compositeErr := createCompositeRequestForCollection(http.MethodPatch, uri, allOrNone, batchSize, recordMap)
 	if compositeErr != nil {
 		return compositeErr
 	}
@@ -324,7 +462,7 @@ func doUpsertComposite(auth Auth, sObjectName string, fieldName string, records 
 	}
 
 	uri := "/services/data/" + apiVersion + "/composite/sobjects/" + sObjectName + "/" + fieldName
-	compReq, compositeErr := createCompositeRequest(http.MethodPatch, uri, allOrNone, batchSize, recordMap)
+	compReq, compositeErr := createCompositeRequestForCollection(http.MethodPatch, uri, allOrNone, batchSize, recordMap)
 	if compositeErr != nil {
 		return compositeErr
 	}
