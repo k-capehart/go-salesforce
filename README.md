@@ -90,10 +90,10 @@ if err != nil {
 
 ### QueryStruct 
 `func (sf *Salesforce) QueryStruct(soqlStruct any, sObject any) error`
+- Review [forcedotcom/go-soql](https://github.com/forcedotcom/go-soql)
 
-Pperforms a SOQL query given a go-soql struct and decodes the response into the given struct
+Performs a SOQL query given a go-soql struct and decodes the response into the given struct
 - `soqlStruct`: a custom struct using `soql` tags
-    - Review [forcedotcom/go-soql](https://github.com/forcedotcom/go-soql)
 - `sObject`: a slice of a custom struct type representing a Salesforce Object
 - Eliminates need to separately maintain query string and struct
 - Helps prevent SOQL injection
@@ -210,7 +210,7 @@ if err != nil {
 Deletes a Salesforce record
 - `sObjectName`: API name of Salesforce object
 - `record`: a Salesforce object record
-    - An Id is required
+    - Should only contain an Id
 
 ```go
 type Contact struct {
@@ -333,7 +333,7 @@ if err != nil {
 Deletes a list of salesforce records
 - `sObjectName`: API name of Salesforce object
 - `records`: a slice of salesforce records
-    - An Id is required
+    - Should only contain Ids
 - `batchSize`: `1 <= batchSize <= 200`
 
 ```go
@@ -466,7 +466,7 @@ if updateErr != nil {
 Deletes a list of salesforce records in a single request
 - `sObjectName`: API name of Salesforce object
 - `records`: a slice of salesforce records
-    - An Id is required
+    - Should only contain Ids
 - `batchSize`: `1 <= batchSize <= 200`
 - `allOrNone`: denotes whether to roll back entire operation if a record fails
 
@@ -493,3 +493,195 @@ if err != nil {
 ## Bulk v2
 Create Bulk API Jobs to query, insert, update, upsert, and delete large collections of records
 - [Review Salesforce REST API resources for Bulk v2](https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/bulk_api_2_0.htm)
+- Work with large lists of records by passing either a slice or records or the path to a csv file
+- Jobs can run asynchronously and optionally allow to wait for results or not
+
+### InsertBulk
+`func (sf *Salesforce) InsertBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error)`
+
+Inserts a list of salesforce records using Bulk API v2, returning a list of Job IDs
+- `sObjectName`: API name of Salesforce object
+- `records`: a slice of salesforce records
+- `batchSize`: `1 <= batchSize <= 10000`
+- `waitForResults`: denotes whether to wait for jobs to finish and return any errors if they are encountered during the operation
+
+```go
+type Contact struct {
+	LastName string
+}
+```
+```go
+contacts := []Contact{
+    {
+        LastName: "Lang",
+    },
+    {
+        LastName: "Van Dyne",
+    },
+}
+_, err := sf.InsertBulk("Contact", contacts, 1000, true)
+if err != nil {
+    panic(err)
+}
+```
+
+### UpdateBulk
+`func (sf *Salesforce) UpdateBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error)`
+
+Updates a list of salesforce records using Bulk API v2, returning a list of Job IDs
+- `sObjectName`: API name of Salesforce object
+- `records`: a slice of salesforce records
+    - An Id is required
+- `batchSize`: `1 <= batchSize <= 10000`
+- `waitForResults`: denotes whether to wait for jobs to finish and return any errors if they are encountered during the operation
+
+```go
+type Contact struct {
+	Id       string
+    LastName string
+}
+```
+```go
+contacts := []Contact{
+    {
+        Id:       "003Dn00000pEsoRIAS",
+        LastName: "Strange",
+    },
+    {
+        Id:       "003Dn00000pEsoSIAS",
+        LastName: "T'Challa",
+    },
+}
+_, err := sf.UpdateBulk("Contact", contacts, 1000, true)
+if err != nil {
+    panic(err)
+}
+```
+
+### UpsertBulk
+`func (sf *Salesforce) UpsertBulk(sObjectName string, externalIdFieldName string, records any, batchSize int, waitForResults bool) ([]string, error)`
+
+Updates (or inserts) a list of salesforce records using Bulk API v2, returning a list of Job IDs
+- `sObjectName`: API name of Salesforce object
+- `externalIdFieldName`: field API name for an external Id that exists on the given object
+- `records`: a slice of salesforce records
+    - A value for the External Id is required
+- `batchSize`: `1 <= batchSize <= 10000`
+- `waitForResults`: denotes whether to wait for jobs to finish and return any errors if they are encountered during the operation
+
+```go
+type ContactWithExternalId struct {
+	ContactExternalId__c string
+	LastName             string
+}
+```
+```go
+contacts := []ContactWithExternalId{
+    {
+        ContactExternalId__c: "Avng5",
+        LastName:             "Rhodes",
+    },
+    {
+        ContactExternalId__c: "Avng6",
+        LastName:             "Quill",
+    },
+}
+_, err := sf.UpsertBulk("Contact", "ContactExternalId__c", contacts, 1000, true)
+if err != nil {
+    panic(err)
+}
+```
+
+### DeleteBulk
+`func (sf *Salesforce) DeleteBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error)`
+
+Deletes a list of salesforce records using Bulk API v2, returning a list of Job IDs
+- `sObjectName`: API name of Salesforce object
+- `records`: a slice of salesforce records
+    - should only contain Ids
+- `batchSize`: `1 <= batchSize <= 10000`
+- `waitForResults`: denotes whether to wait for jobs to finish and return any errors if they are encountered during the operation
+
+```go
+type Contact struct {
+	Id       string
+}
+```
+```go
+contacts := []ContactIds{
+    {
+        Id: "003Dn00000pEsoRIAS",
+    },
+    {
+        Id: "003Dn00000pEsoSIAS",
+    },
+}
+_, err := sf.DeleteBulk("Contact", contacts, 1000, true)
+if err != nil {
+    panic(err)
+}
+```
+
+### GetJobResults
+`func (sf *Salesforce) GetJobResults(bulkJobId string) (BulkJobResults, error)`
+
+Returns an instance of BulkJobResults given a Job Id
+- `bulkJobId`: the Id for a bulk API job
+- Can be used when you want to check the results of a job, but at a later time
+
+```go
+// function returns a list of type BulkJobResults, as defined here
+type BulkJobResults struct {
+	Id                  string
+	State               string
+	NumberRecordsFailed int
+	ErrorMessage        string
+}
+```
+```go
+type Contact struct {
+	LastName string
+}
+```
+```go
+contacts := []Contact{
+    {
+        LastName: "Grimm",
+    },
+}
+jobIds, err := sf.InsertBulk("Contact", contacts, 1000, false)
+if err != nil {
+    panic(err)
+}
+time.Sleep(time.Second)
+for _, id := range jobIds {
+    results, err := sf.GetJobResults(id)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println(results)
+}
+```
+
+## Other
+
+### DoRequest
+`func (sf *Salesforce) DoRequest(method string, uri string, body []byte) (*http.Response, error)`
+
+Make a http call to Salesforce, returning a response to be parsed by the client
+- `method`: request method ("GET", "POST", "PUT", "PATCH", "DELETE")
+- `uri`: uniform resource identifier (include everything after `/services/data/apiVersion`)
+- `body`: json encoded body to be included in request
+
+Example to call the `/limits` endpoint
+```go
+resp, err := sf.DoRequest(http.MethodGet, "/limits", nil)
+if err != nil {
+    panic(err)
+}
+respBody, err := io.ReadAll(resp.Body)
+if err != nil {
+    panic(err)
+}
+fmt.Println(string(respBody))
+```

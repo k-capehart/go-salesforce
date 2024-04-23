@@ -27,10 +27,11 @@ type salesforceError struct {
 }
 
 const (
-	apiVersion   = "v60.0"
-	jsonType     = "application/json"
-	csvType      = "text/csv"
-	batchSizeMax = 200
+	apiVersion       = "v60.0"
+	jsonType         = "application/json"
+	csvType          = "text/csv"
+	batchSizeMax     = 200
+	bulkBatchSizeMax = 10000
 )
 
 func doRequest(method string, uri string, content string, auth Auth, body string) (*http.Response, error) {
@@ -40,7 +41,7 @@ func doRequest(method string, uri string, content string, auth Auth, body string
 	endpoint := auth.InstanceUrl + "/services/data/" + apiVersion + uri
 
 	if body != "" {
-		reader = strings.NewReader(string(body))
+		reader = strings.NewReader(body)
 		req, err = http.NewRequest(method, endpoint, reader)
 	} else {
 		req, err = http.NewRequest(method, endpoint, nil)
@@ -51,7 +52,7 @@ func doRequest(method string, uri string, content string, auth Auth, body string
 
 	req.Header.Set("User-Agent", "go-salesforce")
 	req.Header.Set("Content-Type", content)
-	req.Header.Set("Accept", content)
+	req.Header.Set("Accept", jsonType)
 	req.Header.Set("Authorization", "Bearer "+auth.AccessToken)
 
 	return http.DefaultClient.Do(req)
@@ -73,9 +74,9 @@ func validateOfTypeStruct(data any) error {
 	return nil
 }
 
-func validateBatchSizeWithinRange(batchSize int) error {
-	if batchSize < 1 || batchSize > batchSizeMax {
-		return errors.New("batch size = " + strconv.Itoa(batchSize) + " but must be 1 <= batchSize <= " + strconv.Itoa(batchSizeMax))
+func validateBatchSizeWithinRange(batchSize int, max int) error {
+	if batchSize < 1 || batchSize > max {
+		return errors.New("batch size = " + strconv.Itoa(batchSize) + " but must be 1 <= batchSize <= " + strconv.Itoa(max))
 	}
 	return nil
 }
@@ -101,7 +102,23 @@ func validateCollections(sf Salesforce, records any, batchSize int) error {
 	if typErr != nil {
 		return typErr
 	}
-	batchSizeErr := validateBatchSizeWithinRange(batchSize)
+	batchSizeErr := validateBatchSizeWithinRange(batchSize, batchSizeMax)
+	if batchSizeErr != nil {
+		return batchSizeErr
+	}
+	return nil
+}
+
+func validateBulk(sf Salesforce, records any, batchSize int) error {
+	authErr := validateAuth(sf)
+	if authErr != nil {
+		return authErr
+	}
+	typErr := validateOfTypeSlice(records)
+	if typErr != nil {
+		return typErr
+	}
+	batchSizeErr := validateBatchSizeWithinRange(batchSize, bulkBatchSizeMax)
 	if batchSizeErr != nil {
 		return batchSizeErr
 	}
@@ -381,76 +398,60 @@ func (sf *Salesforce) DeleteComposite(sObjectName string, records any, batchSize
 	return nil
 }
 
-func (sf *Salesforce) InsertBulk(sObjectName string, records any, waitForResults bool) (string, error) {
-	authErr := validateAuth(*sf)
-	if authErr != nil {
-		return "", authErr
-	}
-	typErr := validateOfTypeSlice(records)
-	if typErr != nil {
-		return "", typErr
+func (sf *Salesforce) InsertBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
+	validationErr := validateBulk(*sf, records, batchSize)
+	if validationErr != nil {
+		return []string{}, validationErr
 	}
 
-	jobId, bulkErr := doInsertBulk(*sf.auth, sObjectName, records, waitForResults)
+	jobIds, bulkErr := doInsertBulk(*sf.auth, sObjectName, records, batchSize, waitForResults)
 	if bulkErr != nil {
-		return "", bulkErr
+		return []string{}, bulkErr
 	}
 
-	return jobId, nil
+	return jobIds, nil
 }
 
-func (sf *Salesforce) UpdateBulk(sObjectName string, records any, waitForResults bool) (string, error) {
-	authErr := validateAuth(*sf)
-	if authErr != nil {
-		return "", authErr
-	}
-	typErr := validateOfTypeSlice(records)
-	if typErr != nil {
-		return "", typErr
+func (sf *Salesforce) UpdateBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
+	validationErr := validateBulk(*sf, records, batchSize)
+	if validationErr != nil {
+		return []string{}, validationErr
 	}
 
-	jobId, bulkErr := doUpdateBulk(*sf.auth, sObjectName, records, waitForResults)
+	jobIds, bulkErr := doUpdateBulk(*sf.auth, sObjectName, records, batchSize, waitForResults)
 	if bulkErr != nil {
-		return "", bulkErr
+		return []string{}, bulkErr
 	}
 
-	return jobId, nil
+	return jobIds, nil
 }
 
-func (sf *Salesforce) UpsertBulk(sObjectName string, externalIdFieldName string, records any, waitForResults bool) (string, error) {
-	authErr := validateAuth(*sf)
-	if authErr != nil {
-		return "", authErr
-	}
-	typErr := validateOfTypeSlice(records)
-	if typErr != nil {
-		return "", typErr
+func (sf *Salesforce) UpsertBulk(sObjectName string, externalIdFieldName string, records any, batchSize int, waitForResults bool) ([]string, error) {
+	validationErr := validateBulk(*sf, records, batchSize)
+	if validationErr != nil {
+		return []string{}, validationErr
 	}
 
-	jobId, bulkErr := doUpsertBulk(*sf.auth, sObjectName, externalIdFieldName, records, waitForResults)
+	jobIds, bulkErr := doUpsertBulk(*sf.auth, sObjectName, externalIdFieldName, records, batchSize, waitForResults)
 	if bulkErr != nil {
-		return "", bulkErr
+		return []string{}, bulkErr
 	}
 
-	return jobId, nil
+	return jobIds, nil
 }
 
-func (sf *Salesforce) DeleteBulk(sObjectName string, records any, waitForResults bool) (string, error) {
-	authErr := validateAuth(*sf)
-	if authErr != nil {
-		return "", authErr
-	}
-	typErr := validateOfTypeSlice(records)
-	if typErr != nil {
-		return "", typErr
+func (sf *Salesforce) DeleteBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
+	validationErr := validateBulk(*sf, records, batchSize)
+	if validationErr != nil {
+		return []string{}, validationErr
 	}
 
-	jobId, bulkErr := doDeleteBulk(*sf.auth, sObjectName, records, waitForResults)
+	jobIds, bulkErr := doDeleteBulk(*sf.auth, sObjectName, records, batchSize, waitForResults)
 	if bulkErr != nil {
-		return "", bulkErr
+		return []string{}, bulkErr
 	}
 
-	return jobId, nil
+	return jobIds, nil
 }
 
 func (sf *Salesforce) GetJobResults(bulkJobId string) (BulkJobResults, error) {
