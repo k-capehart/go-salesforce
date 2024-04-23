@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-type Auth struct {
+type auth struct {
 	AccessToken string `json:"access_token"`
 	InstanceUrl string `json:"instance_url"`
 	Id          string `json:"id"`
@@ -33,7 +33,7 @@ func validateAuth(sf Salesforce) error {
 	return nil
 }
 
-func loginPassword(domain string, username string, password string, securityToken string, consumerKey string, consumerSecret string) (*Auth, error) {
+func loginPassword(domain string, username string, password string, securityToken string, consumerKey string, consumerSecret string) (*auth, error) {
 	payload := url.Values{
 		"grant_type":    {"password"},
 		"client_id":     {consumerKey},
@@ -56,7 +56,7 @@ func loginPassword(domain string, username string, password string, securityToke
 		return nil, err
 	}
 
-	auth := &Auth{}
+	auth := &auth{}
 	jsonError := json.Unmarshal(respBody, &auth)
 	if jsonError != nil {
 		return nil, jsonError

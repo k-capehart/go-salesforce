@@ -11,7 +11,7 @@ import (
 )
 
 type Salesforce struct {
-	auth *Auth
+	auth *auth
 }
 
 type salesforceErrorMessage struct {
@@ -34,7 +34,7 @@ const (
 	bulkBatchSizeMax = 10000
 )
 
-func doRequest(method string, uri string, content string, auth Auth, body string) (*http.Response, error) {
+func doRequest(method string, uri string, content string, auth auth, body string) (*http.Response, error) {
 	var reader *strings.Reader
 	var req *http.Request
 	var err error
@@ -165,7 +165,7 @@ func processSalesforceResponse(resp http.Response) error {
 }
 
 func Init(creds Creds) (*Salesforce, error) {
-	var auth *Auth
+	var auth *auth
 	var err error
 	if creds != (Creds{}) &&
 		creds.Domain != "" && creds.Username != "" &&

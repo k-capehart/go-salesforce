@@ -65,7 +65,7 @@ func convertToSliceOfMaps(obj any) ([]map[string]any, error) {
 	return recordMap, nil
 }
 
-func doCompositeRequest(auth Auth, compReq compositeRequest) error {
+func doCompositeRequest(auth auth, compReq compositeRequest) error {
 	body, jsonErr := json.Marshal(compReq)
 	if jsonErr != nil {
 		return jsonErr
@@ -84,7 +84,7 @@ func doCompositeRequest(auth Auth, compReq compositeRequest) error {
 	return nil
 }
 
-func doBatchedRequestsForCollection(auth Auth, method string, url string, batchSize int, recordMap []map[string]any) error {
+func doBatchedRequestsForCollection(auth auth, method string, url string, batchSize int, recordMap []map[string]any) error {
 	var dmlErrors error
 
 	for len(recordMap) > 0 {
@@ -203,7 +203,7 @@ func processCompositeResponse(resp http.Response) error {
 	return errorResponse
 }
 
-func doInsertOne(auth Auth, sObjectName string, record any) error {
+func doInsertOne(auth auth, sObjectName string, record any) error {
 	recordMap, err := convertToMap(record)
 	if err != nil {
 		return err
@@ -227,7 +227,7 @@ func doInsertOne(auth Auth, sObjectName string, record any) error {
 	return nil
 }
 
-func doUpdateOne(auth Auth, sObjectName string, record any) error {
+func doUpdateOne(auth auth, sObjectName string, record any) error {
 	recordMap, err := convertToMap(record)
 	if err != nil {
 		return err
@@ -257,7 +257,7 @@ func doUpdateOne(auth Auth, sObjectName string, record any) error {
 	return nil
 }
 
-func doUpsertOne(auth Auth, sObjectName string, fieldName string, record any) error {
+func doUpsertOne(auth auth, sObjectName string, fieldName string, record any) error {
 	recordMap, err := convertToMap(record)
 	if err != nil {
 		return err
@@ -289,7 +289,7 @@ func doUpsertOne(auth Auth, sObjectName string, fieldName string, record any) er
 	return nil
 }
 
-func doDeleteOne(auth Auth, sObjectName string, record any) error {
+func doDeleteOne(auth auth, sObjectName string, record any) error {
 	recordMap, err := convertToMap(record)
 	if err != nil {
 		return err
@@ -312,7 +312,7 @@ func doDeleteOne(auth Auth, sObjectName string, record any) error {
 	return nil
 }
 
-func doInsertCollection(auth Auth, sObjectName string, records any, batchSize int) error {
+func doInsertCollection(auth auth, sObjectName string, records any, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -325,7 +325,7 @@ func doInsertCollection(auth Auth, sObjectName string, records any, batchSize in
 	return doBatchedRequestsForCollection(auth, http.MethodPost, "/composite/sobjects/", batchSize, recordMap)
 }
 
-func doUpdateCollection(auth Auth, sObjectName string, records any, batchSize int) error {
+func doUpdateCollection(auth auth, sObjectName string, records any, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -341,7 +341,7 @@ func doUpdateCollection(auth Auth, sObjectName string, records any, batchSize in
 	return doBatchedRequestsForCollection(auth, http.MethodPatch, "/composite/sobjects/", batchSize, recordMap)
 }
 
-func doUpsertCollection(auth Auth, sObjectName string, fieldName string, records any, batchSize int) error {
+func doUpsertCollection(auth auth, sObjectName string, fieldName string, records any, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -359,7 +359,7 @@ func doUpsertCollection(auth Auth, sObjectName string, fieldName string, records
 
 }
 
-func doDeleteCollection(auth Auth, sObjectName string, records any, batchSize int) error {
+func doDeleteCollection(auth auth, sObjectName string, records any, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -406,7 +406,7 @@ func doDeleteCollection(auth Auth, sObjectName string, records any, batchSize in
 	return dmlErrors
 }
 
-func doInsertComposite(auth Auth, sObjectName string, records any, allOrNone bool, batchSize int) error {
+func doInsertComposite(auth auth, sObjectName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -430,7 +430,7 @@ func doInsertComposite(auth Auth, sObjectName string, records any, allOrNone boo
 	return nil
 }
 
-func doUpdateComposite(auth Auth, sObjectName string, records any, allOrNone bool, batchSize int) error {
+func doUpdateComposite(auth auth, sObjectName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -457,7 +457,7 @@ func doUpdateComposite(auth Auth, sObjectName string, records any, allOrNone boo
 	return nil
 }
 
-func doUpsertComposite(auth Auth, sObjectName string, fieldName string, records any, allOrNone bool, batchSize int) error {
+func doUpsertComposite(auth auth, sObjectName string, fieldName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -484,7 +484,7 @@ func doUpsertComposite(auth Auth, sObjectName string, fieldName string, records 
 	return nil
 }
 
-func doDeleteComposite(auth Auth, sObjectName string, records any, allOrNone bool, batchSize int) error {
+func doDeleteComposite(auth auth, sObjectName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err

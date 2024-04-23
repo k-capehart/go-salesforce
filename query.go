@@ -18,7 +18,7 @@ type queryResponse struct {
 	Records        []map[string]any `json:"records"`
 }
 
-func performQuery(auth Auth, query string, sObject any) error {
+func performQuery(auth auth, query string, sObject any) error {
 	query = url.QueryEscape(query)
 	queryResp := &queryResponse{
 		Done:           false,
@@ -61,7 +61,7 @@ func performQuery(auth Auth, query string, sObject any) error {
 	return nil
 }
 
-func marshalQueryStruct(auth Auth, soqlStruct any, sObject any) error {
+func marshalQueryStruct(auth auth, soqlStruct any, sObject any) error {
 	soqlQuery, err := soql.Marshal(soqlStruct)
 	if err != nil {
 		return err

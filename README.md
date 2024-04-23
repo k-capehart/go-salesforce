@@ -24,14 +24,6 @@ type Salesforce struct {
 	auth *Auth
 }
 
-type Auth struct {
-    AccessToken string `json:"access_token"`
-    InstanceUrl string `json:"instance_url"`
-    Id          string `json:"id"`
-    IssuedAt    string `json:"issued_at"`
-    Signature   string `json:"signature"`
-}
-
 type Creds struct {
     Domain         string
     Username       string
