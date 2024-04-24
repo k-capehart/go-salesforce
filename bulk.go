@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -210,6 +211,33 @@ func mapsToCSV(maps []map[string]any) (string, error) {
 	return buf.String(), nil
 }
 
+func readCSVFile(filePath string) ([]map[string]string, error) {
+	file, fileErr := os.Open(filePath)
+	if fileErr != nil {
+		return nil, fileErr
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	records, readErr := reader.ReadAll()
+	if readErr != nil {
+		return nil, readErr
+	}
+
+	keys := records[0]
+
+	var recordMap []map[string]string
+	for _, row := range records[1:] {
+		record := make(map[string]string)
+		for i, col := range row {
+			record[keys[i]] = col
+		}
+		recordMap = append(recordMap, record)
+	}
+
+	return recordMap, nil
+}
+
 func doBulkJob(auth auth, sObjectName string, fieldName string, operation string, records any, batchSize int, waitForResults bool) ([]string, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
@@ -283,14 +311,46 @@ func doInsertBulk(auth auth, sObjectName string, records any, batchSize int, wai
 	return doBulkJob(auth, sObjectName, "", insertOperation, records, batchSize, waitForResults)
 }
 
+func doInsertBulkFile(auth auth, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
+	data, err := readCSVFile(filePath)
+	if err != nil {
+		return []string{}, err
+	}
+	return doBulkJob(auth, sObjectName, "", insertOperation, data, batchSize, waitForResults)
+}
+
 func doUpdateBulk(auth auth, sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
 	return doBulkJob(auth, sObjectName, "", updateOperation, records, batchSize, waitForResults)
+}
+
+func doUpdateBulkFile(auth auth, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
+	data, err := readCSVFile(filePath)
+	if err != nil {
+		return []string{}, err
+	}
+	return doBulkJob(auth, sObjectName, "", updateOperation, data, batchSize, waitForResults)
 }
 
 func doUpsertBulk(auth auth, sObjectName string, fieldName string, records any, batchSize int, waitForResults bool) ([]string, error) {
 	return doBulkJob(auth, sObjectName, fieldName, upsertOperation, records, batchSize, waitForResults)
 }
 
+func doUpsertBulkFile(auth auth, sObjectName string, fieldName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
+	data, err := readCSVFile(filePath)
+	if err != nil {
+		return []string{}, err
+	}
+	return doBulkJob(auth, sObjectName, fieldName, upsertOperation, data, batchSize, waitForResults)
+}
+
 func doDeleteBulk(auth auth, sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
 	return doBulkJob(auth, sObjectName, "", deleteOperation, records, batchSize, waitForResults)
+}
+
+func doDeleteBulkFile(auth auth, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
+	data, err := readCSVFile(filePath)
+	if err != nil {
+		return []string{}, err
+	}
+	return doBulkJob(auth, sObjectName, "", deleteOperation, data, batchSize, waitForResults)
 }

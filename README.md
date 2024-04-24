@@ -21,7 +21,7 @@ go get github.com/k-capehart/go-salesforce
 ### Structs
 ```go
 type Salesforce struct {
-	auth *Auth
+	auth *auth
 }
 
 type Creds struct {
@@ -486,7 +486,17 @@ if err != nil {
 Create Bulk API Jobs to query, insert, update, upsert, and delete large collections of records
 - [Review Salesforce REST API resources for Bulk v2](https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/bulk_api_2_0.htm)
 - Work with large lists of records by passing either a slice or records or the path to a csv file
-- Jobs can run asynchronously and optionally allow to wait for results or not
+- Jobs can run asynchronously and optionally wait for them to finish so errors are available
+
+### Structs
+```go
+type BulkJobResults struct {
+	Id                  string
+	State               string
+	NumberRecordsFailed int
+	ErrorMessage        string
+}
+```
 
 ### InsertBulk
 `func (sf *Salesforce) InsertBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error)`
@@ -512,6 +522,29 @@ contacts := []Contact{
     },
 }
 _, err := sf.InsertBulk("Contact", contacts, 1000, true)
+if err != nil {
+    panic(err)
+}
+```
+
+### InsertBulkFile
+`func (sf *Salesforce) InsertBulkFile(sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error)`
+
+Inserts a collection of salesforce records from a csv file using Bulk API v2, returning a list of Job IDs
+- `sObjectName`: API name of Salesforce object
+- `filePath`: path to a csv file containing salesforce data
+- `batchSize`: `1 <= batchSize <= 10000`
+- `waitForResults`: denotes whether to wait for jobs to finish and return any errors if they are encountered during the operation
+
+`data/avengers.csv`
+```
+FirstName,LastName
+Tony,Stark
+Steve,Rogers
+Bruce,Banner
+```
+```go
+_, err := sf.InsertBulkFile("Contact", "data/avengers.csv", 1000, true)
 if err != nil {
     panic(err)
 }
@@ -545,6 +578,33 @@ contacts := []Contact{
     },
 }
 _, err := sf.UpdateBulk("Contact", contacts, 1000, true)
+if err != nil {
+    panic(err)
+}
+```
+
+### UpdateBulkFile
+`func (sf *Salesforce) UpdateBulkFile(sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error)`
+
+Updates a collection of salesforce records from a csv file using Bulk API v2, returning a list of Job IDs
+- `sObjectName`: API name of Salesforce object
+- `filePath`: path to a csv file containing salesforce data
+    - An Id is required within csv data
+- `batchSize`: `1 <= batchSize <= 10000`
+- `waitForResults`: denotes whether to wait for jobs to finish and return any errors if they are encountered during the operation
+
+`data/update_avengers.csv`
+```
+Id,FirstName,LastName
+003Dn00000pEwRuIAK,Rocket,Raccoon
+003Dn00000pEwQxIAK,Drax,The Destroyer
+003Dn00000pEwQyIAK,Peter,Quill
+003Dn00000pEwQzIAK,I Am,Groot
+003Dn00000pEwR0IAK,Gamora,Zen Whoberi Ben Titan
+003Dn00000pEwR1IAK,Mantis,Mantis
+```
+```go
+_, err := sf.UpdateBulkFile("Contact", "data/update_avengers.csv", 1000, true)
 if err != nil {
     panic(err)
 }
@@ -584,6 +644,32 @@ if err != nil {
 }
 ```
 
+### UpsertBulkFile
+`func (sf *Salesforce) UpsertBulkFile(sObjectName string, externalIdFieldName string, filePath string, batchSize int, waitForResults bool) ([]string, error)`
+
+Updates (or inserts) a collection of salesforce records from a csv file using Bulk API v2, returning a list of Job IDs
+- `sObjectName`: API name of Salesforce object
+- `externalIdFieldName`: field API name for an external Id that exists on the given object
+- `filePath`: path to a csv file containing salesforce data
+    - A value for the External Id is required within csv data
+- `batchSize`: `1 <= batchSize <= 10000`
+- `waitForResults`: denotes whether to wait for jobs to finish and return any errors if they are encountered during the operation
+
+`data/upsert_avengers.csv`
+```
+ContactExternalId__c,FirstName,LastName
+Avng7,Matt,Murdock
+Avng8,Luke,Cage
+Avng9,Jessica,Jones
+Avng10,Danny,Rand
+```
+```go
+_, err := sf.UpsertBulkFile("Contact", "ContactExternalId__c", "data/upsert_avengers.csv", 1000, true)
+if err != nil {
+    panic(err)
+}
+```
+
 ### DeleteBulk
 `func (sf *Salesforce) DeleteBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error)`
 
@@ -614,6 +700,33 @@ if err != nil {
 }
 ```
 
+### DeleteBulkFile
+`func (sf *Salesforce) DeleteBulkFile(sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error)`
+
+Deletes a collection of salesforce records from a csv file using Bulk API v2, returning a list of Job IDs
+- `sObjectName`: API name of Salesforce object
+- `filePath`: path to a csv file containing salesforce data
+    - should only contain Ids
+- `batchSize`: `1 <= batchSize <= 10000`
+- `waitForResults`: denotes whether to wait for jobs to finish and return any errors if they are encountered during the operation
+
+`data/delete_avengers.csv`
+```
+Id
+003Dn00000pEwRuIAK
+003Dn00000pEwQxIAK
+003Dn00000pEwQyIAK
+003Dn00000pEwQzIAK
+003Dn00000pEwR0IAK
+003Dn00000pEwR1IAK
+```
+```go
+_, err := sf.DeleteBulkFile("Contact", "data/delete_avengers.csv", 1000, true)
+if err != nil {
+    panic(err)
+}
+```
+
 ### GetJobResults
 `func (sf *Salesforce) GetJobResults(bulkJobId string) (BulkJobResults, error)`
 
@@ -621,15 +734,6 @@ Returns an instance of BulkJobResults given a Job Id
 - `bulkJobId`: the Id for a bulk API job
 - Can be used when you want to check the results of a job, but at a later time
 
-```go
-// function returns a list of type BulkJobResults, as defined here
-type BulkJobResults struct {
-	Id                  string
-	State               string
-	NumberRecordsFailed int
-	ErrorMessage        string
-}
-```
 ```go
 type Contact struct {
 	LastName string
@@ -647,7 +751,7 @@ if err != nil {
 }
 time.Sleep(time.Second)
 for _, id := range jobIds {
-    results, err := sf.GetJobResults(id)
+    results, err := sf.GetJobResults(id) // returns an instance of BulkJobResults
     if err != nil {
         panic(err)
     }
