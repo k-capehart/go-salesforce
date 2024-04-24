@@ -82,13 +82,13 @@ if err != nil {
 
 ### QueryStruct 
 `func (sf *Salesforce) QueryStruct(soqlStruct any, sObject any) error`
-- Review [forcedotcom/go-soql](https://github.com/forcedotcom/go-soql)
 
 Performs a SOQL query given a go-soql struct and decodes the response into the given struct
 - `soqlStruct`: a custom struct using `soql` tags
 - `sObject`: a slice of a custom struct type representing a Salesforce Object
-- Eliminates need to separately maintain query string and struct
-- Helps prevent SOQL injection
+- Review [forcedotcom/go-soql](https://github.com/forcedotcom/go-soql)
+    - Eliminates need to separately maintain query string and struct
+    - Helps prevent SOQL injection
 
 ```go
 type Contact struct {
@@ -495,6 +495,51 @@ type BulkJobResults struct {
 	State               string
 	NumberRecordsFailed int
 	ErrorMessage        string
+}
+```
+
+### QueryBulkExport
+`func (sf *Salesforce) QueryBulkExport(filePath string, query string) error`
+
+Performs a query and exports the data to a csv file
+- `filePath`: name and path of a csv file to be created
+- `query`: a SOQL query
+
+```go
+err := sf.QueryBulkExport("data/export.csv", "SELECT Id, FirstName, LastName FROM Contact")
+if err != nil {
+    panic(err)
+}
+```
+
+### QueryStructBulkExport
+`func (sf *Salesforce) QueryStructBulkExport(filePath string, soqlStruct any) error`
+
+Performs a SOQL query given a go-soql struct and decodes the response into the given struct
+- `filePath`: name and path of a csv file to be created
+- `soqlStruct`: a custom struct using `soql` tags
+- Review [forcedotcom/go-soql](https://github.com/forcedotcom/go-soql)
+    - Eliminates need to separately maintain query string and struct
+    - Helps prevent SOQL injection
+
+```go
+type ContactSoql struct {
+	Id        string `soql:"selectColumn,fieldName=Id" json:"Id"`
+	FirstName string `soql:"selectColumn,fieldName=FirstName" json:"FirstName"`
+	LastName  string `soql:"selectColumn,fieldName=LastName" json:"LastName"`
+}
+
+type ContactSoqlQuery struct {
+	SelectClause ContactSoql          `soql:"selectClause,tableName=Contact"`
+}
+```
+```go
+soqlStruct := ContactSoqlQuery{
+    SelectClause: ContactSoql{},
+}
+err := sf.QueryStructBulkExport("data/export2.csv", soqlStruct)
+if err != nil {
+    panic(err)
 }
 ```
 

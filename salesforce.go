@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/forcedotcom/go-soql"
 )
 
 type Salesforce struct {
@@ -52,7 +54,7 @@ func doRequest(method string, uri string, content string, auth auth, body string
 
 	req.Header.Set("User-Agent", "go-salesforce")
 	req.Header.Set("Content-Type", content)
-	req.Header.Set("Accept", jsonType)
+	req.Header.Set("Accept", content)
 	req.Header.Set("Authorization", "Bearer "+auth.AccessToken)
 
 	return http.DefaultClient.Do(req)
@@ -217,12 +219,16 @@ func (sf *Salesforce) Query(query string, sObject any) error {
 }
 
 func (sf *Salesforce) QueryStruct(soqlStruct any, sObject any) error {
-	authErr := validateAuth(*sf)
-	if authErr != nil {
-		return authErr
+	validationErr := validateSingles(*sf, soqlStruct)
+	if validationErr != nil {
+		return validationErr
 	}
 
-	queryErr := marshalQueryStruct(*sf.auth, soqlStruct, sObject)
+	soqlQuery, err := soql.Marshal(soqlStruct)
+	if err != nil {
+		return err
+	}
+	queryErr := performQuery(*sf.auth, soqlQuery, sObject)
 	if queryErr != nil {
 		return queryErr
 	}
@@ -233,7 +239,7 @@ func (sf *Salesforce) QueryStruct(soqlStruct any, sObject any) error {
 func (sf *Salesforce) InsertOne(sObjectName string, record any) error {
 	validationErr := validateSingles(*sf, record)
 	if validationErr != nil {
-		return nil
+		return validationErr
 	}
 
 	dmlErr := doInsertOne(*sf.auth, sObjectName, record)
@@ -247,7 +253,7 @@ func (sf *Salesforce) InsertOne(sObjectName string, record any) error {
 func (sf *Salesforce) UpdateOne(sObjectName string, record any) error {
 	validationErr := validateSingles(*sf, record)
 	if validationErr != nil {
-		return nil
+		return validationErr
 	}
 
 	dmlErr := doUpdateOne(*sf.auth, sObjectName, record)
@@ -261,7 +267,7 @@ func (sf *Salesforce) UpdateOne(sObjectName string, record any) error {
 func (sf *Salesforce) UpsertOne(sObjectName string, externalIdFieldName string, record any) error {
 	validationErr := validateSingles(*sf, record)
 	if validationErr != nil {
-		return nil
+		return validationErr
 	}
 
 	dmlErr := doUpsertOne(*sf.auth, sObjectName, externalIdFieldName, record)
@@ -275,7 +281,7 @@ func (sf *Salesforce) UpsertOne(sObjectName string, externalIdFieldName string, 
 func (sf *Salesforce) DeleteOne(sObjectName string, record any) error {
 	validationErr := validateSingles(*sf, record)
 	if validationErr != nil {
-		return nil
+		return validationErr
 	}
 
 	dmlErr := doDeleteOne(*sf.auth, sObjectName, record)
@@ -393,6 +399,37 @@ func (sf *Salesforce) DeleteComposite(sObjectName string, records any, batchSize
 	dmlErr := doDeleteComposite(*sf.auth, sObjectName, records, allOrNone, batchSize)
 	if dmlErr != nil {
 		return dmlErr
+	}
+
+	return nil
+}
+
+func (sf *Salesforce) QueryBulkExport(filePath string, query string) error {
+	authErr := validateAuth(*sf)
+	if authErr != nil {
+		return authErr
+	}
+	queryErr := doQueryBulk(*sf.auth, filePath, query)
+	if queryErr != nil {
+		return queryErr
+	}
+
+	return nil
+}
+
+func (sf *Salesforce) QueryStructBulkExport(filePath string, soqlStruct any) error {
+	validationErr := validateSingles(*sf, soqlStruct)
+	if validationErr != nil {
+		return validationErr
+	}
+
+	soqlQuery, err := soql.Marshal(soqlStruct)
+	if err != nil {
+		return err
+	}
+	queryErr := doQueryBulk(*sf.auth, filePath, soqlQuery)
+	if queryErr != nil {
+		return queryErr
 	}
 
 	return nil
@@ -516,7 +553,7 @@ func (sf *Salesforce) GetJobResults(bulkJobId string) (BulkJobResults, error) {
 		return BulkJobResults{}, authErr
 	}
 
-	job, err := getJobResults(*sf.auth, bulkJobId)
+	job, err := getJobResults(*sf.auth, ingestJobType, bulkJobId)
 	if err != nil {
 		return BulkJobResults{}, err
 	}

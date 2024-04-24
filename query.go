@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/forcedotcom/go-soql"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -57,17 +56,6 @@ func performQuery(auth auth, query string, sObject any) error {
 	if sObjectError != nil {
 		return sObjectError
 	}
-
-	return nil
-}
-
-func marshalQueryStruct(auth auth, soqlStruct any, sObject any) error {
-	soqlQuery, err := soql.Marshal(soqlStruct)
-	if err != nil {
-		return err
-	}
-
-	performQuery(auth, soqlQuery, sObject)
 
 	return nil
 }
