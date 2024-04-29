@@ -63,7 +63,7 @@ func doRequest(method string, uri string, content string, auth auth, body string
 func validateOfTypeSlice(data any) error {
 	t := reflect.TypeOf(data).Kind().String()
 	if t != "slice" {
-		return errors.New("expected a slice")
+		return errors.New("expected a slice, got: " + t)
 	}
 	return nil
 }
@@ -71,7 +71,7 @@ func validateOfTypeSlice(data any) error {
 func validateOfTypeStruct(data any) error {
 	t := reflect.TypeOf(data).Kind().String()
 	if t != "struct" {
-		return errors.New("expected a custom struct type")
+		return errors.New("expected a struct type, got: " + t)
 	}
 	return nil
 }
