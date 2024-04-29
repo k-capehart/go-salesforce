@@ -40,9 +40,9 @@ type BulkJobResults struct {
 }
 
 type bulkJobQueryResults struct {
-	NumberOfRecords int    `json:"Sforce-Numberofrecords"`
-	Locator         string `json:"Sforce-Locator"`
-	Data            []map[string]string
+	NumberOfRecords int        `json:"Sforce-Numberofrecords"`
+	Locator         string     `json:"Sforce-Locator"`
+	Data            [][]string `json:"data"`
 }
 
 const (
@@ -55,7 +55,6 @@ const (
 	updateOperation        = "update"
 	upsertOperation        = "upsert"
 	deleteOperation        = "delete"
-	queryOperation         = "query"
 	ingestJobType          = "ingest"
 	queryJobType           = "query"
 )
@@ -182,7 +181,7 @@ func getQueryJobResults(auth auth, bulkJobId string, locator string) (bulkJobQue
 	}
 
 	reader := csv.NewReader(resp.Body)
-	recordMap, readErr := csvToMap(*reader)
+	records, readErr := reader.ReadAll()
 	if readErr != nil {
 		return bulkJobQueryResults{}, readErr
 	}
@@ -195,13 +194,13 @@ func getQueryJobResults(auth auth, bulkJobId string, locator string) (bulkJobQue
 	queryResults := bulkJobQueryResults{
 		NumberOfRecords: numberOfRecords,
 		Locator:         locator,
-		Data:            recordMap,
+		Data:            records,
 	}
 
 	return queryResults, nil
 }
 
-func waitForQueryResults(auth auth, bulkJobId string) ([]map[string]string, error) {
+func waitForQueryResults(auth auth, bulkJobId string) ([][]string, error) {
 	err := wait.PollUntilContextTimeout(context.Background(), time.Second, time.Minute, false, func(context.Context) (bool, error) {
 		bulkJob, reqErr := getJobResults(auth, queryJobType, bulkJobId)
 		if reqErr != nil {
@@ -223,7 +222,7 @@ func waitForQueryResults(auth auth, bulkJobId string) ([]map[string]string, erro
 		if resultsErr != nil {
 			return nil, resultsErr
 		}
-		records = append(records, queryResults.Data...)
+		records = append(records, queryResults.Data[1:]...) // don't include headers in subsequent batches
 	}
 
 	return records, nil
@@ -330,7 +329,7 @@ func csvToMap(reader csv.Reader) ([]map[string]string, error) {
 	return recordMap, nil
 }
 
-func readCSVFile(filePath string) ([]map[string]string, error) {
+func readCSVFile(filePath string) ([][]string, error) {
 	file, fileErr := os.Open(filePath)
 	if fileErr != nil {
 		return nil, fileErr
@@ -338,12 +337,12 @@ func readCSVFile(filePath string) ([]map[string]string, error) {
 	defer file.Close()
 
 	reader := csv.NewReader(file)
-	recordMap, readErr := csvToMap(*reader)
+	records, readErr := reader.ReadAll()
 	if readErr != nil {
 		return nil, readErr
 	}
 
-	return recordMap, nil
+	return records, nil
 }
 
 func writeCSVFile(filePath string, data [][]string) error {
@@ -358,6 +357,29 @@ func writeCSVFile(filePath string, data [][]string) error {
 	writer.WriteAll(data)
 
 	return nil
+}
+
+func constructBulkJobRequest(auth auth, sObjectName string, operation string, fieldName string) (bulkJob, error) {
+	jobReq := bulkJobCreationRequest{
+		Object:              sObjectName,
+		Operation:           operation,
+		ExternalIdFieldName: fieldName,
+	}
+	body, jsonError := json.Marshal(jobReq)
+	if jsonError != nil {
+		return bulkJob{}, jsonError
+	}
+
+	job, jobCreationErr := createBulkJob(auth, ingestJobType, body)
+	if jobCreationErr != nil {
+		return bulkJob{}, jobCreationErr
+	}
+	if job.Id == "" || job.State != jobStateOpen {
+		newErr := errors.New("error creating bulk data job: id does not exist or job closed prematurely")
+		return job, newErr
+	}
+
+	return job, nil
 }
 
 func doBulkJob(auth auth, sObjectName string, fieldName string, operation string, records any, batchSize int, waitForResults bool) ([]string, error) {
@@ -377,25 +399,9 @@ func doBulkJob(auth auth, sObjectName string, fieldName string, operation string
 			batch = recordMap
 		}
 
-		jobReq := bulkJobCreationRequest{
-			Object:              sObjectName,
-			Operation:           operation,
-			ExternalIdFieldName: fieldName,
-		}
-		body, jsonError := json.Marshal(jobReq)
-		if jsonError != nil {
-			jobErrors = errors.Join(jobErrors, jsonError)
-			break
-		}
-
-		job, jobCreationErr := createBulkJob(auth, ingestJobType, body)
-		if jobCreationErr != nil {
-			jobErrors = errors.Join(jobErrors, jobCreationErr)
-			break
-		}
-		if job.Id == "" || job.State != jobStateOpen {
-			newErr := errors.New("error creating bulk data job: id does not exist or job closed prematurely")
-			jobErrors = errors.Join(jobErrors, newErr)
+		job, constructJobErr := constructBulkJobRequest(auth, sObjectName, operation, fieldName)
+		if constructJobErr != nil {
+			jobErrors = errors.Join(jobErrors, constructJobErr)
 			break
 		}
 		jobIds = append(jobIds, job.Id)
@@ -429,9 +435,69 @@ func doBulkJob(auth auth, sObjectName string, fieldName string, operation string
 	return jobIds, jobErrors
 }
 
+func doBulkJobWithFile(auth auth, sObjectName string, fieldName string, operation string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
+	var jobErrors error
+	var jobIds []string
+
+	records, readErr := readCSVFile(filePath)
+	if readErr != nil {
+		return jobIds, readErr
+	}
+
+	headers := records[0]
+	records = records[1:]
+	for len(records) > 0 {
+		var batch [][]string
+		var remaining [][]string
+		if len(records) > batchSize {
+			batch, remaining = records[:batchSize], records[batchSize:]
+		} else {
+			batch = records
+		}
+
+		job, constructJobErr := constructBulkJobRequest(auth, sObjectName, operation, fieldName)
+		if constructJobErr != nil {
+			jobErrors = errors.Join(jobErrors, constructJobErr)
+			break
+		}
+		jobIds = append(jobIds, job.Id)
+
+		var buf bytes.Buffer
+		w := csv.NewWriter(&buf)
+		batch = append([][]string{headers}, batch...)
+		w.WriteAll(batch)
+		w.Flush()
+		writeErr := w.Error()
+		if writeErr != nil {
+			jobErrors = errors.Join(jobErrors, writeErr)
+			break
+		}
+
+		uploadErr := uploadJobData(auth, buf.String(), job)
+		if uploadErr != nil {
+			jobErrors = errors.Join(jobErrors, uploadErr)
+		}
+
+		records = remaining
+	}
+
+	if waitForResults {
+		for _, id := range jobIds {
+			c := make(chan error)
+			go waitForJobResult(auth, id, c)
+			jobError := <-c
+			if jobError != nil {
+				jobErrors = errors.Join(jobErrors, jobError)
+			}
+		}
+	}
+
+	return jobIds, jobErrors
+}
+
 func doQueryBulk(auth auth, filePath string, query string) error {
 	queryJobReq := bulkQueryJobCreationRequest{
-		Operation: queryOperation,
+		Operation: queryJobType,
 		Query:     query,
 	}
 	body, jsonErr := json.Marshal(queryJobReq)
@@ -452,11 +518,7 @@ func doQueryBulk(auth auth, filePath string, query string) error {
 	if jobErr != nil {
 		return jobErr
 	}
-	data, convertErr := mapsToCSVSlices(records)
-	if convertErr != nil {
-		return convertErr
-	}
-	writeErr := writeCSVFile(filePath, data)
+	writeErr := writeCSVFile(filePath, records)
 	if writeErr != nil {
 		return writeErr
 	}
@@ -469,11 +531,7 @@ func doInsertBulk(auth auth, sObjectName string, records any, batchSize int, wai
 }
 
 func doInsertBulkFile(auth auth, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
-	data, err := readCSVFile(filePath)
-	if err != nil {
-		return []string{}, err
-	}
-	return doBulkJob(auth, sObjectName, "", insertOperation, data, batchSize, waitForResults)
+	return doBulkJobWithFile(auth, sObjectName, "", insertOperation, filePath, batchSize, waitForResults)
 }
 
 func doUpdateBulk(auth auth, sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
@@ -481,11 +539,7 @@ func doUpdateBulk(auth auth, sObjectName string, records any, batchSize int, wai
 }
 
 func doUpdateBulkFile(auth auth, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
-	data, err := readCSVFile(filePath)
-	if err != nil {
-		return []string{}, err
-	}
-	return doBulkJob(auth, sObjectName, "", updateOperation, data, batchSize, waitForResults)
+	return doBulkJobWithFile(auth, sObjectName, "", updateOperation, filePath, batchSize, waitForResults)
 }
 
 func doUpsertBulk(auth auth, sObjectName string, fieldName string, records any, batchSize int, waitForResults bool) ([]string, error) {
@@ -493,11 +547,7 @@ func doUpsertBulk(auth auth, sObjectName string, fieldName string, records any, 
 }
 
 func doUpsertBulkFile(auth auth, sObjectName string, fieldName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
-	data, err := readCSVFile(filePath)
-	if err != nil {
-		return []string{}, err
-	}
-	return doBulkJob(auth, sObjectName, fieldName, upsertOperation, data, batchSize, waitForResults)
+	return doBulkJobWithFile(auth, sObjectName, fieldName, upsertOperation, filePath, batchSize, waitForResults)
 }
 
 func doDeleteBulk(auth auth, sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
@@ -505,9 +555,5 @@ func doDeleteBulk(auth auth, sObjectName string, records any, batchSize int, wai
 }
 
 func doDeleteBulkFile(auth auth, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
-	data, err := readCSVFile(filePath)
-	if err != nil {
-		return []string{}, err
-	}
-	return doBulkJob(auth, sObjectName, "", deleteOperation, data, batchSize, waitForResults)
+	return doBulkJobWithFile(auth, sObjectName, "", deleteOperation, filePath, batchSize, waitForResults)
 }
