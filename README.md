@@ -499,21 +499,21 @@ type BulkJobResults struct {
 ```
 
 ### QueryBulkExport
-`func (sf *Salesforce) QueryBulkExport(filePath string, query string) error`
+`func (sf *Salesforce) QueryBulkExport(query string, filePath string) error`
 
 Performs a query and exports the data to a csv file
 - `filePath`: name and path of a csv file to be created
 - `query`: a SOQL query
 
 ```go
-err := sf.QueryBulkExport("data/export.csv", "SELECT Id, FirstName, LastName FROM Contact")
+err := sf.QueryBulkExport("SELECT Id, FirstName, LastName FROM Contact", "data/export.csv")
 if err != nil {
     panic(err)
 }
 ```
 
 ### QueryStructBulkExport
-`func (sf *Salesforce) QueryStructBulkExport(filePath string, soqlStruct any) error`
+`func (sf *Salesforce) QueryStructBulkExport(soqlStruct any, filePath string) error`
 
 Performs a SOQL query given a go-soql struct and decodes the response into the given struct
 - `filePath`: name and path of a csv file to be created
@@ -537,7 +537,7 @@ type ContactSoqlQuery struct {
 soqlStruct := ContactSoqlQuery{
     SelectClause: ContactSoql{},
 }
-err := sf.QueryStructBulkExport("data/export2.csv", soqlStruct)
+err := sf.QueryStructBulkExport(soqlStruct, "data/export2.csv")
 if err != nil {
     panic(err)
 }
