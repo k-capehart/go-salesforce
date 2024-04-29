@@ -404,7 +404,7 @@ func (sf *Salesforce) DeleteComposite(sObjectName string, records any, batchSize
 	return nil
 }
 
-func (sf *Salesforce) QueryBulkExport(filePath string, query string) error {
+func (sf *Salesforce) QueryBulkExport(query string, filePath string) error {
 	authErr := validateAuth(*sf)
 	if authErr != nil {
 		return authErr
@@ -417,7 +417,7 @@ func (sf *Salesforce) QueryBulkExport(filePath string, query string) error {
 	return nil
 }
 
-func (sf *Salesforce) QueryStructBulkExport(filePath string, soqlStruct any) error {
+func (sf *Salesforce) QueryStructBulkExport(soqlStruct any, filePath string) error {
 	validationErr := validateSingles(*sf, soqlStruct)
 	if validationErr != nil {
 		return validationErr
