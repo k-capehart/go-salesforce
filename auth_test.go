@@ -60,17 +60,8 @@ func TestInitUsernamePasswordSuccess(t *testing.T) {
 }
 
 func TestInitUsernamePasswordFail(t *testing.T) {
-	resp := auth{
-		AccessToken: "1234",
-		InstanceUrl: "example.com",
-		Id:          "123abc",
-		IssuedAt:    "01/01/1970",
-		Signature:   "signed",
-	}
-	body, _ := json.Marshal(resp)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
+		w.WriteHeader(http.StatusBadRequest)
 	}))
 	defer server.Close()
 
