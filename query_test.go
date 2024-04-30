@@ -7,11 +7,6 @@ import (
 	"testing"
 )
 
-type account struct {
-	Id   string
-	Name string
-}
-
 func setupSuite(t *testing.T, records []map[string]any) *httptest.Server {
 	resp := queryResponse{
 		TotalSize: 1,
@@ -27,6 +22,10 @@ func setupSuite(t *testing.T, records []map[string]any) *httptest.Server {
 }
 
 func TestQuery(t *testing.T) {
+	type account struct {
+		Id   string
+		Name string
+	}
 	acc := []map[string]any{{
 		"Id":   "123abc",
 		"Name": "test account",
@@ -49,6 +48,10 @@ func TestQuery(t *testing.T) {
 }
 
 func TestQueryStruct(t *testing.T) {
+	type account struct {
+		Id   string
+		Name string
+	}
 	acc := []map[string]any{{
 		"Id":   "123abc",
 		"Name": "test account",
