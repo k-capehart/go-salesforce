@@ -121,7 +121,10 @@ func TestProcessSalesforceResponse(t *testing.T) {
 		Body:       body,
 	}
 	err := processSalesforceResponse(resp)
-	if err == nil || err.Error() != message[0].StatusCode+": "+message[0].Message+" "+exampleError[0].Id {
-		t.Errorf("expected to process error message from response and return it")
+	if err == nil {
+		t.Errorf("expected an error to be returned but got nothing")
+	}
+	if err.Error() != message[0].StatusCode+": "+message[0].Message+" "+exampleError[0].Id {
+		t.Errorf("\nexpected: %s\nactual  : %s", message[0].StatusCode+": "+message[0].Message+" "+exampleError[0].Id, err.Error())
 	}
 }

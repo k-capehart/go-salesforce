@@ -43,7 +43,7 @@ func TestQuery(t *testing.T) {
 		t.Errorf("unexpected error during query: %s", err.Error())
 	}
 	if result[0].Id != acc[0]["Id"] || result[0].Name != acc[0]["Name"] {
-		t.Errorf("expected: %v\n actual: %v", acc, result)
+		t.Errorf("\nexpected: %v\nactual  : %v", acc, result)
 	}
 }
 
@@ -70,6 +70,6 @@ func TestQueryStruct(t *testing.T) {
 		t.Errorf("unexpected error during query: %s", err.Error())
 	}
 	if result[0].Id != acc[0]["Id"] || result[0].Name != acc[0]["Name"] {
-		t.Errorf("expected: %v\n actual: %v", acc, result)
+		t.Errorf("\nexpected: %v\nactual  : %v", acc, result)
 	}
 }
