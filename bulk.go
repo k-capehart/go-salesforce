@@ -281,7 +281,6 @@ func mapsToCSV(maps []map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	return buf.String(), nil
 }
 
@@ -307,26 +306,6 @@ func mapsToCSVSlices(maps []map[string]string) ([][]string, error) {
 	}
 
 	return data, nil
-}
-
-func csvToMap(reader csv.Reader) ([]map[string]string, error) {
-	records, readErr := reader.ReadAll()
-	if readErr != nil {
-		return nil, readErr
-	}
-
-	keys := records[0]
-
-	var recordMap []map[string]string
-	for _, row := range records[1:] {
-		record := make(map[string]string)
-		for i, col := range row {
-			record[keys[i]] = col
-		}
-		recordMap = append(recordMap, record)
-	}
-
-	return recordMap, nil
 }
 
 func readCSVFile(filePath string) ([][]string, error) {
@@ -414,6 +393,7 @@ func doBulkJob(auth authorization, sObjectName string, fieldName string, operati
 
 		uploadErr := uploadJobData(auth, data, job)
 		if uploadErr != nil {
+			fmt.Println("tesst")
 			jobErrors = uploadErr
 			break
 		}
@@ -524,36 +504,4 @@ func doQueryBulk(auth authorization, filePath string, query string) error {
 	}
 
 	return nil
-}
-
-func doInsertBulk(auth authorization, sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
-	return doBulkJob(auth, sObjectName, "", insertOperation, records, batchSize, waitForResults)
-}
-
-func doInsertBulkFile(auth authorization, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
-	return doBulkJobWithFile(auth, sObjectName, "", insertOperation, filePath, batchSize, waitForResults)
-}
-
-func doUpdateBulk(auth authorization, sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
-	return doBulkJob(auth, sObjectName, "", updateOperation, records, batchSize, waitForResults)
-}
-
-func doUpdateBulkFile(auth authorization, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
-	return doBulkJobWithFile(auth, sObjectName, "", updateOperation, filePath, batchSize, waitForResults)
-}
-
-func doUpsertBulk(auth authorization, sObjectName string, fieldName string, records any, batchSize int, waitForResults bool) ([]string, error) {
-	return doBulkJob(auth, sObjectName, fieldName, upsertOperation, records, batchSize, waitForResults)
-}
-
-func doUpsertBulkFile(auth authorization, sObjectName string, fieldName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
-	return doBulkJobWithFile(auth, sObjectName, fieldName, upsertOperation, filePath, batchSize, waitForResults)
-}
-
-func doDeleteBulk(auth authorization, sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
-	return doBulkJob(auth, sObjectName, "", deleteOperation, records, batchSize, waitForResults)
-}
-
-func doDeleteBulkFile(auth authorization, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
-	return doBulkJobWithFile(auth, sObjectName, "", deleteOperation, filePath, batchSize, waitForResults)
 }

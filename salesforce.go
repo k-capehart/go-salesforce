@@ -441,7 +441,7 @@ func (sf *Salesforce) InsertBulk(sObjectName string, records any, batchSize int,
 		return []string{}, validationErr
 	}
 
-	jobIds, bulkErr := doInsertBulk(*sf.auth, sObjectName, records, batchSize, waitForResults)
+	jobIds, bulkErr := doBulkJob(*sf.auth, sObjectName, "", insertOperation, records, batchSize, waitForResults)
 	if bulkErr != nil {
 		return []string{}, bulkErr
 	}
@@ -455,7 +455,7 @@ func (sf *Salesforce) InsertBulkFile(sObjectName string, filePath string, batchS
 		return []string{}, authErr
 	}
 
-	jobIds, bulkErr := doInsertBulkFile(*sf.auth, sObjectName, filePath, batchSize, waitForResults)
+	jobIds, bulkErr := doBulkJobWithFile(*sf.auth, sObjectName, "", insertOperation, filePath, batchSize, waitForResults)
 	if bulkErr != nil {
 		return []string{}, bulkErr
 	}
@@ -469,7 +469,7 @@ func (sf *Salesforce) UpdateBulk(sObjectName string, records any, batchSize int,
 		return []string{}, validationErr
 	}
 
-	jobIds, bulkErr := doUpdateBulk(*sf.auth, sObjectName, records, batchSize, waitForResults)
+	jobIds, bulkErr := doBulkJob(*sf.auth, sObjectName, "", updateOperation, records, batchSize, waitForResults)
 	if bulkErr != nil {
 		return []string{}, bulkErr
 	}
@@ -483,7 +483,7 @@ func (sf *Salesforce) UpdateBulkFile(sObjectName string, filePath string, batchS
 		return []string{}, authErr
 	}
 
-	jobIds, bulkErr := doUpdateBulkFile(*sf.auth, sObjectName, filePath, batchSize, waitForResults)
+	jobIds, bulkErr := doBulkJobWithFile(*sf.auth, sObjectName, "", updateOperation, filePath, batchSize, waitForResults)
 	if bulkErr != nil {
 		return []string{}, bulkErr
 	}
@@ -497,7 +497,7 @@ func (sf *Salesforce) UpsertBulk(sObjectName string, externalIdFieldName string,
 		return []string{}, validationErr
 	}
 
-	jobIds, bulkErr := doUpsertBulk(*sf.auth, sObjectName, externalIdFieldName, records, batchSize, waitForResults)
+	jobIds, bulkErr := doBulkJob(*sf.auth, sObjectName, externalIdFieldName, upsertOperation, records, batchSize, waitForResults)
 	if bulkErr != nil {
 		return []string{}, bulkErr
 	}
@@ -511,7 +511,7 @@ func (sf *Salesforce) UpsertBulkFile(sObjectName string, externalIdFieldName str
 		return []string{}, authErr
 	}
 
-	jobIds, bulkErr := doUpsertBulkFile(*sf.auth, sObjectName, externalIdFieldName, filePath, batchSize, waitForResults)
+	jobIds, bulkErr := doBulkJobWithFile(*sf.auth, sObjectName, externalIdFieldName, upsertOperation, filePath, batchSize, waitForResults)
 	if bulkErr != nil {
 		return []string{}, bulkErr
 	}
@@ -525,7 +525,7 @@ func (sf *Salesforce) DeleteBulk(sObjectName string, records any, batchSize int,
 		return []string{}, validationErr
 	}
 
-	jobIds, bulkErr := doDeleteBulk(*sf.auth, sObjectName, records, batchSize, waitForResults)
+	jobIds, bulkErr := doBulkJob(*sf.auth, sObjectName, "", deleteOperation, records, batchSize, waitForResults)
 	if bulkErr != nil {
 		return []string{}, bulkErr
 	}
@@ -539,7 +539,7 @@ func (sf *Salesforce) DeleteBulkFile(sObjectName string, filePath string, batchS
 		return []string{}, authErr
 	}
 
-	jobIds, bulkErr := doDeleteBulkFile(*sf.auth, sObjectName, filePath, batchSize, waitForResults)
+	jobIds, bulkErr := doBulkJobWithFile(*sf.auth, sObjectName, "", deleteOperation, filePath, batchSize, waitForResults)
 	if bulkErr != nil {
 		return []string{}, bulkErr
 	}

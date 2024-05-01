@@ -16,7 +16,6 @@ func setupSuite(t *testing.T, records []map[string]any) *httptest.Server {
 	}
 	body, _ := json.Marshal(resp)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
 		w.Write(body)
 	}))
 	return server
