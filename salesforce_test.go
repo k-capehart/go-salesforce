@@ -7,102 +7,238 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 )
 
-func TestDoRequest(t *testing.T) {
+func Test_doRequest(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
-	auth := auth{
+	auth := authorization{
 		InstanceUrl: server.URL,
 		AccessToken: "accesstokenvalue",
 	}
 	defer server.Close()
 
-	resp, err := doRequest(http.MethodGet, "", jsonType, auth, "")
-	if err != nil {
-		t.Errorf(err.Error())
+	badserver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	badauth := authorization{
+		InstanceUrl: badserver.URL,
+		AccessToken: "accesstokenvalue",
 	}
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected status code: 200, got %d", resp.StatusCode)
+	defer badserver.Close()
+
+	type args struct {
+		method  string
+		uri     string
+		content string
+		auth    authorization
+		body    string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    int
+		wantErr bool
+	}{
+		{
+			name: "make_generic_http_call_ok",
+			args: args{
+				method:  http.MethodGet,
+				uri:     "",
+				content: jsonType,
+				auth:    auth,
+				body:    "",
+			},
+			want:    http.StatusOK,
+			wantErr: false,
+		},
+		{
+			name: "make_generic_http_call_bad_request",
+			args: args{
+				method:  http.MethodGet,
+				uri:     "",
+				content: jsonType,
+				auth:    badauth,
+				body:    "",
+			},
+			want:    http.StatusBadRequest,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := doRequest(tt.args.method, tt.args.uri, tt.args.content, tt.args.auth, tt.args.body)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("doRequest() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got.StatusCode, tt.want) {
+				t.Errorf("doRequest() = %v, want %v", got.StatusCode, tt.want)
+			}
+		})
 	}
 }
 
-func TestValidateOfTypeSliceSuccess(t *testing.T) {
-	data := []int{0}
-	err := validateOfTypeSlice(data)
-	if err != nil {
-		t.Errorf("expected a successful validation, got error: %s", err.Error())
+func Test_validateOfTypeSlice(t *testing.T) {
+	type args struct {
+		data any
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "validation_success",
+			args: args{
+				data: []int{0},
+			},
+			wantErr: false,
+		},
+		{
+			name: "validation_fail",
+			args: args{
+				data: 0,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validateOfTypeSlice(tt.args.data); (err != nil) != tt.wantErr {
+				t.Errorf("validateOfTypeSlice() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }
 
-func TestValidateOfTypeSliceFail(t *testing.T) {
-	badData := 0
-	err := validateOfTypeSlice(badData)
-	if err == nil {
-		t.Errorf("expected a validation error with integer type")
-	}
-}
-
-func TestValidateOfTypeStructSuccess(t *testing.T) {
+func Test_validateOfTypeStruct(t *testing.T) {
 	type testStruct struct{}
-	data := testStruct{}
-	err := validateOfTypeStruct(data)
-	if err != nil {
-		t.Errorf("expected a successful validation, got error: %s", err.Error())
+	type args struct {
+		data any
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "validation_success",
+			args: args{
+				data: testStruct{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "validation_fail",
+			args: args{
+				data: 0,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validateOfTypeStruct(tt.args.data); (err != nil) != tt.wantErr {
+				t.Errorf("validateOfTypeStruct() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }
 
-func TestValidateOfTypeStructFail(t *testing.T) {
-	badData := 0
-	err := validateOfTypeStruct(badData)
-	if err == nil {
-		t.Errorf("expected a validation error with integer type")
+func Test_validateBatchSizeWithinRange(t *testing.T) {
+	type args struct {
+		batchSize int
+		max       int
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "validation_success_min",
+			args: args{
+				batchSize: 1,
+				max:       200,
+			},
+			wantErr: false,
+		},
+		{
+			name: "validation_success_max",
+			args: args{
+				batchSize: 200,
+				max:       200,
+			},
+			wantErr: false,
+		},
+		{
+			name: "validation_fail_0",
+			args: args{
+				batchSize: 0,
+				max:       200,
+			},
+			wantErr: true,
+		},
+		{
+			name: "validation_fail_201",
+			args: args{
+				batchSize: 201,
+				max:       200,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validateBatchSizeWithinRange(tt.args.batchSize, tt.args.max); (err != nil) != tt.wantErr {
+				t.Errorf("validateBatchSizeWithinRange() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }
 
-func TestValidateBatchSizeWithinRangeSuccess(t *testing.T) {
-	err := validateBatchSizeWithinRange(1, 200)
-	if err != nil {
-		t.Errorf("expected a successful validation, got error: %s", err.Error())
+func Test_processSalesforceError(t *testing.T) {
+	type args struct {
+		resp http.Response
 	}
-	err = validateBatchSizeWithinRange(200, 200)
-	if err != nil {
-		t.Errorf("expected a successful validation, got error: %s", err.Error())
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "process_500_error",
+			args: args{
+				resp: http.Response{
+					Status:     "500",
+					StatusCode: 500,
+					Body:       io.NopCloser(strings.NewReader("error message")),
+				},
+			},
+			want:    "500: error message",
+			wantErr: true,
+		},
 	}
-	err = validateBatchSizeWithinRange(100, 200)
-	if err != nil {
-		t.Errorf("expected a successful validation, got error: %s", err.Error())
-	}
-}
-
-func TestValidateBatchSizeWithinRangeFail(t *testing.T) {
-	err := validateBatchSizeWithinRange(0, 200)
-	if err == nil {
-		t.Errorf("expected a validation error for value smaller than range")
-	}
-	err = validateBatchSizeWithinRange(201, 200)
-	if err == nil {
-		t.Errorf("expected a validation error for value bigger than range")
-	}
-}
-
-func TestProcessSalesforceError(t *testing.T) {
-	body := io.NopCloser(strings.NewReader("error message"))
-	resp := http.Response{
-		Status:     "500",
-		StatusCode: 500,
-		Body:       body,
-	}
-	err := processSalesforceError(resp)
-	if err == nil || err.Error() != string(resp.Status)+": "+"error message" {
-		t.Errorf("expected to return an error message")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := processSalesforceError(tt.args.resp)
+			if err != nil != tt.wantErr {
+				t.Errorf("processSalesforceError() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(err.Error(), tt.want) {
+				t.Errorf("processSalesforceError() = %v, want %v", err.Error(), tt.want)
+			}
+		})
 	}
 }
 
-func TestProcessSalesforceResponse(t *testing.T) {
+func Test_processSalesforceResponse(t *testing.T) {
 	message := []salesforceErrorMessage{{
 		Message:    "example error",
 		StatusCode: "500",
@@ -115,16 +251,96 @@ func TestProcessSalesforceResponse(t *testing.T) {
 	}}
 	jsonBody, _ := json.Marshal(exampleError)
 	body := io.NopCloser(bytes.NewReader(jsonBody))
-	resp := http.Response{
+	httpResp := http.Response{
 		Status:     fmt.Sprint(http.StatusInternalServerError),
 		StatusCode: http.StatusInternalServerError,
 		Body:       body,
 	}
-	err := processSalesforceResponse(resp)
-	if err == nil {
-		t.Errorf("expected an error to be returned but got nothing")
+	type args struct {
+		resp http.Response
 	}
-	if err.Error() != message[0].StatusCode+": "+message[0].Message+" "+exampleError[0].Id {
-		t.Errorf("\nexpected: %s\nactual  : %s", message[0].StatusCode+": "+message[0].Message+" "+exampleError[0].Id, err.Error())
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "process_500_error",
+			args: args{
+				resp: httpResp,
+			},
+			want:    "500: example error 12345",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := processSalesforceResponse(tt.args.resp)
+			if err != nil != tt.wantErr {
+				t.Errorf("processSalesforceResponse() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(err.Error(), tt.want) {
+				t.Errorf("processSalesforceResponse() = %v, want %v", err.Error(), tt.want)
+			}
+		})
+	}
+}
+
+func TestInit(t *testing.T) {
+	sfauth := authorization{
+		AccessToken: "1234",
+		InstanceUrl: "example.com",
+		Id:          "123abc",
+		IssuedAt:    "01/01/1970",
+		Signature:   "signed",
+	}
+	body, _ := json.Marshal(sfauth)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write(body)
+	}))
+	defer server.Close()
+
+	type args struct {
+		creds Creds
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *Salesforce
+		wantErr bool
+	}{
+		{
+			name:    "authentication_failure",
+			args:    args{Creds{}},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "authentication_username_password",
+			args: args{creds: Creds{
+				Domain:         server.URL,
+				Username:       "u",
+				Password:       "p",
+				SecurityToken:  "t",
+				ConsumerKey:    "key",
+				ConsumerSecret: "secret",
+			}},
+			want:    &Salesforce{auth: &sfauth},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Init(tt.args.creds)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Init() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Init() = %v, want %v", *got.auth, *tt.want.auth)
+			}
+		})
 	}
 }

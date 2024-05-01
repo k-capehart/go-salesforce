@@ -4,69 +4,114 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 )
 
-func TestValidateAuthSuccess(t *testing.T) {
-	sf := Salesforce{auth: &auth{}}
-	err := validateAuth(sf)
-	if err != nil {
-		t.Errorf("expected a successful validation for salesforce auth, got: %s", err.Error())
+func Test_validateAuth(t *testing.T) {
+	type args struct {
+		sf Salesforce
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "validation_success",
+			args: args{
+				sf: Salesforce{auth: &authorization{}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "validation_fail",
+			args: args{
+				sf: Salesforce{},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validateAuth(tt.args.sf); (err != nil) != tt.wantErr {
+				t.Errorf("validateAuth() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }
 
-func TestValidateAuthFail(t *testing.T) {
-	sf := Salesforce{}
-	err := validateAuth(sf)
-	if err == nil {
-		t.Errorf("expected a validation error for salesforce auth")
-	}
-}
-
-func TestInitUsernamePasswordSuccess(t *testing.T) {
-	resp := auth{
+func Test_loginPassword(t *testing.T) {
+	auth := authorization{
 		AccessToken: "1234",
 		InstanceUrl: "example.com",
 		Id:          "123abc",
 		IssuedAt:    "01/01/1970",
 		Signature:   "signed",
 	}
-	body, _ := json.Marshal(resp)
+	body, _ := json.Marshal(auth)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(body)
 	}))
 	defer server.Close()
 
-	sf, err := Init(Creds{
-		Domain:         server.URL,
-		Username:       "u",
-		Password:       "p",
-		SecurityToken:  "t",
-		ConsumerKey:    "key",
-		ConsumerSecret: "secret",
-	})
-	if err != nil {
-		t.Errorf("unexpected error during salesforce login: %s", err.Error())
-	}
-	if sf.auth.AccessToken != resp.AccessToken ||
-		sf.auth.InstanceUrl != resp.InstanceUrl ||
-		sf.auth.Id != resp.Id ||
-		sf.auth.IssuedAt != resp.IssuedAt ||
-		sf.auth.Signature != resp.Signature {
-
-		t.Errorf("expected response to be unmarshalled into auth reference, got: %v", sf.auth)
-	}
-}
-
-func TestInitUsernamePasswordFail(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadRequest)
+	badserver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
 	}))
-	defer server.Close()
+	defer badserver.Close()
 
-	_, err := Init(Creds{})
-	if err == nil {
-		t.Errorf("expected an error during login when no credentials are given")
+	type args struct {
+		domain         string
+		username       string
+		password       string
+		securityToken  string
+		consumerKey    string
+		consumerSecret string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *authorization
+		wantErr bool
+	}{
+		{
+			name: "authentication_success",
+			args: args{
+				domain:         server.URL,
+				username:       "u",
+				password:       "p",
+				securityToken:  "t",
+				consumerKey:    "key",
+				consumerSecret: "secret",
+			},
+			want:    &auth,
+			wantErr: false,
+		},
+		{
+			name: "authentication_fail",
+			args: args{
+				domain:         badserver.URL,
+				username:       "u",
+				password:       "p",
+				securityToken:  "t",
+				consumerKey:    "key",
+				consumerSecret: "secret",
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := loginPassword(tt.args.domain, tt.args.username, tt.args.password, tt.args.securityToken, tt.args.consumerKey, tt.args.consumerSecret)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("loginPassword() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("loginPassword() = %v, want %v", *got, *tt.want)
+			}
+		})
 	}
 }

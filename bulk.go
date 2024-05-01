@@ -59,7 +59,7 @@ const (
 	queryJobType           = "query"
 )
 
-func updateJobState(job bulkJob, state string, auth auth) error {
+func updateJobState(job bulkJob, state string, auth authorization) error {
 	job.State = state
 	body, _ := json.Marshal(job)
 	resp, err := doRequest(http.MethodPatch, "/jobs/ingest/"+job.Id, jsonType, auth, string(body))
@@ -72,7 +72,7 @@ func updateJobState(job bulkJob, state string, auth auth) error {
 	return nil
 }
 
-func createBulkJob(auth auth, jobType string, body []byte) (bulkJob, error) {
+func createBulkJob(auth authorization, jobType string, body []byte) (bulkJob, error) {
 	resp, err := doRequest(http.MethodPost, "/jobs/"+jobType, jsonType, auth, string(body))
 	if err != nil {
 		return bulkJob{}, err
@@ -95,7 +95,7 @@ func createBulkJob(auth auth, jobType string, body []byte) (bulkJob, error) {
 	return *newJob, nil
 }
 
-func uploadJobData(auth auth, data string, bulkJob bulkJob) error {
+func uploadJobData(auth authorization, data string, bulkJob bulkJob) error {
 	resp, uploadDataErr := doRequest("PUT", "/jobs/ingest/"+bulkJob.Id+"/batches", csvType, auth, data)
 	if uploadDataErr != nil {
 		updateJobState(bulkJob, jobStateAborted, auth)
@@ -113,7 +113,7 @@ func uploadJobData(auth auth, data string, bulkJob bulkJob) error {
 	return nil
 }
 
-func getJobResults(auth auth, jobType string, bulkJobId string) (BulkJobResults, error) {
+func getJobResults(auth authorization, jobType string, bulkJobId string) (BulkJobResults, error) {
 	resp, err := doRequest(http.MethodGet, "/jobs/"+jobType+"/"+bulkJobId, jsonType, auth, "")
 	if err != nil {
 		return BulkJobResults{}, err
@@ -136,7 +136,7 @@ func getJobResults(auth auth, jobType string, bulkJobId string) (BulkJobResults,
 	return *bulkJobResults, nil
 }
 
-func waitForJobResult(auth auth, bulkJobId string, c chan error) {
+func waitForJobResult(auth authorization, bulkJobId string, c chan error) {
 	err := wait.PollUntilContextTimeout(context.Background(), time.Second, time.Minute, false, func(context.Context) (bool, error) {
 		bulkJob, reqErr := getJobResults(auth, ingestJobType, bulkJobId)
 		if reqErr != nil {
@@ -147,7 +147,7 @@ func waitForJobResult(auth auth, bulkJobId string, c chan error) {
 	c <- err
 }
 
-func isBulkJobDone(auth auth, bulkJob BulkJobResults) (bool, error) {
+func isBulkJobDone(auth authorization, bulkJob BulkJobResults) (bool, error) {
 	if bulkJob.State == jobStateJobComplete || bulkJob.State == jobStateFailed {
 		if bulkJob.ErrorMessage != "" {
 			return true, errors.New(bulkJob.ErrorMessage)
@@ -167,7 +167,7 @@ func isBulkJobDone(auth auth, bulkJob BulkJobResults) (bool, error) {
 	return false, nil
 }
 
-func getQueryJobResults(auth auth, bulkJobId string, locator string) (bulkJobQueryResults, error) {
+func getQueryJobResults(auth authorization, bulkJobId string, locator string) (bulkJobQueryResults, error) {
 	uri := "/jobs/query/" + bulkJobId + "/results"
 	if locator != "" {
 		uri = uri + "/?locator=" + locator
@@ -200,7 +200,7 @@ func getQueryJobResults(auth auth, bulkJobId string, locator string) (bulkJobQue
 	return queryResults, nil
 }
 
-func waitForQueryResults(auth auth, bulkJobId string) ([][]string, error) {
+func waitForQueryResults(auth authorization, bulkJobId string) ([][]string, error) {
 	err := wait.PollUntilContextTimeout(context.Background(), time.Second, time.Minute, false, func(context.Context) (bool, error) {
 		bulkJob, reqErr := getJobResults(auth, queryJobType, bulkJobId)
 		if reqErr != nil {
@@ -228,7 +228,7 @@ func waitForQueryResults(auth auth, bulkJobId string) ([][]string, error) {
 	return records, nil
 }
 
-func getFailedRecords(auth auth, bulkJobId string) (string, error) {
+func getFailedRecords(auth authorization, bulkJobId string) (string, error) {
 	resp, err := doRequest(http.MethodGet, "/jobs/ingest/"+bulkJobId+"/failedResults", jsonType, auth, "")
 	if err != nil {
 		return "", err
@@ -359,7 +359,7 @@ func writeCSVFile(filePath string, data [][]string) error {
 	return nil
 }
 
-func constructBulkJobRequest(auth auth, sObjectName string, operation string, fieldName string) (bulkJob, error) {
+func constructBulkJobRequest(auth authorization, sObjectName string, operation string, fieldName string) (bulkJob, error) {
 	jobReq := bulkJobCreationRequest{
 		Object:              sObjectName,
 		Operation:           operation,
@@ -382,7 +382,7 @@ func constructBulkJobRequest(auth auth, sObjectName string, operation string, fi
 	return job, nil
 }
 
-func doBulkJob(auth auth, sObjectName string, fieldName string, operation string, records any, batchSize int, waitForResults bool) ([]string, error) {
+func doBulkJob(auth authorization, sObjectName string, fieldName string, operation string, records any, batchSize int, waitForResults bool) ([]string, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return []string{}, err
@@ -435,7 +435,7 @@ func doBulkJob(auth auth, sObjectName string, fieldName string, operation string
 	return jobIds, jobErrors
 }
 
-func doBulkJobWithFile(auth auth, sObjectName string, fieldName string, operation string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
+func doBulkJobWithFile(auth authorization, sObjectName string, fieldName string, operation string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
 	var jobErrors error
 	var jobIds []string
 
@@ -495,7 +495,7 @@ func doBulkJobWithFile(auth auth, sObjectName string, fieldName string, operatio
 	return jobIds, jobErrors
 }
 
-func doQueryBulk(auth auth, filePath string, query string) error {
+func doQueryBulk(auth authorization, filePath string, query string) error {
 	queryJobReq := bulkQueryJobCreationRequest{
 		Operation: queryJobType,
 		Query:     query,
@@ -526,34 +526,34 @@ func doQueryBulk(auth auth, filePath string, query string) error {
 	return nil
 }
 
-func doInsertBulk(auth auth, sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
+func doInsertBulk(auth authorization, sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
 	return doBulkJob(auth, sObjectName, "", insertOperation, records, batchSize, waitForResults)
 }
 
-func doInsertBulkFile(auth auth, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
+func doInsertBulkFile(auth authorization, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
 	return doBulkJobWithFile(auth, sObjectName, "", insertOperation, filePath, batchSize, waitForResults)
 }
 
-func doUpdateBulk(auth auth, sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
+func doUpdateBulk(auth authorization, sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
 	return doBulkJob(auth, sObjectName, "", updateOperation, records, batchSize, waitForResults)
 }
 
-func doUpdateBulkFile(auth auth, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
+func doUpdateBulkFile(auth authorization, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
 	return doBulkJobWithFile(auth, sObjectName, "", updateOperation, filePath, batchSize, waitForResults)
 }
 
-func doUpsertBulk(auth auth, sObjectName string, fieldName string, records any, batchSize int, waitForResults bool) ([]string, error) {
+func doUpsertBulk(auth authorization, sObjectName string, fieldName string, records any, batchSize int, waitForResults bool) ([]string, error) {
 	return doBulkJob(auth, sObjectName, fieldName, upsertOperation, records, batchSize, waitForResults)
 }
 
-func doUpsertBulkFile(auth auth, sObjectName string, fieldName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
+func doUpsertBulkFile(auth authorization, sObjectName string, fieldName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
 	return doBulkJobWithFile(auth, sObjectName, fieldName, upsertOperation, filePath, batchSize, waitForResults)
 }
 
-func doDeleteBulk(auth auth, sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
+func doDeleteBulk(auth authorization, sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
 	return doBulkJob(auth, sObjectName, "", deleteOperation, records, batchSize, waitForResults)
 }
 
-func doDeleteBulkFile(auth auth, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
+func doDeleteBulkFile(auth authorization, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
 	return doBulkJobWithFile(auth, sObjectName, "", deleteOperation, filePath, batchSize, waitForResults)
 }

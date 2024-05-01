@@ -18,10 +18,10 @@ go get github.com/k-capehart/go-salesforce
     - [Review Salesforce oauth flows](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_flows.htm&type=5)
 - Once authenticated, all other functions can be called as methods using the resulting `Salesforce` instance
 
-### Structs
+### Types
 ```go
 type Salesforce struct {
-	auth *auth
+	auth *authorization
 }
 
 type Creds struct {
@@ -352,7 +352,7 @@ if err != nil {
 Make numerous 'subrequests' contained within a single 'composite request', reducing the overall number of calls to Salesforce
 - [Review Salesforce REST API resources for making composite requests](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/requests_composite.htm)
 - Up to 25 subrequests may be included in a single composite request
-    - For DML operations, size of subrequest is determined by batch size (`number of records / batch size`)
+    - For DML operations, max number of records to be processed is determined by batch size (`25 * (batch size)`)
     - So if batch size is 1, then max number of records to be included in request is 25
     - If batch size is 200, then max is 5000
 
@@ -488,7 +488,7 @@ Create Bulk API Jobs to query, insert, update, upsert, and delete large collecti
 - Work with large lists of records by passing either a slice or records or the path to a csv file
 - Jobs can run asynchronously and optionally wait for them to finish so errors are available
 
-### Structs
+### Types
 ```go
 type BulkJobResults struct {
 	Id                  string

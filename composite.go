@@ -32,7 +32,7 @@ type composteSubRequestResult struct {
 	ReferenceId    string            `json:"referenceId"`
 }
 
-func doCompositeRequest(auth auth, compReq compositeRequest) error {
+func doCompositeRequest(auth authorization, compReq compositeRequest) error {
 	body, jsonErr := json.Marshal(compReq)
 	if jsonErr != nil {
 		return jsonErr
@@ -54,7 +54,7 @@ func doCompositeRequest(auth auth, compReq compositeRequest) error {
 func validateNumberOfSubrequests(dataSize int, batchSize int) error {
 	numberOfBatches := int(math.Ceil(float64(float64(dataSize) / float64(batchSize))))
 	if numberOfBatches > 25 {
-		errorMessage := strconv.Itoa(numberOfBatches) + " subrequests exceed max of 25. number of subrequests = (number of records) / (batch size)"
+		errorMessage := strconv.Itoa(numberOfBatches) + " subrequests exceed max of 25. max records = 25 * (batch size)"
 		return errors.New(errorMessage)
 	}
 	return nil
@@ -131,7 +131,7 @@ func processCompositeResponse(resp http.Response) error {
 	return errorResponse
 }
 
-func doInsertComposite(auth auth, sObjectName string, records any, allOrNone bool, batchSize int) error {
+func doInsertComposite(auth authorization, sObjectName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -155,7 +155,7 @@ func doInsertComposite(auth auth, sObjectName string, records any, allOrNone boo
 	return nil
 }
 
-func doUpdateComposite(auth auth, sObjectName string, records any, allOrNone bool, batchSize int) error {
+func doUpdateComposite(auth authorization, sObjectName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -182,7 +182,7 @@ func doUpdateComposite(auth auth, sObjectName string, records any, allOrNone boo
 	return nil
 }
 
-func doUpsertComposite(auth auth, sObjectName string, fieldName string, records any, allOrNone bool, batchSize int) error {
+func doUpsertComposite(auth authorization, sObjectName string, fieldName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -209,7 +209,7 @@ func doUpsertComposite(auth auth, sObjectName string, fieldName string, records 
 	return nil
 }
 
-func doDeleteComposite(auth auth, sObjectName string, records any, allOrNone bool, batchSize int) error {
+func doDeleteComposite(auth authorization, sObjectName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err

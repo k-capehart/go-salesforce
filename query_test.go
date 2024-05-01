@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 )
 
@@ -21,7 +22,7 @@ func setupSuite(t *testing.T, records []map[string]any) *httptest.Server {
 	return server
 }
 
-func TestQuery(t *testing.T) {
+func Test_performQuery(t *testing.T) {
 	type account struct {
 		Id   string
 		Name string
@@ -31,19 +32,45 @@ func TestQuery(t *testing.T) {
 		"Name": "test account",
 	}}
 	server := setupSuite(t, acc)
-	sf := Salesforce{auth: &auth{
-		InstanceUrl: server.URL,
-		AccessToken: "123",
-	}}
 	defer server.Close()
 
-	result := []account{}
-	err := sf.Query("SELECT Id, Name FROM Account", &result)
-	if err != nil {
-		t.Errorf("unexpected error during query: %s", err.Error())
+	type args struct {
+		auth    authorization
+		query   string
+		sObject []account
 	}
-	if result[0].Id != acc[0]["Id"] || result[0].Name != acc[0]["Name"] {
-		t.Errorf("\nexpected: %v\nactual  : %v", acc, result)
+	tests := []struct {
+		name    string
+		args    args
+		want    account
+		wantErr bool
+	}{
+		{
+			name: "query account",
+			args: args{
+				auth: authorization{
+					InstanceUrl: server.URL,
+					AccessToken: "accesstoken",
+				},
+				query:   "SELECT Id, Name FROM Account",
+				sObject: []account{},
+			},
+			want: account{
+				Id:   "123abc",
+				Name: "test account",
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := performQuery(tt.args.auth, tt.args.query, &tt.args.sObject); (err != nil) != tt.wantErr {
+				t.Errorf("performQuery() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(tt.args.sObject[0], tt.want) {
+				t.Errorf("performQuery() = %v, want %v", tt.args.sObject, tt.want)
+			}
+		})
 	}
 }
 
@@ -57,7 +84,7 @@ func TestQueryStruct(t *testing.T) {
 		"Name": "test account",
 	}}
 	server := setupSuite(t, acc)
-	sf := Salesforce{auth: &auth{
+	sf := Salesforce{auth: &authorization{
 		InstanceUrl: server.URL,
 		AccessToken: "123",
 	}}

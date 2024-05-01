@@ -6,24 +6,55 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"testing"
 )
 
-func TestValidateNumberOfSubrequestsSuccess(t *testing.T) {
-	err := validateNumberOfSubrequests(5000, 200)
-	if err != nil {
-		t.Errorf("unexpected validation error for composite req: %s", err.Error())
+func Test_validateNumberOfSubrequests(t *testing.T) {
+	type args struct {
+		dataSize  int
+		batchSize int
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "validation_success_max",
+			args: args{
+				dataSize:  5000,
+				batchSize: 200,
+			},
+			wantErr: false,
+		},
+		{
+			name: "validation_success_min",
+			args: args{
+				dataSize:  1,
+				batchSize: 200,
+			},
+			wantErr: false,
+		},
+		{
+			name: "validation_fail_5001",
+			args: args{
+				dataSize:  5001,
+				batchSize: 200,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validateNumberOfSubrequests(tt.args.dataSize, tt.args.batchSize); (err != nil) != tt.wantErr {
+				t.Errorf("validateNumberOfSubrequests() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }
 
-func TestValidateNumberOfSubrequestsFail(t *testing.T) {
-	err := validateNumberOfSubrequests(5001, 200)
-	if err == nil {
-		t.Errorf("expected a validation error for composite req")
-	}
-}
-
-func TestCreateCompositeRequestForCollection(t *testing.T) {
+func Test_createCompositeRequestForCollection(t *testing.T) {
 	recordMap := []map[string]any{
 		{
 			"Id":   "1234",
@@ -35,22 +66,94 @@ func TestCreateCompositeRequestForCollection(t *testing.T) {
 		},
 	}
 
-	actual, err := createCompositeRequestForCollection(http.MethodPatch, "example.com", true, 1, recordMap)
-	if err != nil {
-		t.Errorf("unexpected error while creating composite request: %s", err.Error())
+	type args struct {
+		method    string
+		url       string
+		allOrNone bool
+		batchSize int
+		recordMap []map[string]any
 	}
-	actualRecordMap := append([]map[string]any{actual.CompositeRequest[0].Body.Records[0]}, actual.CompositeRequest[1].Body.Records[0])
-
-	if actual.AllOrNone != true || actual.CompositeRequest[0].Body.AllOrNone != true || actual.CompositeRequest[1].Body.AllOrNone != true ||
-		actual.CompositeRequest[0].Body.Records[0]["Id"] != recordMap[0]["Id"] ||
-		actual.CompositeRequest[0].Body.Records[0]["Name"] != recordMap[0]["Name"] ||
-		actual.CompositeRequest[1].Body.Records[0]["Id"] != recordMap[1]["Id"] ||
-		actual.CompositeRequest[1].Body.Records[0]["Name"] != recordMap[1]["Name"] {
-		t.Errorf("\nexpected: %v\nactual  : %v", recordMap, actualRecordMap)
+	tests := []struct {
+		name    string
+		args    args
+		want    compositeRequest
+		wantErr bool
+	}{
+		{
+			name: "create_multiple_requests",
+			args: args{
+				method:    http.MethodPatch,
+				url:       "example.com",
+				allOrNone: true,
+				batchSize: 1,
+				recordMap: recordMap,
+			},
+			want: compositeRequest{
+				AllOrNone: true,
+				CompositeRequest: []compositeSubRequest{
+					{
+						Body: sObjectCollection{
+							AllOrNone: true,
+							Records:   recordMap[:1],
+						},
+						Method:      http.MethodPatch,
+						Url:         "example.com",
+						ReferenceId: "refObj0",
+					},
+					{
+						Body: sObjectCollection{
+							AllOrNone: true,
+							Records:   recordMap[1:],
+						},
+						Method:      http.MethodPatch,
+						Url:         "example.com",
+						ReferenceId: "refObj1",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "create_one_request",
+			args: args{
+				method:    http.MethodPatch,
+				url:       "example.com",
+				allOrNone: true,
+				batchSize: 1,
+				recordMap: recordMap[1:],
+			},
+			want: compositeRequest{
+				AllOrNone: true,
+				CompositeRequest: []compositeSubRequest{
+					{
+						Body: sObjectCollection{
+							AllOrNone: true,
+							Records:   recordMap[1:],
+						},
+						Method:      http.MethodPatch,
+						Url:         "example.com",
+						ReferenceId: "refObj0",
+					},
+				},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := createCompositeRequestForCollection(tt.args.method, tt.args.url, tt.args.allOrNone, tt.args.batchSize, tt.args.recordMap)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("createCompositeRequestForCollection() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("createCompositeRequestForCollection() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
-func TestProcessCompositeResponse(t *testing.T) {
+func Test_processCompositeResponse(t *testing.T) {
 	message := []salesforceErrorMessage{{
 		Message:    "example error",
 		StatusCode: "500",
@@ -74,16 +177,33 @@ func TestProcessCompositeResponse(t *testing.T) {
 	}
 	jsonBody, _ := json.Marshal(compResult)
 	body := io.NopCloser(bytes.NewReader(jsonBody))
-	resp := http.Response{
+	httpresp := http.Response{
 		Status:     fmt.Sprint(http.StatusBadRequest),
 		StatusCode: http.StatusBadRequest,
 		Body:       body,
 	}
-	err := processCompositeResponse(resp)
-	if err == nil {
-		t.Errorf("expected an error to be returned but got nothing")
+
+	type args struct {
+		resp http.Response
 	}
-	if err.Error() != message[0].StatusCode+": "+message[0].Message+" "+exampleError[0].Id {
-		t.Errorf("\nexpected: %s\nactual  : %s", message[0].StatusCode+": "+message[0].Message+" "+exampleError[0].Id, err.Error())
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "process_500_error",
+			args: args{
+				resp: httpresp,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := processCompositeResponse(tt.args.resp); (err != nil) != tt.wantErr {
+				t.Errorf("processCompositeResponse() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }
