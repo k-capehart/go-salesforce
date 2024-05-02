@@ -39,7 +39,7 @@ func convertToSliceOfMaps(obj any) ([]map[string]any, error) {
 	return recordMap, nil
 }
 
-func doBatchedRequestsForCollection(auth authorization, method string, url string, batchSize int, recordMap []map[string]any) error {
+func doBatchedRequestsForCollection(auth authentication, method string, url string, batchSize int, recordMap []map[string]any) error {
 	var dmlErrors error
 
 	for len(recordMap) > 0 {
@@ -49,6 +49,7 @@ func doBatchedRequestsForCollection(auth authorization, method string, url strin
 		} else {
 			batch = recordMap
 		}
+		recordMap = remaining
 
 		payload := sObjectCollection{
 			AllOrNone: false,
@@ -58,11 +59,13 @@ func doBatchedRequestsForCollection(auth authorization, method string, url strin
 		body, err := json.Marshal(payload)
 		if err != nil {
 			dmlErrors = errors.Join(dmlErrors, err)
+			break
 		}
 
 		resp, err := doRequest(method, url, jsonType, auth, string(body))
 		if err != nil {
 			dmlErrors = errors.Join(dmlErrors, err)
+			break
 		}
 
 		if resp.StatusCode != http.StatusOK {
@@ -72,13 +75,12 @@ func doBatchedRequestsForCollection(auth authorization, method string, url strin
 		if salesforceErrors != nil {
 			dmlErrors = errors.Join(dmlErrors, salesforceErrors)
 		}
-		recordMap = remaining
 	}
 
 	return dmlErrors
 }
 
-func doInsertOne(auth authorization, sObjectName string, record any) error {
+func doInsertOne(auth authentication, sObjectName string, record any) error {
 	recordMap, err := convertToMap(record)
 	if err != nil {
 		return err
@@ -102,7 +104,7 @@ func doInsertOne(auth authorization, sObjectName string, record any) error {
 	return nil
 }
 
-func doUpdateOne(auth authorization, sObjectName string, record any) error {
+func doUpdateOne(auth authentication, sObjectName string, record any) error {
 	recordMap, err := convertToMap(record)
 	if err != nil {
 		return err
@@ -132,7 +134,7 @@ func doUpdateOne(auth authorization, sObjectName string, record any) error {
 	return nil
 }
 
-func doUpsertOne(auth authorization, sObjectName string, fieldName string, record any) error {
+func doUpsertOne(auth authentication, sObjectName string, fieldName string, record any) error {
 	recordMap, err := convertToMap(record)
 	if err != nil {
 		return err
@@ -164,7 +166,7 @@ func doUpsertOne(auth authorization, sObjectName string, fieldName string, recor
 	return nil
 }
 
-func doDeleteOne(auth authorization, sObjectName string, record any) error {
+func doDeleteOne(auth authentication, sObjectName string, record any) error {
 	recordMap, err := convertToMap(record)
 	if err != nil {
 		return err
@@ -187,7 +189,7 @@ func doDeleteOne(auth authorization, sObjectName string, record any) error {
 	return nil
 }
 
-func doInsertCollection(auth authorization, sObjectName string, records any, batchSize int) error {
+func doInsertCollection(auth authentication, sObjectName string, records any, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -200,7 +202,7 @@ func doInsertCollection(auth authorization, sObjectName string, records any, bat
 	return doBatchedRequestsForCollection(auth, http.MethodPost, "/composite/sobjects/", batchSize, recordMap)
 }
 
-func doUpdateCollection(auth authorization, sObjectName string, records any, batchSize int) error {
+func doUpdateCollection(auth authentication, sObjectName string, records any, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -216,7 +218,7 @@ func doUpdateCollection(auth authorization, sObjectName string, records any, bat
 	return doBatchedRequestsForCollection(auth, http.MethodPatch, "/composite/sobjects/", batchSize, recordMap)
 }
 
-func doUpsertCollection(auth authorization, sObjectName string, fieldName string, records any, batchSize int) error {
+func doUpsertCollection(auth authentication, sObjectName string, fieldName string, records any, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -234,7 +236,7 @@ func doUpsertCollection(auth authorization, sObjectName string, fieldName string
 
 }
 
-func doDeleteCollection(auth authorization, sObjectName string, records any, batchSize int) error {
+func doDeleteCollection(auth authentication, sObjectName string, records any, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -249,11 +251,14 @@ func doDeleteCollection(auth authorization, sObjectName string, records any, bat
 		} else {
 			batch = recordMap
 		}
+		recordMap = remaining
+
 		var ids string
 		for i := 0; i < len(batch); i++ {
 			recordId, ok := batch[i]["Id"].(string)
 			if !ok || recordId == "" {
-				return errors.New("salesforce id not found in object data")
+				dmlErrors = errors.Join(dmlErrors, errors.New("salesforce id not found in object data"))
+				break
 			}
 			if i == len(batch)-1 {
 				ids = ids + recordId
@@ -264,18 +269,17 @@ func doDeleteCollection(auth authorization, sObjectName string, records any, bat
 
 		resp, err := doRequest(http.MethodDelete, "/composite/sobjects/?ids="+ids+"&allOrNone=false", jsonType, auth, "")
 		if err != nil {
-			return err
+			dmlErrors = errors.Join(dmlErrors, err)
+			break
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			return processSalesforceError(*resp)
+			dmlErrors = errors.Join(dmlErrors, processSalesforceError(*resp))
 		}
 		salesforceErrors := processSalesforceResponse(*resp)
 		if salesforceErrors != nil {
-			return salesforceErrors
+			dmlErrors = errors.Join(dmlErrors, salesforceErrors)
 		}
-
-		recordMap = remaining
 	}
 
 	return dmlErrors

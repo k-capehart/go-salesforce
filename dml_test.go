@@ -1,6 +1,7 @@
 package salesforce
 
 import (
+	"net/http"
 	"reflect"
 	"testing"
 )
@@ -107,6 +108,65 @@ func Test_convertToSliceOfMaps(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("convertToSliceOfMaps() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_doBatchedRequestsForCollection(t *testing.T) {
+	server, sfAuth := setupTestServer([]salesforceError{{Success: true}}, http.StatusOK)
+	defer server.Close()
+
+	type args struct {
+		auth      authentication
+		method    string
+		url       string
+		batchSize int
+		recordMap []map[string]any
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "single_record",
+			args: args{
+				auth:      sfAuth,
+				method:    http.MethodPost,
+				url:       "",
+				batchSize: 200,
+				recordMap: []map[string]any{
+					{
+						"Name": "test record 1",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "multiple batches",
+			args: args{
+				auth:      sfAuth,
+				method:    http.MethodPost,
+				url:       "",
+				batchSize: 1,
+				recordMap: []map[string]any{
+					{
+						"Name": "test record 1",
+					},
+					{
+						"Name": "test record 2",
+					},
+				},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := doBatchedRequestsForCollection(tt.args.auth, tt.args.method, tt.args.url, tt.args.batchSize, tt.args.recordMap); (err != nil) != tt.wantErr {
+				t.Errorf("doBatchedRequestsForCollection() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

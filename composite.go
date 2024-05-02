@@ -32,7 +32,7 @@ type composteSubRequestResult struct {
 	ReferenceId    string            `json:"referenceId"`
 }
 
-func doCompositeRequest(auth authorization, compReq compositeRequest) error {
+func doCompositeRequest(auth authentication, compReq compositeRequest) error {
 	body, jsonErr := json.Marshal(compReq)
 	if jsonErr != nil {
 		return jsonErr
@@ -131,7 +131,7 @@ func processCompositeResponse(resp http.Response) error {
 	return errorResponse
 }
 
-func doInsertComposite(auth authorization, sObjectName string, records any, allOrNone bool, batchSize int) error {
+func doInsertComposite(auth authentication, sObjectName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -155,7 +155,7 @@ func doInsertComposite(auth authorization, sObjectName string, records any, allO
 	return nil
 }
 
-func doUpdateComposite(auth authorization, sObjectName string, records any, allOrNone bool, batchSize int) error {
+func doUpdateComposite(auth authentication, sObjectName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -182,7 +182,7 @@ func doUpdateComposite(auth authorization, sObjectName string, records any, allO
 	return nil
 }
 
-func doUpsertComposite(auth authorization, sObjectName string, fieldName string, records any, allOrNone bool, batchSize int) error {
+func doUpsertComposite(auth authentication, sObjectName string, fieldName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err
@@ -209,7 +209,7 @@ func doUpsertComposite(auth authorization, sObjectName string, fieldName string,
 	return nil
 }
 
-func doDeleteComposite(auth authorization, sObjectName string, records any, allOrNone bool, batchSize int) error {
+func doDeleteComposite(auth authentication, sObjectName string, records any, allOrNone bool, batchSize int) error {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return err

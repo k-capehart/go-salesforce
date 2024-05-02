@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 )
 
 func Test_createBulkJob(t *testing.T) {
@@ -13,14 +15,7 @@ func Test_createBulkJob(t *testing.T) {
 		Id:    "1234",
 		State: jobStateOpen,
 	}
-	jobByte, _ := json.Marshal(job)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(jobByte)
-	}))
-	sfAuth := authorization{
-		InstanceUrl: server.URL,
-		AccessToken: "accesstokenvalue",
-	}
+	server, sfAuth := setupTestServer(job, http.StatusOK)
 	defer server.Close()
 
 	type account struct {
@@ -46,7 +41,7 @@ func Test_createBulkJob(t *testing.T) {
 	queryBody, _ := json.Marshal(queryJobReq)
 
 	type args struct {
-		auth    authorization
+		auth    authentication
 		jobType string
 		body    []byte
 	}
@@ -98,18 +93,11 @@ func Test_getJobResults(t *testing.T) {
 		NumberRecordsFailed: 0,
 		ErrorMessage:        "",
 	}
-	jobResultsByte, _ := json.Marshal(jobResults)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(jobResultsByte)
-	}))
-	sfAuth := authorization{
-		InstanceUrl: server.URL,
-		AccessToken: "accesstokenvalue",
-	}
+	server, sfAuth := setupTestServer(jobResults, http.StatusOK)
 	defer server.Close()
 
 	type args struct {
-		auth      authorization
+		auth      authentication
 		jobType   string
 		bulkJobId string
 	}
@@ -145,17 +133,11 @@ func Test_getJobResults(t *testing.T) {
 }
 
 func Test_isBulkJobDone(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("example error"))
-	}))
-	sfAuth := authorization{
-		InstanceUrl: server.URL,
-		AccessToken: "accesstokenvalue",
-	}
+	server, sfAuth := setupTestServer("example error", http.StatusOK)
 	defer server.Close()
 
 	type args struct {
-		auth    authorization
+		auth    authentication
 		bulkJob BulkJobResults
 	}
 	tests := []struct {
@@ -167,7 +149,7 @@ func Test_isBulkJobDone(t *testing.T) {
 		{
 			name: "bulk_job_complete",
 			args: args{
-				auth: authorization{},
+				auth: authentication{},
 				bulkJob: BulkJobResults{
 					Id:                  "1234",
 					State:               jobStateJobComplete,
@@ -181,7 +163,7 @@ func Test_isBulkJobDone(t *testing.T) {
 		{
 			name: "bulk_job_not_complete",
 			args: args{
-				auth: authorization{},
+				auth: authentication{},
 				bulkJob: BulkJobResults{
 					Id:                  "1234",
 					State:               jobStateOpen,
@@ -201,6 +183,20 @@ func Test_isBulkJobDone(t *testing.T) {
 					State:               jobStateFailed,
 					NumberRecordsFailed: 1,
 					ErrorMessage:        "example error",
+				},
+			},
+			want:    true,
+			wantErr: true,
+		},
+		{
+			name: "bulk_job_failed_records",
+			args: args{
+				auth: sfAuth,
+				bulkJob: BulkJobResults{
+					Id:                  "1234",
+					State:               jobStateFailed,
+					NumberRecordsFailed: 1,
+					ErrorMessage:        "",
 				},
 			},
 			want:    true,
@@ -228,14 +224,14 @@ func Test_getQueryJobResults(t *testing.T) {
 		w.Header().Add("Sforce-Locator", "")
 		w.Write([]byte(csvData))
 	}))
-	sfAuth := authorization{
+	sfAuth := authentication{
 		InstanceUrl: server.URL,
 		AccessToken: "accesstokenvalue",
 	}
 	defer server.Close()
 
 	type args struct {
-		auth      authorization
+		auth      authentication
 		bulkJobId string
 		locator   string
 	}
@@ -359,14 +355,7 @@ func Test_constructBulkJobRequest(t *testing.T) {
 		Id:    "1234",
 		State: jobStateOpen,
 	}
-	jobByte, _ := json.Marshal(job)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(jobByte)
-	}))
-	sfAuth := authorization{
-		InstanceUrl: server.URL,
-		AccessToken: "accesstokenvalue",
-	}
+	server, sfAuth := setupTestServer(job, http.StatusOK)
 	defer server.Close()
 
 	badJob := bulkJob{
@@ -377,14 +366,14 @@ func Test_constructBulkJobRequest(t *testing.T) {
 	badServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write(badJobByte)
 	}))
-	badSfAuth := authorization{
+	badSfAuth := authentication{
 		InstanceUrl: badServer.URL,
 		AccessToken: "accesstokenvalue",
 	}
 	defer badServer.Close()
 
 	type args struct {
-		auth        authorization
+		auth        authentication
 		sObjectName string
 		operation   string
 		fieldName   string
@@ -437,30 +426,15 @@ func Test_doBulkJob(t *testing.T) {
 		ExternalId string
 		Name       string
 	}
-
 	job := bulkJob{
 		Id:    "1234",
 		State: jobStateOpen,
 	}
-	jobByte, _ := json.Marshal(job)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI[len(r.RequestURI)-11:] == "jobs/ingest" {
-			w.Write(jobByte)
-		} else if r.RequestURI[len(r.RequestURI)-8:] == "/batches" {
-			w.WriteHeader(http.StatusCreated)
-		} else {
-			w.WriteHeader(http.StatusOK)
-		}
-
-	}))
-	sfAuth := authorization{
-		InstanceUrl: server.URL,
-		AccessToken: "accesstokenvalue",
-	}
+	server, sfAuth := setupTestServer(job, http.StatusOK)
 	defer server.Close()
 
 	type args struct {
-		auth           authorization
+		auth           authentication
 		sObjectName    string
 		fieldName      string
 		operation      string
@@ -528,6 +502,200 @@ func Test_doBulkJob(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("doBulkJob() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_getFailedRecords(t *testing.T) {
+	server, sfAuth := setupTestServer("error", http.StatusOK)
+	defer server.Close()
+
+	type args struct {
+		auth      authentication
+		bulkJobId string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "get_failed_records",
+			args: args{
+				auth:      sfAuth,
+				bulkJobId: "1234",
+			},
+			want:    "\"error\"",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := getFailedRecords(tt.args.auth, tt.args.bulkJobId)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getFailedRecords() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("getFailedRecords() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_waitForJobResult(t *testing.T) {
+	jobResults := BulkJobResults{
+		Id:    "1234",
+		State: jobStateJobComplete,
+	}
+	server, sfAuth := setupTestServer(jobResults, http.StatusOK)
+	defer server.Close()
+
+	type args struct {
+		auth      authentication
+		bulkJobId string
+		jobType   string
+		interval  time.Duration
+		c         chan error
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "wait_for_ingest_result",
+			args: args{
+				auth:      sfAuth,
+				bulkJobId: "1234",
+				jobType:   ingestJobType,
+				interval:  time.Nanosecond,
+				c:         make(chan error),
+			},
+			wantErr: false,
+		},
+		{
+			name: "wait_for_query_result",
+			args: args{
+				auth:      sfAuth,
+				bulkJobId: "1234",
+				jobType:   queryJobType,
+				interval:  time.Nanosecond,
+				c:         make(chan error),
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			go waitForJobResultsAsync(tt.args.auth, tt.args.bulkJobId, tt.args.jobType, tt.args.interval, tt.args.c)
+			err := <-tt.args.c
+			if (err != nil) != tt.wantErr {
+				t.Errorf("waitForJobResult() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_waitForQueryResults(t *testing.T) {
+	jobResults := BulkJobResults{
+		Id:    "1234",
+		State: jobStateJobComplete,
+	}
+	server, sfAuth := setupTestServer(jobResults, http.StatusOK)
+	defer server.Close()
+
+	type args struct {
+		auth      authentication
+		bulkJobId string
+		jobType   string
+		interval  time.Duration
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    [][]string
+		wantErr bool
+	}{
+		{
+			name: "wait_for_ingest_result",
+			args: args{
+				auth:      sfAuth,
+				bulkJobId: "1234",
+				jobType:   ingestJobType,
+				interval:  time.Nanosecond,
+			},
+			wantErr: false,
+		},
+		{
+			name: "wait_for_query_result",
+			args: args{
+				auth:      sfAuth,
+				bulkJobId: "1234",
+				jobType:   queryJobType,
+				interval:  time.Nanosecond,
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := waitForJobResults(tt.args.auth, tt.args.bulkJobId, tt.args.jobType, tt.args.interval)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("waitForQueryResults() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_collectQueryResults(t *testing.T) {
+	csvData := `"col"` + "\n" + `"row"`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.RequestURI, "?locator=") {
+			w.Header().Add("Sforce-Locator", "")
+		} else {
+			w.Header().Add("Sforce-Locator", "abc")
+		}
+		w.Header().Add("Sforce-Numberofrecords", "1")
+		w.Write([]byte(csvData))
+	}))
+	sfAuth := authentication{
+		InstanceUrl: server.URL,
+		AccessToken: "accesstokenvalue",
+	}
+	defer server.Close()
+
+	type args struct {
+		auth      authentication
+		bulkJobId string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    [][]string
+		wantErr bool
+	}{
+		{
+			name: "query_with_locator",
+			args: args{
+				auth:      sfAuth,
+				bulkJobId: "123",
+			},
+			want:    [][]string{{"col"}, {"row"}, {"row"}},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := collectQueryResults(tt.args.auth, tt.args.bulkJobId)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("collectQueryResults() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("collectQueryResults() = %v, want %v", got, tt.want)
 			}
 		})
 	}
