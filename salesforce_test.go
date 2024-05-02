@@ -16,7 +16,7 @@ func Test_doRequest(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
-	auth := authorization{
+	auth := authentication{
 		InstanceUrl: server.URL,
 		AccessToken: "accesstokenvalue",
 	}
@@ -25,7 +25,7 @@ func Test_doRequest(t *testing.T) {
 	badserver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}))
-	badauth := authorization{
+	badauth := authentication{
 		InstanceUrl: badserver.URL,
 		AccessToken: "accesstokenvalue",
 	}
@@ -35,7 +35,7 @@ func Test_doRequest(t *testing.T) {
 		method  string
 		uri     string
 		content string
-		auth    authorization
+		auth    authentication
 		body    string
 	}
 	tests := []struct {
@@ -288,7 +288,7 @@ func Test_processSalesforceResponse(t *testing.T) {
 }
 
 func TestInit(t *testing.T) {
-	sfauth := authorization{
+	sfauth := authentication{
 		AccessToken: "1234",
 		InstanceUrl: "example.com",
 		Id:          "123abc",

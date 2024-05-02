@@ -17,7 +17,7 @@ func Test_createBulkJob(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write(jobByte)
 	}))
-	sfAuth := authorization{
+	sfAuth := authentication{
 		InstanceUrl: server.URL,
 		AccessToken: "accesstokenvalue",
 	}
@@ -46,7 +46,7 @@ func Test_createBulkJob(t *testing.T) {
 	queryBody, _ := json.Marshal(queryJobReq)
 
 	type args struct {
-		auth    authorization
+		auth    authentication
 		jobType string
 		body    []byte
 	}
@@ -102,14 +102,14 @@ func Test_getJobResults(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write(jobResultsByte)
 	}))
-	sfAuth := authorization{
+	sfAuth := authentication{
 		InstanceUrl: server.URL,
 		AccessToken: "accesstokenvalue",
 	}
 	defer server.Close()
 
 	type args struct {
-		auth      authorization
+		auth      authentication
 		jobType   string
 		bulkJobId string
 	}
@@ -148,14 +148,14 @@ func Test_isBulkJobDone(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("example error"))
 	}))
-	sfAuth := authorization{
+	sfAuth := authentication{
 		InstanceUrl: server.URL,
 		AccessToken: "accesstokenvalue",
 	}
 	defer server.Close()
 
 	type args struct {
-		auth    authorization
+		auth    authentication
 		bulkJob BulkJobResults
 	}
 	tests := []struct {
@@ -167,7 +167,7 @@ func Test_isBulkJobDone(t *testing.T) {
 		{
 			name: "bulk_job_complete",
 			args: args{
-				auth: authorization{},
+				auth: authentication{},
 				bulkJob: BulkJobResults{
 					Id:                  "1234",
 					State:               jobStateJobComplete,
@@ -181,7 +181,7 @@ func Test_isBulkJobDone(t *testing.T) {
 		{
 			name: "bulk_job_not_complete",
 			args: args{
-				auth: authorization{},
+				auth: authentication{},
 				bulkJob: BulkJobResults{
 					Id:                  "1234",
 					State:               jobStateOpen,
@@ -228,14 +228,14 @@ func Test_getQueryJobResults(t *testing.T) {
 		w.Header().Add("Sforce-Locator", "")
 		w.Write([]byte(csvData))
 	}))
-	sfAuth := authorization{
+	sfAuth := authentication{
 		InstanceUrl: server.URL,
 		AccessToken: "accesstokenvalue",
 	}
 	defer server.Close()
 
 	type args struct {
-		auth      authorization
+		auth      authentication
 		bulkJobId string
 		locator   string
 	}
@@ -363,7 +363,7 @@ func Test_constructBulkJobRequest(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write(jobByte)
 	}))
-	sfAuth := authorization{
+	sfAuth := authentication{
 		InstanceUrl: server.URL,
 		AccessToken: "accesstokenvalue",
 	}
@@ -377,14 +377,14 @@ func Test_constructBulkJobRequest(t *testing.T) {
 	badServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write(badJobByte)
 	}))
-	badSfAuth := authorization{
+	badSfAuth := authentication{
 		InstanceUrl: badServer.URL,
 		AccessToken: "accesstokenvalue",
 	}
 	defer badServer.Close()
 
 	type args struct {
-		auth        authorization
+		auth        authentication
 		sObjectName string
 		operation   string
 		fieldName   string
@@ -453,14 +453,14 @@ func Test_doBulkJob(t *testing.T) {
 		}
 
 	}))
-	sfAuth := authorization{
+	sfAuth := authentication{
 		InstanceUrl: server.URL,
 		AccessToken: "accesstokenvalue",
 	}
 	defer server.Close()
 
 	type args struct {
-		auth           authorization
+		auth           authentication
 		sObjectName    string
 		fieldName      string
 		operation      string

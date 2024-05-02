@@ -34,7 +34,7 @@ func Test_performQuery(t *testing.T) {
 	defer server.Close()
 
 	type args struct {
-		auth    authorization
+		auth    authentication
 		query   string
 		sObject []account
 	}
@@ -47,7 +47,7 @@ func Test_performQuery(t *testing.T) {
 		{
 			name: "query account",
 			args: args{
-				auth: authorization{
+				auth: authentication{
 					InstanceUrl: server.URL,
 					AccessToken: "accesstoken",
 				},
@@ -83,7 +83,7 @@ func TestQueryStruct(t *testing.T) {
 		"Name": "test account",
 	}}
 	server := setupSuite(t, acc)
-	sf := Salesforce{auth: &authorization{
+	sf := Salesforce{auth: &authentication{
 		InstanceUrl: server.URL,
 		AccessToken: "123",
 	}}

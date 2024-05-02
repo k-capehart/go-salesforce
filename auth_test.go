@@ -20,7 +20,7 @@ func Test_validateAuth(t *testing.T) {
 		{
 			name: "validation_success",
 			args: args{
-				sf: Salesforce{auth: &authorization{}},
+				sf: Salesforce{auth: &authentication{}},
 			},
 			wantErr: false,
 		},
@@ -42,7 +42,7 @@ func Test_validateAuth(t *testing.T) {
 }
 
 func Test_loginPassword(t *testing.T) {
-	auth := authorization{
+	auth := authentication{
 		AccessToken: "1234",
 		InstanceUrl: "example.com",
 		Id:          "123abc",
@@ -71,7 +71,7 @@ func Test_loginPassword(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *authorization
+		want    *authentication
 		wantErr bool
 	}{
 		{
