@@ -49,6 +49,7 @@ func doBatchedRequestsForCollection(auth authentication, method string, url stri
 		} else {
 			batch = recordMap
 		}
+		recordMap = remaining
 
 		payload := sObjectCollection{
 			AllOrNone: false,
@@ -58,11 +59,13 @@ func doBatchedRequestsForCollection(auth authentication, method string, url stri
 		body, err := json.Marshal(payload)
 		if err != nil {
 			dmlErrors = errors.Join(dmlErrors, err)
+			break
 		}
 
 		resp, err := doRequest(method, url, jsonType, auth, string(body))
 		if err != nil {
 			dmlErrors = errors.Join(dmlErrors, err)
+			break
 		}
 
 		if resp.StatusCode != http.StatusOK {
@@ -72,7 +75,6 @@ func doBatchedRequestsForCollection(auth authentication, method string, url stri
 		if salesforceErrors != nil {
 			dmlErrors = errors.Join(dmlErrors, salesforceErrors)
 		}
-		recordMap = remaining
 	}
 
 	return dmlErrors
@@ -249,11 +251,14 @@ func doDeleteCollection(auth authentication, sObjectName string, records any, ba
 		} else {
 			batch = recordMap
 		}
+		recordMap = remaining
+
 		var ids string
 		for i := 0; i < len(batch); i++ {
 			recordId, ok := batch[i]["Id"].(string)
 			if !ok || recordId == "" {
-				return errors.New("salesforce id not found in object data")
+				dmlErrors = errors.Join(dmlErrors, errors.New("salesforce id not found in object data"))
+				break
 			}
 			if i == len(batch)-1 {
 				ids = ids + recordId
@@ -264,18 +269,17 @@ func doDeleteCollection(auth authentication, sObjectName string, records any, ba
 
 		resp, err := doRequest(http.MethodDelete, "/composite/sobjects/?ids="+ids+"&allOrNone=false", jsonType, auth, "")
 		if err != nil {
-			return err
+			dmlErrors = errors.Join(dmlErrors, err)
+			break
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			return processSalesforceError(*resp)
+			dmlErrors = errors.Join(dmlErrors, processSalesforceError(*resp))
 		}
 		salesforceErrors := processSalesforceResponse(*resp)
 		if salesforceErrors != nil {
-			return salesforceErrors
+			dmlErrors = errors.Join(dmlErrors, salesforceErrors)
 		}
-
-		recordMap = remaining
 	}
 
 	return dmlErrors

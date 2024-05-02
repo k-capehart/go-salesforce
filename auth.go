@@ -27,7 +27,7 @@ type Creds struct {
 }
 
 func validateAuth(sf Salesforce) error {
-	if sf.auth == nil {
+	if sf.auth == nil || sf.auth.AccessToken == "" {
 		return errors.New("not authenticated: please use salesforce.Init()")
 	}
 	return nil

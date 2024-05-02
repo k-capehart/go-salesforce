@@ -1,7 +1,6 @@
 package salesforce
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -20,7 +19,9 @@ func Test_validateAuth(t *testing.T) {
 		{
 			name: "validation_success",
 			args: args{
-				sf: Salesforce{auth: &authentication{}},
+				sf: Salesforce{auth: &authentication{
+					AccessToken: "1234",
+				}},
 			},
 			wantErr: false,
 		},
@@ -49,10 +50,7 @@ func Test_loginPassword(t *testing.T) {
 		IssuedAt:    "01/01/1970",
 		Signature:   "signed",
 	}
-	body, _ := json.Marshal(auth)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(body)
-	}))
+	server, _ := setupTestServer(auth, http.StatusOK)
 	defer server.Close()
 
 	badserver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
