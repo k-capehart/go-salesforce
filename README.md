@@ -3,6 +3,8 @@
 A REST API wrapper for interacting with Salesforce using the Go programming language.
 
 [![GoDoc](https://godoc.org/github.com/k-capehart/go-salesforce?status.png)](https://godoc.org/github.com/k-capehart/go-salesforce)
+[![Go Report Card](https://goreportcard.com/badge/github.com/k-capehart/go-salesforce)](https://goreportcard.com/report/github.com/k-capehart/go-salesforce)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/k-capehart/go-salesforce/blob/main/LICENSE)
 
 - [Read about the Salesforce REST API](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_list.htm)
 
