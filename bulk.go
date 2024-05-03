@@ -398,14 +398,11 @@ func doBulkJob(auth authentication, sObjectName string, fieldName string, operat
 	}
 
 	if waitForResults {
+		c := make(chan error, len(jobIds))
 		for _, id := range jobIds {
-			c := make(chan error)
 			go waitForJobResultsAsync(auth, id, ingestJobType, time.Second, c)
-			jobError := <-c
-			if jobError != nil {
-				jobErrors = errors.Join(jobErrors, jobError)
-			}
 		}
+		jobErrors = <-c
 	}
 
 	return jobIds, jobErrors
@@ -457,14 +454,11 @@ func doBulkJobWithFile(auth authentication, sObjectName string, fieldName string
 	}
 
 	if waitForResults {
+		c := make(chan error, len(jobIds))
 		for _, id := range jobIds {
-			c := make(chan error)
 			go waitForJobResultsAsync(auth, id, ingestJobType, time.Second, c)
-			jobError := <-c
-			if jobError != nil {
-				jobErrors = errors.Join(jobErrors, jobError)
-			}
 		}
+		jobErrors = <-c
 	}
 
 	return jobIds, jobErrors
