@@ -21,7 +21,7 @@ go get github.com/k-capehart/go-salesforce
 ### Types
 ```go
 type Salesforce struct {
-	auth *authentication
+    auth *authentication
 }
 
 type Creds struct {
@@ -68,8 +68,8 @@ Performs a SOQL query given a query string and decodes the response into the giv
 - `sObject`: a slice of a custom struct type representing a Salesforce Object 
 ```go
 type Contact struct {
-	Id       string
-	LastName string
+    Id       string
+    LastName string
 }
 ```
 ```go
@@ -92,17 +92,17 @@ Performs a SOQL query given a go-soql struct and decodes the response into the g
 
 ```go
 type Contact struct {
-	Id       string `soql:"selectColumn,fieldName=Id" json:"Id"`
-	LastName string `soql:"selectColumn,fieldName=LastName" json:"LastName"`
+    Id       string `soql:"selectColumn,fieldName=Id" json:"Id"`
+    LastName string `soql:"selectColumn,fieldName=LastName" json:"LastName"`
 }
 
 type ContactQueryCriteria struct {
-	LastName string `soql:"equalsOperator,fieldName=LastName"`
+    LastName string `soql:"equalsOperator,fieldName=LastName"`
 }
 
 type ContactSoqlQuery struct {
-	SelectClause Contact              `soql:"selectClause,tableName=Contact"`
-	WhereClause  ContactQueryCriteria `soql:"whereClause"`
+    SelectClause Contact              `soql:"selectClause,tableName=Contact"`
+    WhereClause  ContactQueryCriteria `soql:"whereClause"`
 }
 ```
 ```go
@@ -132,7 +132,7 @@ InsertOne inserts one salesforce record of the given type
 
 ```go
 type Contact struct {
-	LastName string
+    LastName string
 }
 ```
 ```go
@@ -155,8 +155,8 @@ Updates one salesforce record of the given type
 
 ```go
 type Contact struct {
-	Id       string
-	LastName string
+    Id       string
+    LastName string
 }
 ```
 ```go
@@ -181,8 +181,8 @@ Updates (or inserts) one salesforce record using the given external Id
 
 ```go
 type ContactWithExternalId struct {
-	ContactExternalId__c string
-	LastName             string
+    ContactExternalId__c string
+    LastName             string
 }
 ```
 ```go
@@ -206,7 +206,7 @@ Deletes a Salesforce record
 
 ```go
 type Contact struct {
-	Id       string
+    Id       string
 }
 ```
 ```go
@@ -236,7 +236,7 @@ Inserts a list of salesforce records of the given type
 
 ```go
 type Contact struct {
-	LastName string
+    LastName string
 }
 ```
 ```go
@@ -265,7 +265,7 @@ Updates a list of salesforce records of the given type
 
 ```go
 type Contact struct {
-	Id       string
+    Id       string
     LastName string
 }
 ```
@@ -298,8 +298,8 @@ Updates (or inserts) a list of salesforce records using the given ExternalId
 
 ```go
 type ContactWithExternalId struct {
-	ContactExternalId__c string
-	LastName             string
+    ContactExternalId__c string
+    LastName             string
 }
 ```
 ```go
@@ -330,7 +330,7 @@ Deletes a list of salesforce records
 
 ```go
 type Contact struct {
-	Id       string
+    Id       string
 }
 ```
 ```go
@@ -367,7 +367,7 @@ Inserts a list of salesforce records in a single request
 
 ```go
 type Contact struct {
-	LastName string
+    LastName string
 }
 ```
 ```go
@@ -397,7 +397,7 @@ Updates a list of salesforce records in a single request
 
 ```go
 type Contact struct {
-	Id       string
+    Id       string
     LastName string
 }
 ```
@@ -431,8 +431,8 @@ Updates (or inserts) a list of salesforce records using the given ExternalId in 
 
 ```go
 type ContactWithExternalId struct {
-	ContactExternalId__c string
-	LastName             string
+    ContactExternalId__c string
+    LastName             string
 }
 ```
 ```go
@@ -464,7 +464,7 @@ Deletes a list of salesforce records in a single request
 
 ```go
 type Contact struct {
-	Id       string
+    Id       string
 }
 ```
 ```go
@@ -491,10 +491,10 @@ Create Bulk API Jobs to query, insert, update, upsert, and delete large collecti
 ### Types
 ```go
 type BulkJobResults struct {
-	Id                  string
-	State               string
-	NumberRecordsFailed int
-	ErrorMessage        string
+    Id                  string
+    State               string
+    NumberRecordsFailed int
+    ErrorMessage        string
 }
 ```
 
@@ -524,13 +524,13 @@ Performs a SOQL query given a go-soql struct and decodes the response into the g
 
 ```go
 type ContactSoql struct {
-	Id        string `soql:"selectColumn,fieldName=Id" json:"Id"`
-	FirstName string `soql:"selectColumn,fieldName=FirstName" json:"FirstName"`
-	LastName  string `soql:"selectColumn,fieldName=LastName" json:"LastName"`
+    Id        string `soql:"selectColumn,fieldName=Id" json:"Id"`
+    FirstName string `soql:"selectColumn,fieldName=FirstName" json:"FirstName"`
+    LastName  string `soql:"selectColumn,fieldName=LastName" json:"LastName"`
 }
 
 type ContactSoqlQuery struct {
-	SelectClause ContactSoql          `soql:"selectClause,tableName=Contact"`
+    SelectClause ContactSoql          `soql:"selectClause,tableName=Contact"`
 }
 ```
 ```go
@@ -554,7 +554,7 @@ Inserts a list of salesforce records using Bulk API v2, returning a list of Job 
 
 ```go
 type Contact struct {
-	LastName string
+    LastName string
 }
 ```
 ```go
@@ -607,7 +607,7 @@ Updates a list of salesforce records using Bulk API v2, returning a list of Job 
 
 ```go
 type Contact struct {
-	Id       string
+    Id       string
     LastName string
 }
 ```
@@ -668,8 +668,8 @@ Updates (or inserts) a list of salesforce records using Bulk API v2, returning a
 
 ```go
 type ContactWithExternalId struct {
-	ContactExternalId__c string
-	LastName             string
+    ContactExternalId__c string
+    LastName             string
 }
 ```
 ```go
@@ -727,7 +727,7 @@ Deletes a list of salesforce records using Bulk API v2, returning a list of Job 
 
 ```go
 type Contact struct {
-	Id       string
+    Id       string
 }
 ```
 ```go
@@ -781,7 +781,7 @@ Returns an instance of BulkJobResults given a Job Id
 
 ```go
 type Contact struct {
-	LastName string
+    LastName string
 }
 ```
 ```go
