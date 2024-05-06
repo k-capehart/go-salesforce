@@ -155,6 +155,47 @@ func Test_validateOfTypeStruct(t *testing.T) {
 	}
 }
 
+func Test_validateOfTypeStructOrMap(t *testing.T) {
+	type testStruct struct{}
+	type args struct {
+		data any
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "validation_success_struct",
+			args: args{
+				data: testStruct{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "validation_success_struct",
+			args: args{
+				data: map[string]string{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "validation_fail",
+			args: args{
+				data: 0,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validateOfTypeStructOrMap(tt.args.data); (err != nil) != tt.wantErr {
+				t.Errorf("validateOfTypeStructOrMap() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func Test_validateBatchSizeWithinRange(t *testing.T) {
 	type args struct {
 		batchSize int

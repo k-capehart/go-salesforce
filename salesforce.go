@@ -68,10 +68,18 @@ func validateOfTypeSlice(data any) error {
 	return nil
 }
 
+func validateOfTypeStructOrMap(data any) error {
+	t := reflect.TypeOf(data).Kind().String()
+	if t != "struct" && t != "map" {
+		return errors.New("expected a struct or map type, got: " + t)
+	}
+	return nil
+}
+
 func validateOfTypeStruct(data any) error {
 	t := reflect.TypeOf(data).Kind().String()
 	if t != "struct" {
-		return errors.New("expected a struct type, got: " + t)
+		return errors.New("expected a go-soql struct, got: " + t)
 	}
 	return nil
 }
@@ -83,12 +91,24 @@ func validateBatchSizeWithinRange(batchSize int, max int) error {
 	return nil
 }
 
-func validateSingles(sf Salesforce, record any) error {
+func validateGoSoql(sf Salesforce, record any) error {
 	authErr := validateAuth(sf)
 	if authErr != nil {
 		return authErr
 	}
 	typErr := validateOfTypeStruct(record)
+	if typErr != nil {
+		return typErr
+	}
+	return nil
+}
+
+func validateSingles(sf Salesforce, record any) error {
+	authErr := validateAuth(sf)
+	if authErr != nil {
+		return authErr
+	}
+	typErr := validateOfTypeStructOrMap(record)
 	if typErr != nil {
 		return typErr
 	}
@@ -219,7 +239,7 @@ func (sf *Salesforce) Query(query string, sObject any) error {
 }
 
 func (sf *Salesforce) QueryStruct(soqlStruct any, sObject any) error {
-	validationErr := validateSingles(*sf, soqlStruct)
+	validationErr := validateGoSoql(*sf, soqlStruct)
 	if validationErr != nil {
 		return validationErr
 	}
@@ -418,7 +438,7 @@ func (sf *Salesforce) QueryBulkExport(query string, filePath string) error {
 }
 
 func (sf *Salesforce) QueryStructBulkExport(soqlStruct any, filePath string) error {
-	validationErr := validateSingles(*sf, soqlStruct)
+	validationErr := validateGoSoql(*sf, soqlStruct)
 	if validationErr != nil {
 		return validationErr
 	}
