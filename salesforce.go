@@ -189,12 +189,18 @@ func processSalesforceResponse(resp http.Response) error {
 func Init(creds Creds) (*Salesforce, error) {
 	var auth *authentication
 	var err error
-	if creds != (Creds{}) &&
-		creds.Domain != "" && creds.Username != "" &&
-		creds.Password != "" && creds.SecurityToken != "" &&
-		creds.ConsumerKey != "" && creds.ConsumerSecret != "" {
+	if creds != (Creds{}) && creds.Domain != "" && creds.ConsumerKey != "" && creds.ConsumerSecret != "" &&
+		(creds.Username == "" || creds.Password == "" || creds.SecurityToken == "") {
 
-		auth, err = loginPassword(
+		auth, err = clientCredentialsFlow(
+			creds.Domain,
+			creds.ConsumerKey,
+			creds.ConsumerSecret,
+		)
+	} else if creds != (Creds{}) && creds.Domain != "" && creds.ConsumerKey != "" && creds.ConsumerSecret != "" &&
+		creds.Username != "" && creds.Password != "" && creds.SecurityToken != "" {
+
+		auth, err = usernamePasswordFlow(
 			creds.Domain,
 			creds.Username,
 			creds.Password,
@@ -204,8 +210,10 @@ func Init(creds Creds) (*Salesforce, error) {
 		)
 	}
 
-	if err != nil || auth == nil {
-		return nil, errors.New("please refer to salesforce REST API developer guide for proper authentication: https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_flows.htm&type=5")
+	if err != nil {
+		return nil, err
+	} else if auth == nil || auth.AccessToken == "" {
+		return nil, errors.New("unknown authentication error")
 	}
 	return &Salesforce{auth: auth}, nil
 }

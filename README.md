@@ -41,9 +41,23 @@ type Creds struct {
 
 Returns a new Salesforce instance given a user's credentials.
 - `creds`: a struct containing the necessary credentials to authenticate into a Salesforce org
+- [Creating a Connected App in Salesforce](https://help.salesforce.com/s/articleView?id=sf.connected_app_create.htm&type=5)
+
+Client Credentials Flow
+- [Client Credentials Flow](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_client_credentials_flow.htm&type=5)
+```go
+sf, sfErr := salesforce.Init(salesforce.Creds{
+    Domain:         DOMAIN,
+    ConsumerKey:    CONSUMER_KEY,
+    ConsumerSecret: CONSUMER_SECRET,
+})
+if sfErr != nil {
+    panic(sfErr)
+}
+```
 
 Username-Password Flow
-- [Create a Connected App in your Salesforce org](https://help.salesforce.com/s/articleView?id=sf.connected_app_create.htm&type=5)
+- [Username-Password Flow](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_username_password_flow.htm&type=5)
 ```go
 sf, err := salesforce.Init(salesforce.Creds{
     Domain:         DOMAIN,

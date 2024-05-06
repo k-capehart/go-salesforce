@@ -13,6 +13,8 @@ type authentication struct {
 	AccessToken string `json:"access_token"`
 	InstanceUrl string `json:"instance_url"`
 	Id          string `json:"id"`
+	TokenType   string `json:"token_type"`
+	Scope       string `json:"scope"`
 	IssuedAt    string `json:"issued_at"`
 	Signature   string `json:"signature"`
 }
@@ -33,17 +35,8 @@ func validateAuth(sf Salesforce) error {
 	return nil
 }
 
-func loginPassword(domain string, username string, password string, securityToken string, consumerKey string, consumerSecret string) (*authentication, error) {
-	payload := url.Values{
-		"grant_type":    {"password"},
-		"client_id":     {consumerKey},
-		"client_secret": {consumerSecret},
-		"username":      {username},
-		"password":      {password + securityToken},
-	}
-	endpoint := "/services/oauth2/token"
-	body := strings.NewReader(payload.Encode())
-	resp, err := http.Post(domain+endpoint, "application/x-www-form-urlencoded", body)
+func doAuth(url string, body *strings.Reader) (*authentication, error) {
+	resp, err := http.Post(url, "application/x-www-form-urlencoded", body)
 	if err != nil {
 		return nil, err
 	}
@@ -63,5 +56,37 @@ func loginPassword(domain string, username string, password string, securityToke
 	}
 
 	defer resp.Body.Close()
+	return auth, nil
+}
+
+func usernamePasswordFlow(domain string, username string, password string, securityToken string, consumerKey string, consumerSecret string) (*authentication, error) {
+	payload := url.Values{
+		"grant_type":    {"password"},
+		"client_id":     {consumerKey},
+		"client_secret": {consumerSecret},
+		"username":      {username},
+		"password":      {password + securityToken},
+	}
+	endpoint := "/services/oauth2/token"
+	body := strings.NewReader(payload.Encode())
+	auth, err := doAuth(domain+endpoint, body)
+	if err != nil {
+		return nil, err
+	}
+	return auth, nil
+}
+
+func clientCredentialsFlow(domain string, consumerKey string, consumerSecret string) (*authentication, error) {
+	payload := url.Values{
+		"grant_type":    {"client_credentials"},
+		"client_id":     {consumerKey},
+		"client_secret": {consumerSecret},
+	}
+	endpoint := "/services/oauth2/token"
+	body := strings.NewReader(payload.Encode())
+	auth, err := doAuth(domain+endpoint, body)
+	if err != nil {
+		return nil, err
+	}
 	return auth, nil
 }
