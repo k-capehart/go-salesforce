@@ -830,13 +830,15 @@ fmt.Println(string(respBody))
 ```
 
 ## Contributing
-Anyone is welcome to contribute. Open an issue or discussion post first to track the effort.
+Anyone is welcome to contribute.
 
-- Fork this repository
-- When testing code locally, place this line in your module's `go.mod`
+- Open an issue or discussion post first to track the effort
+- Fork this repository, then clone it
+- Replace dependency by pointing to your local copy in your module's `go.mod`
     - `replace github.com/k-capehart/go-salesforce => /path_to_local_fork/`
 - Run tests
     - `go test -cover`
 - Generate code coverage output
     - `go test -v -coverprofile cover.out`
     - `go tool cover -html cover.out -o cover.html`
+- Create a PR and link the issue
