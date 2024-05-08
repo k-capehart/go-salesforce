@@ -19,7 +19,11 @@ func setupTestServer(body any, status int) (*httptest.Server, authentication) {
 			w.WriteHeader(http.StatusCreated)
 		} else {
 			w.WriteHeader(status)
-			w.Write(respBody)
+			if body != "" {
+				if _, err := w.Write(respBody); err != nil {
+					panic(err.Error())
+				}
+			}
 		}
 	}))
 

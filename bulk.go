@@ -98,11 +98,14 @@ func createBulkJob(auth authentication, jobType string, body []byte) (bulkJob, e
 func uploadJobData(auth authentication, data string, bulkJob bulkJob) error {
 	resp, uploadDataErr := doRequest("PUT", "/jobs/ingest/"+bulkJob.Id+"/batches", csvType, auth, data)
 	if uploadDataErr != nil {
-		updateJobState(bulkJob, jobStateAborted, auth)
-		return uploadDataErr
+		if err := updateJobState(bulkJob, jobStateAborted, auth); err != nil {
+			return uploadDataErr
+		}
 	}
 	if resp.StatusCode != http.StatusCreated {
-		updateJobState(bulkJob, jobStateAborted, auth)
+		if err := updateJobState(bulkJob, jobStateAborted, auth); err != nil {
+			return uploadDataErr
+		}
 		return processSalesforceError(*resp)
 	}
 	stateErr := updateJobState(bulkJob, jobStateUploadComplete, auth)
@@ -331,8 +334,13 @@ func writeCSVFile(filePath string, data [][]string) error {
 	defer file.Close()
 
 	writer := csv.NewWriter(file)
+	if writer == nil {
+		return errors.New("error writing csv file")
+	}
 	defer writer.Flush()
-	writer.WriteAll(data)
+	if err := writer.WriteAll(data); err != nil {
+		return errors.New("error writing csv file")
+	}
 
 	return nil
 }
@@ -439,7 +447,10 @@ func doBulkJobWithFile(auth authentication, sObjectName string, fieldName string
 		var buf bytes.Buffer
 		w := csv.NewWriter(&buf)
 		batch = append([][]string{headers}, batch...)
-		w.WriteAll(batch)
+		if err := w.WriteAll(batch); err != nil {
+			jobErrors = errors.Join(jobErrors, err)
+			break
+		}
 		w.Flush()
 		writeErr := w.Error()
 		if writeErr != nil {

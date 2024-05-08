@@ -222,7 +222,9 @@ func Test_getQueryJobResults(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Sforce-Numberofrecords", "1")
 		w.Header().Add("Sforce-Locator", "")
-		w.Write([]byte(csvData))
+		if _, err := w.Write([]byte(csvData)); err != nil {
+			t.Fatalf(err.Error())
+		}
 	}))
 	sfAuth := authentication{
 		InstanceUrl: server.URL,
@@ -364,7 +366,9 @@ func Test_constructBulkJobRequest(t *testing.T) {
 	}
 	badJobByte, _ := json.Marshal(badJob)
 	badServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(badJobByte)
+		if _, err := w.Write(badJobByte); err != nil {
+			t.Fatalf(err.Error())
+		}
 	}))
 	badSfAuth := authentication{
 		InstanceUrl: badServer.URL,
@@ -659,7 +663,9 @@ func Test_collectQueryResults(t *testing.T) {
 			w.Header().Add("Sforce-Locator", "abc")
 		}
 		w.Header().Add("Sforce-Numberofrecords", "1")
-		w.Write([]byte(csvData))
+		if _, err := w.Write([]byte(csvData)); err != nil {
+			t.Fatalf(err.Error())
+		}
 	}))
 	sfAuth := authentication{
 		InstanceUrl: server.URL,
