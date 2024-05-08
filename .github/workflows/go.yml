@@ -13,6 +13,8 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
     steps:
     - uses: actions/checkout@v3
 
@@ -28,4 +30,6 @@ jobs:
       run: go test -v ./...
 
     - name: Golangci-lint
-      uses: golangci/golangci-lint-action@v6.0.1
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: latest
