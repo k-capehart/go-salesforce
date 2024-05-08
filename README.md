@@ -6,8 +6,8 @@ A REST API wrapper for interacting with Salesforce using the Go programming lang
 [![Go Report Card](https://goreportcard.com/badge/github.com/k-capehart/go-salesforce)](https://goreportcard.com/report/github.com/k-capehart/go-salesforce)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/k-capehart/go-salesforce/blob/main/LICENSE)
 
+- [Read my blog post about go-salesforce](https://www.kylecapehart.com/posts/go-salesforce/)
 - [Read about the Salesforce REST API](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_list.htm)
-
 - [Read about Golang](https://go.dev/doc/)
 
 ## Installation
@@ -16,8 +16,7 @@ go get github.com/k-capehart/go-salesforce
 ```
 
 ## Authentication
-- To begin using, create an instance of the `Salesforce` type by calling `Init()` and passing your credentials as arguments
-    - [Review Salesforce oauth flows](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_flows.htm&type=5)
+- To begin using, create an instance of the `Salesforce` type by calling `salesforce.Init()` and passing your credentials as arguments
 - Once authenticated, all other functions can be called as methods using the resulting `Salesforce` instance
 
 ### Types
@@ -42,22 +41,21 @@ type Creds struct {
 Returns a new Salesforce instance given a user's credentials.
 - `creds`: a struct containing the necessary credentials to authenticate into a Salesforce org
 - [Creating a Connected App in Salesforce](https://help.salesforce.com/s/articleView?id=sf.connected_app_create.htm&type=5)
+- [Review Salesforce oauth flows](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_flows.htm&type=5)
 
-Client Credentials Flow
-- [Client Credentials Flow](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_client_credentials_flow.htm&type=5)
+[Client Credentials Flow](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_client_credentials_flow.htm&type=5)
 ```go
-sf, sfErr := salesforce.Init(salesforce.Creds{
+sf, err := salesforce.Init(salesforce.Creds{
     Domain:         DOMAIN,
     ConsumerKey:    CONSUMER_KEY,
     ConsumerSecret: CONSUMER_SECRET,
 })
-if sfErr != nil {
-    panic(sfErr)
+if err != nil {
+    panic(err)
 }
 ```
 
-Username-Password Flow
-- [Username-Password Flow](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_username_password_flow.htm&type=5)
+[Username-Password Flow](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_username_password_flow.htm&type=5)
 ```go
 sf, err := salesforce.Init(salesforce.Creds{
     Domain:         DOMAIN,
@@ -366,7 +364,7 @@ if err != nil {
 
 ## Composite Requests
 Make numerous 'subrequests' contained within a single 'composite request', reducing the overall number of calls to Salesforce
-- [Review Salesforce REST API resources for making composite requests](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/requests_composite.htm)
+- [Review Salesforce REST API resources for making composite requests](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_composite_composite_post.htm)
 - Up to 25 subrequests may be included in a single composite request
     - For DML operations, max number of records to be processed is determined by batch size (`25 * (batch size)`)
     - So if batch size is 1, then max number of records to be included in request is 25
