@@ -844,13 +844,18 @@ fmt.Println(string(respBody))
 ## Contributing
 Anyone is welcome to contribute.
 
-- Open an issue or discussion post first to track the effort
+- Open an issue or discussion post to track the effort
 - Fork this repository, then clone it
-- Replace dependency by pointing to your local copy in your module's `go.mod`
+- Replace dependency by pointing to your locally cloned `go-salesforce` in your module's `go.mod`
     - `replace github.com/k-capehart/go-salesforce => /path_to_local_fork/`
 - Run tests
     - `go test -cover`
 - Generate code coverage output
     - `go test -v -coverprofile cover.out`
     - `go tool cover -html cover.out -o cover.html`
+- Linting
+    - Install [golangci-lint](https://github.com/golangci/golangci-lint)
+        - MacOS: `brew install golangci-lint`
+        - Windows: `choco install golangci-lint`
+    - `golangci-lint run`
 - Create a PR and link the issue
