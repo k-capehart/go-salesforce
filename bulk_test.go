@@ -223,7 +223,7 @@ func Test_getQueryJobResults(t *testing.T) {
 		w.Header().Add("Sforce-Numberofrecords", "1")
 		w.Header().Add("Sforce-Locator", "")
 		if _, err := w.Write([]byte(csvData)); err != nil {
-			t.Fatalf("error when creating mock server for Test_getQueryJobResults")
+			t.Fatalf(err.Error())
 		}
 	}))
 	sfAuth := authentication{
@@ -367,7 +367,7 @@ func Test_constructBulkJobRequest(t *testing.T) {
 	badJobByte, _ := json.Marshal(badJob)
 	badServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write(badJobByte); err != nil {
-			t.Fatalf("error when creating mock server for Test_constructBulkJobRequest")
+			t.Fatalf(err.Error())
 		}
 	}))
 	badSfAuth := authentication{
@@ -664,7 +664,7 @@ func Test_collectQueryResults(t *testing.T) {
 		}
 		w.Header().Add("Sforce-Numberofrecords", "1")
 		if _, err := w.Write([]byte(csvData)); err != nil {
-			t.Fatalf("error when creating mock server for Test_collectQueryResults")
+			t.Fatalf(err.Error())
 		}
 	}))
 	sfAuth := authentication{
