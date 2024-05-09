@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/spf13/afero"
 )
 
 func setupTestServer(body any, status int) (*httptest.Server, authentication) {
@@ -513,6 +515,7 @@ func Test_validateBulk(t *testing.T) {
 		sf        Salesforce
 		records   any
 		batchSize int
+		isFile    bool
 	}
 	tests := []struct {
 		name    string
@@ -527,6 +530,7 @@ func Test_validateBulk(t *testing.T) {
 				}},
 				records:   []account{},
 				batchSize: 10000,
+				isFile:    false,
 			},
 			wantErr: false,
 		},
@@ -536,6 +540,7 @@ func Test_validateBulk(t *testing.T) {
 				sf:        Salesforce{},
 				records:   []account{},
 				batchSize: 10000,
+				isFile:    false,
 			},
 			wantErr: true,
 		},
@@ -547,6 +552,7 @@ func Test_validateBulk(t *testing.T) {
 				}},
 				records:   0,
 				batchSize: 10000,
+				isFile:    false,
 			},
 			wantErr: true,
 		},
@@ -558,13 +564,26 @@ func Test_validateBulk(t *testing.T) {
 				}},
 				records:   []account{},
 				batchSize: 0,
+				isFile:    false,
 			},
 			wantErr: true,
+		},
+		{
+			name: "validation_success_file",
+			args: args{
+				sf: Salesforce{auth: &authentication{
+					AccessToken: "1234",
+				}},
+				records:   nil,
+				batchSize: 2000,
+				isFile:    true,
+			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateBulk(tt.args.sf, tt.args.records, tt.args.batchSize); (err != nil) != tt.wantErr {
+			if err := validateBulk(tt.args.sf, tt.args.records, tt.args.batchSize, tt.args.isFile); (err != nil) != tt.wantErr {
 				t.Errorf("validateBulk() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -2097,6 +2116,503 @@ func TestSalesforce_GetJobResults(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Salesforce.GetJobResults() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSalesforce_InsertBulkFile(t *testing.T) {
+	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
+	if err := appFs.MkdirAll("data", 0755); err != nil {
+		t.Fatalf("error creating directory in virtual file system")
+	}
+	if err := afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow"), 0644); err != nil {
+		t.Fatalf("error creating file in virtual file system")
+	}
+
+	job := bulkJob{
+		Id:    "1234",
+		State: jobStateOpen,
+	}
+	server, sfAuth := setupTestServer(job, http.StatusOK)
+	defer server.Close()
+
+	type fields struct {
+		auth *authentication
+	}
+	type args struct {
+		sObjectName    string
+		filePath       string
+		batchSize      int
+		waitForResults bool
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "insert bulk data successfully",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:    "Account",
+				filePath:       "data/data.csv",
+				batchSize:      2000,
+				waitForResults: false,
+			},
+			want:    []string{"1234"},
+			wantErr: false,
+		},
+		{
+			name: "validation error",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:    "Account",
+				filePath:       "data/data.csv",
+				batchSize:      10001,
+				waitForResults: false,
+			},
+			want:    []string{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sf := &Salesforce{
+				auth: tt.fields.auth,
+			}
+			got, err := sf.InsertBulkFile(tt.args.sObjectName, tt.args.filePath, tt.args.batchSize, tt.args.waitForResults)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Salesforce.InsertBulkFile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.InsertBulkFile() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSalesforce_UpdateBulkFile(t *testing.T) {
+	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
+	if err := appFs.MkdirAll("data", 0755); err != nil {
+		t.Fatalf("error creating directory in virtual file system")
+	}
+	if err := afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow"), 0644); err != nil {
+		t.Fatalf("error creating file in virtual file system")
+	}
+
+	job := bulkJob{
+		Id:    "1234",
+		State: jobStateOpen,
+	}
+	server, sfAuth := setupTestServer(job, http.StatusOK)
+	defer server.Close()
+
+	type fields struct {
+		auth *authentication
+	}
+	type args struct {
+		sObjectName    string
+		filePath       string
+		batchSize      int
+		waitForResults bool
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "update bulk data successfully",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:    "Account",
+				filePath:       "data/data.csv",
+				batchSize:      2000,
+				waitForResults: false,
+			},
+			want:    []string{"1234"},
+			wantErr: false,
+		},
+		{
+			name: "validation error",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:    "Account",
+				filePath:       "data/data.csv",
+				batchSize:      10001,
+				waitForResults: false,
+			},
+			want:    []string{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sf := &Salesforce{
+				auth: tt.fields.auth,
+			}
+			got, err := sf.UpdateBulkFile(tt.args.sObjectName, tt.args.filePath, tt.args.batchSize, tt.args.waitForResults)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Salesforce.UpdateBulkFile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.UpdateBulkFile() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSalesforce_UpsertBulkFile(t *testing.T) {
+	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
+	if err := appFs.MkdirAll("data", 0755); err != nil {
+		t.Fatalf("error creating directory in virtual file system")
+	}
+	if err := afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow"), 0644); err != nil {
+		t.Fatalf("error creating file in virtual file system")
+	}
+
+	job := bulkJob{
+		Id:    "1234",
+		State: jobStateOpen,
+	}
+	server, sfAuth := setupTestServer(job, http.StatusOK)
+	defer server.Close()
+
+	type fields struct {
+		auth *authentication
+	}
+	type args struct {
+		sObjectName         string
+		externalIdFieldName string
+		filePath            string
+		batchSize           int
+		waitForResults      bool
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "upsert bulk data successfully",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:         "Account",
+				externalIdFieldName: "ExternalId__c",
+				filePath:            "data/data.csv",
+				batchSize:           2000,
+				waitForResults:      false,
+			},
+			want:    []string{"1234"},
+			wantErr: false,
+		},
+		{
+			name: "validation error",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:         "Account",
+				externalIdFieldName: "ExternalId__c",
+				filePath:            "data/data.csv",
+				batchSize:           10001,
+				waitForResults:      false,
+			},
+			want:    []string{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sf := &Salesforce{
+				auth: tt.fields.auth,
+			}
+			got, err := sf.UpsertBulkFile(tt.args.sObjectName, tt.args.externalIdFieldName, tt.args.filePath, tt.args.batchSize, tt.args.waitForResults)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Salesforce.UpsertBulkFile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.UpsertBulkFile() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSalesforce_DeleteBulkFile(t *testing.T) {
+	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
+	if err := appFs.MkdirAll("data", 0755); err != nil {
+		t.Fatalf("error creating directory in virtual file system")
+	}
+	if err := afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow"), 0644); err != nil {
+		t.Fatalf("error creating file in virtual file system")
+	}
+
+	job := bulkJob{
+		Id:    "1234",
+		State: jobStateOpen,
+	}
+	server, sfAuth := setupTestServer(job, http.StatusOK)
+	defer server.Close()
+
+	type fields struct {
+		auth *authentication
+	}
+	type args struct {
+		sObjectName    string
+		filePath       string
+		batchSize      int
+		waitForResults bool
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "delete bulk data successfully",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:    "Account",
+				filePath:       "data/data.csv",
+				batchSize:      2000,
+				waitForResults: false,
+			},
+			want:    []string{"1234"},
+			wantErr: false,
+		},
+		{
+			name: "validation error",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:    "Account",
+				filePath:       "data/data.csv",
+				batchSize:      10001,
+				waitForResults: false,
+			},
+			want:    []string{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sf := &Salesforce{
+				auth: tt.fields.auth,
+			}
+			got, err := sf.DeleteBulkFile(tt.args.sObjectName, tt.args.filePath, tt.args.batchSize, tt.args.waitForResults)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Salesforce.DeleteBulkFile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.DeleteBulkFile() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSalesforce_QueryBulkExport(t *testing.T) {
+	job := bulkJob{
+		Id:    "1234",
+		State: jobStateJobComplete,
+	}
+	jobResults := BulkJobResults{
+		Id:                  "1234",
+		State:               jobStateJobComplete,
+		NumberRecordsFailed: 0,
+		ErrorMessage:        "",
+	}
+	jobCreationRespBody, _ := json.Marshal(job)
+	jobResultsRespBody, _ := json.Marshal(jobResults)
+	csvData := `"col"` + "\n" + `"row"`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.RequestURI[len(r.RequestURI)-6:] == "/query" {
+			w.WriteHeader(http.StatusOK)
+			if _, err := w.Write(jobCreationRespBody); err != nil {
+				t.Fatalf(err.Error())
+			}
+		} else if r.RequestURI[len(r.RequestURI)-5:] == "/1234" {
+			if _, err := w.Write(jobResultsRespBody); err != nil {
+				t.Fatalf(err.Error())
+			}
+		} else if r.RequestURI[len(r.RequestURI)-8:] == "/results" {
+			w.Header().Add("Sforce-Locator", "")
+			w.Header().Add("Sforce-Numberofrecords", "1")
+			if _, err := w.Write([]byte(csvData)); err != nil {
+				t.Fatalf(err.Error())
+			}
+		}
+	}))
+	sfAuth := authentication{
+		InstanceUrl: server.URL,
+		AccessToken: "accesstokenvalue",
+	}
+	defer server.Close()
+
+	badServer, badAuth := setupTestServer(job, http.StatusBadRequest)
+	defer badServer.Close()
+
+	type fields struct {
+		auth *authentication
+	}
+	type args struct {
+		query    string
+		filePath string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "export data successfully",
+			fields: fields{
+				&sfAuth,
+			},
+			args: args{
+				query:    "SELECT Id FROM Account",
+				filePath: "data/export.csv",
+			},
+			wantErr: false,
+		},
+		{
+			name: "validation error",
+			fields: fields{
+				&badAuth,
+			},
+			args: args{
+				query:    "SELECT Id FROM Account",
+				filePath: "data/export.csv",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sf := &Salesforce{
+				auth: tt.fields.auth,
+			}
+			if err := sf.QueryBulkExport(tt.args.query, tt.args.filePath); (err != nil) != tt.wantErr {
+				t.Errorf("Salesforce.QueryBulkExport() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestSalesforce_QueryStructBulkExport(t *testing.T) {
+	type account struct {
+		Id   string
+		Name string
+	}
+	job := bulkJob{
+		Id:    "1234",
+		State: jobStateJobComplete,
+	}
+	jobResults := BulkJobResults{
+		Id:                  "1234",
+		State:               jobStateJobComplete,
+		NumberRecordsFailed: 0,
+		ErrorMessage:        "",
+	}
+	jobCreationRespBody, _ := json.Marshal(job)
+	jobResultsRespBody, _ := json.Marshal(jobResults)
+	csvData := `"col"` + "\n" + `"row"`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.RequestURI[len(r.RequestURI)-6:] == "/query" {
+			w.WriteHeader(http.StatusOK)
+			if _, err := w.Write(jobCreationRespBody); err != nil {
+				t.Fatalf(err.Error())
+			}
+		} else if r.RequestURI[len(r.RequestURI)-5:] == "/1234" {
+			if _, err := w.Write(jobResultsRespBody); err != nil {
+				t.Fatalf(err.Error())
+			}
+		} else if r.RequestURI[len(r.RequestURI)-8:] == "/results" {
+			w.Header().Add("Sforce-Locator", "")
+			w.Header().Add("Sforce-Numberofrecords", "1")
+			if _, err := w.Write([]byte(csvData)); err != nil {
+				t.Fatalf(err.Error())
+			}
+		}
+	}))
+	sfAuth := authentication{
+		InstanceUrl: server.URL,
+		AccessToken: "accesstokenvalue",
+	}
+	defer server.Close()
+
+	badServer, badAuth := setupTestServer(job, http.StatusBadRequest)
+	defer badServer.Close()
+
+	type fields struct {
+		auth *authentication
+	}
+	type args struct {
+		soqlStruct any
+		filePath   string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "export data successfully",
+			fields: fields{
+				&sfAuth,
+			},
+			args: args{
+				soqlStruct: account{},
+				filePath:   "data/export.csv",
+			},
+			wantErr: false,
+		},
+		{
+			name: "validation error",
+			fields: fields{
+				&badAuth,
+			},
+			args: args{
+				soqlStruct: account{},
+				filePath:   "data/export.csv",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sf := &Salesforce{
+				auth: tt.fields.auth,
+			}
+			if err := sf.QueryStructBulkExport(tt.args.soqlStruct, tt.args.filePath); (err != nil) != tt.wantErr {
+				t.Errorf("Salesforce.QueryStructBulkExport() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

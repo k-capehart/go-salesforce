@@ -131,14 +131,16 @@ func validateCollections(sf Salesforce, records any, batchSize int) error {
 	return nil
 }
 
-func validateBulk(sf Salesforce, records any, batchSize int) error {
+func validateBulk(sf Salesforce, records any, batchSize int, isFile bool) error {
 	authErr := validateAuth(sf)
 	if authErr != nil {
 		return authErr
 	}
-	typErr := validateOfTypeSlice(records)
-	if typErr != nil {
-		return typErr
+	if !isFile {
+		typErr := validateOfTypeSlice(records)
+		if typErr != nil {
+			return typErr
+		}
 	}
 	batchSizeErr := validateBatchSizeWithinRange(batchSize, bulkBatchSizeMax)
 	if batchSizeErr != nil {
@@ -464,7 +466,7 @@ func (sf *Salesforce) QueryStructBulkExport(soqlStruct any, filePath string) err
 }
 
 func (sf *Salesforce) InsertBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
-	validationErr := validateBulk(*sf, records, batchSize)
+	validationErr := validateBulk(*sf, records, batchSize, false)
 	if validationErr != nil {
 		return []string{}, validationErr
 	}
@@ -478,9 +480,9 @@ func (sf *Salesforce) InsertBulk(sObjectName string, records any, batchSize int,
 }
 
 func (sf *Salesforce) InsertBulkFile(sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
-	authErr := validateAuth(*sf)
-	if authErr != nil {
-		return []string{}, authErr
+	validationErr := validateBulk(*sf, nil, batchSize, true)
+	if validationErr != nil {
+		return []string{}, validationErr
 	}
 
 	jobIds, bulkErr := doBulkJobWithFile(*sf.auth, sObjectName, "", insertOperation, filePath, batchSize, waitForResults)
@@ -492,7 +494,7 @@ func (sf *Salesforce) InsertBulkFile(sObjectName string, filePath string, batchS
 }
 
 func (sf *Salesforce) UpdateBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
-	validationErr := validateBulk(*sf, records, batchSize)
+	validationErr := validateBulk(*sf, records, batchSize, false)
 	if validationErr != nil {
 		return []string{}, validationErr
 	}
@@ -506,9 +508,9 @@ func (sf *Salesforce) UpdateBulk(sObjectName string, records any, batchSize int,
 }
 
 func (sf *Salesforce) UpdateBulkFile(sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
-	authErr := validateAuth(*sf)
-	if authErr != nil {
-		return []string{}, authErr
+	validationErr := validateBulk(*sf, nil, batchSize, true)
+	if validationErr != nil {
+		return []string{}, validationErr
 	}
 
 	jobIds, bulkErr := doBulkJobWithFile(*sf.auth, sObjectName, "", updateOperation, filePath, batchSize, waitForResults)
@@ -520,7 +522,7 @@ func (sf *Salesforce) UpdateBulkFile(sObjectName string, filePath string, batchS
 }
 
 func (sf *Salesforce) UpsertBulk(sObjectName string, externalIdFieldName string, records any, batchSize int, waitForResults bool) ([]string, error) {
-	validationErr := validateBulk(*sf, records, batchSize)
+	validationErr := validateBulk(*sf, records, batchSize, false)
 	if validationErr != nil {
 		return []string{}, validationErr
 	}
@@ -534,9 +536,9 @@ func (sf *Salesforce) UpsertBulk(sObjectName string, externalIdFieldName string,
 }
 
 func (sf *Salesforce) UpsertBulkFile(sObjectName string, externalIdFieldName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
-	authErr := validateAuth(*sf)
-	if authErr != nil {
-		return []string{}, authErr
+	validationErr := validateBulk(*sf, nil, batchSize, true)
+	if validationErr != nil {
+		return []string{}, validationErr
 	}
 
 	jobIds, bulkErr := doBulkJobWithFile(*sf.auth, sObjectName, externalIdFieldName, upsertOperation, filePath, batchSize, waitForResults)
@@ -548,7 +550,7 @@ func (sf *Salesforce) UpsertBulkFile(sObjectName string, externalIdFieldName str
 }
 
 func (sf *Salesforce) DeleteBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
-	validationErr := validateBulk(*sf, records, batchSize)
+	validationErr := validateBulk(*sf, records, batchSize, false)
 	if validationErr != nil {
 		return []string{}, validationErr
 	}
@@ -562,9 +564,9 @@ func (sf *Salesforce) DeleteBulk(sObjectName string, records any, batchSize int,
 }
 
 func (sf *Salesforce) DeleteBulkFile(sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
-	authErr := validateAuth(*sf)
-	if authErr != nil {
-		return []string{}, authErr
+	validationErr := validateBulk(*sf, nil, batchSize, true)
+	if validationErr != nil {
+		return []string{}, validationErr
 	}
 
 	jobIds, bulkErr := doBulkJobWithFile(*sf.auth, sObjectName, "", deleteOperation, filePath, batchSize, waitForResults)

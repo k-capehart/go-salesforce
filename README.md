@@ -846,7 +846,7 @@ Anyone is welcome to contribute.
 
 - Open an issue or discussion post to track the effort
 - Fork this repository, then clone it
-- Replace dependency by pointing to your locally cloned `go-salesforce` in your module's `go.mod`
+- Place this in your own module's `go.mod` to enable testing local changes
     - `replace github.com/k-capehart/go-salesforce => /path_to_local_fork/`
 - Run tests
     - `go test -cover`
