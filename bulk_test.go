@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/spf13/afero"
 )
 
 func Test_createBulkJob(t *testing.T) {
@@ -702,6 +704,156 @@ func Test_collectQueryResults(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("collectQueryResults() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_uploadJobData(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.RequestURI[len(r.RequestURI)-8:] == "/batches" {
+			w.WriteHeader(http.StatusCreated)
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	sfAuth := authentication{
+		InstanceUrl: server.URL,
+		AccessToken: "accesstokenvalue",
+	}
+	defer server.Close()
+
+	badServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.RequestURI[len(r.RequestURI)-8:] == "/batches" {
+			w.WriteHeader(http.StatusBadRequest)
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	badAuth := authentication{
+		InstanceUrl: badServer.URL,
+		AccessToken: "accesstokenvalue",
+	}
+	defer badServer.Close()
+
+	type args struct {
+		auth    authentication
+		data    string
+		bulkJob bulkJob
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "update job state success",
+			args: args{
+				auth:    sfAuth,
+				data:    "data",
+				bulkJob: bulkJob{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "update job state fail",
+			args: args{
+				auth:    badAuth,
+				data:    "data",
+				bulkJob: bulkJob{},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := uploadJobData(tt.args.auth, tt.args.data, tt.args.bulkJob); (err != nil) != tt.wantErr {
+				t.Errorf("uploadJobData() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_readCSVFile(t *testing.T) {
+	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
+	appFs.MkdirAll("data", 0755)
+	afero.WriteFile(appFs, "data/data.csv", []byte("123"), 0644)
+
+	type args struct {
+		filePath string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    [][]string
+		wantErr bool
+	}{
+		{
+			name: "read file successfully",
+			args: args{
+				filePath: "data/data.csv",
+			},
+			want:    [][]string{{"123"}},
+			wantErr: false,
+		},
+		{
+			name: "read file failure",
+			args: args{
+				filePath: "data/does_not_exist.csv",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := readCSVFile(tt.args.filePath)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("readCSVFile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("readCSVFile() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_writeCSVFile(t *testing.T) {
+	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
+
+	type args struct {
+		filePath string
+		data     [][]string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    [][]string
+		wantErr bool
+	}{
+		{
+			name: "write file successfully",
+			args: args{
+				filePath: "data/export.csv",
+				data:     [][]string{{"123"}},
+			},
+			want:    [][]string{{"123"}},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := writeCSVFile(tt.args.filePath, tt.args.data); (err != nil) != tt.wantErr {
+				t.Errorf("writeCSVFile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			got, err := readCSVFile("data/export.csv")
+			if err != nil {
+				t.Errorf(err.Error())
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("writeCSVFile() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
+	"github.com/spf13/afero"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -58,6 +58,8 @@ const (
 	ingestJobType          = "ingest"
 	queryJobType           = "query"
 )
+
+var appFs = afero.NewOsFs() // afero.Fs type is a wrapper around os functions, allowing us to mock it in tests
 
 func updateJobState(job bulkJob, state string, auth authentication) error {
 	job.State = state
@@ -311,7 +313,7 @@ func mapsToCSVSlices(maps []map[string]string) ([][]string, error) {
 }
 
 func readCSVFile(filePath string) ([][]string, error) {
-	file, fileErr := os.Open(filePath)
+	file, fileErr := appFs.Open(filePath)
 	if fileErr != nil {
 		return nil, fileErr
 	}
@@ -327,7 +329,7 @@ func readCSVFile(filePath string) ([][]string, error) {
 }
 
 func writeCSVFile(filePath string, data [][]string) error {
-	file, fileErr := os.Create(filePath)
+	file, fileErr := appFs.Create(filePath)
 	if fileErr != nil {
 		return fileErr
 	}
@@ -408,7 +410,7 @@ func doBulkJob(auth authentication, sObjectName string, fieldName string, operat
 	if waitForResults {
 		c := make(chan error, len(jobIds))
 		for _, id := range jobIds {
-			go waitForJobResultsAsync(auth, id, ingestJobType, time.Second, c)
+			go waitForJobResultsAsync(auth, id, ingestJobType, (time.Second / 2), c)
 		}
 		jobErrors = <-c
 	}
@@ -467,7 +469,7 @@ func doBulkJobWithFile(auth authentication, sObjectName string, fieldName string
 	if waitForResults {
 		c := make(chan error, len(jobIds))
 		for _, id := range jobIds {
-			go waitForJobResultsAsync(auth, id, ingestJobType, time.Second, c)
+			go waitForJobResultsAsync(auth, id, ingestJobType, (time.Second / 2), c)
 		}
 		jobErrors = <-c
 	}
@@ -494,7 +496,7 @@ func doQueryBulk(auth authentication, filePath string, query string) error {
 		return newErr
 	}
 
-	pollErr := waitForJobResults(auth, job.Id, queryJobType, time.Second)
+	pollErr := waitForJobResults(auth, job.Id, queryJobType, (time.Second / 2))
 	if pollErr != nil {
 		return pollErr
 	}
