@@ -2123,8 +2123,12 @@ func TestSalesforce_GetJobResults(t *testing.T) {
 
 func TestSalesforce_InsertBulkFile(t *testing.T) {
 	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
-	appFs.MkdirAll("data", 0755)
-	afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow"), 0644)
+	if err := appFs.MkdirAll("data", 0755); err != nil {
+		t.Fatalf("error creating directory in virtual file system")
+	}
+	if err := afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow"), 0644); err != nil {
+		t.Fatalf("error creating file in virtual file system")
+	}
 
 	job := bulkJob{
 		Id:    "1234",
@@ -2197,8 +2201,12 @@ func TestSalesforce_InsertBulkFile(t *testing.T) {
 
 func TestSalesforce_UpdateBulkFile(t *testing.T) {
 	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
-	appFs.MkdirAll("data", 0755)
-	afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow"), 0644)
+	if err := appFs.MkdirAll("data", 0755); err != nil {
+		t.Fatalf("error creating directory in virtual file system")
+	}
+	if err := afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow"), 0644); err != nil {
+		t.Fatalf("error creating file in virtual file system")
+	}
 
 	job := bulkJob{
 		Id:    "1234",
@@ -2271,8 +2279,12 @@ func TestSalesforce_UpdateBulkFile(t *testing.T) {
 
 func TestSalesforce_UpsertBulkFile(t *testing.T) {
 	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
-	appFs.MkdirAll("data", 0755)
-	afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow"), 0644)
+	if err := appFs.MkdirAll("data", 0755); err != nil {
+		t.Fatalf("error creating directory in virtual file system")
+	}
+	if err := afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow"), 0644); err != nil {
+		t.Fatalf("error creating file in virtual file system")
+	}
 
 	job := bulkJob{
 		Id:    "1234",
@@ -2348,8 +2360,12 @@ func TestSalesforce_UpsertBulkFile(t *testing.T) {
 
 func TestSalesforce_DeleteBulkFile(t *testing.T) {
 	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
-	appFs.MkdirAll("data", 0755)
-	afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow"), 0644)
+	if err := appFs.MkdirAll("data", 0755); err != nil {
+		t.Fatalf("error creating directory in virtual file system")
+	}
+	if err := afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow"), 0644); err != nil {
+		t.Fatalf("error creating file in virtual file system")
+	}
 
 	job := bulkJob{
 		Id:    "1234",

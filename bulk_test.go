@@ -776,8 +776,12 @@ func Test_uploadJobData(t *testing.T) {
 
 func Test_readCSVFile(t *testing.T) {
 	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
-	appFs.MkdirAll("data", 0755)
-	afero.WriteFile(appFs, "data/data.csv", []byte("123"), 0644)
+	if err := appFs.MkdirAll("data", 0755); err != nil {
+		t.Fatalf("error creating directory in virtual file system")
+	}
+	if err := afero.WriteFile(appFs, "data/data.csv", []byte("123"), 0644); err != nil {
+		t.Fatalf("error creating file in virtual file system")
+	}
 
 	type args struct {
 		filePath string
