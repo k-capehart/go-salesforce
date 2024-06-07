@@ -26,11 +26,31 @@ type Creds struct {
 	SecurityToken  string
 	ConsumerKey    string
 	ConsumerSecret string
+	AccessToken    string
 }
+
+const (
+	grantTypePassword          = "password"
+	grantTypeClientCredentials = "client_credentials"
+)
 
 func validateAuth(sf Salesforce) error {
 	if sf.auth == nil || sf.auth.AccessToken == "" {
 		return errors.New("not authenticated: please use salesforce.Init()")
+	}
+	return nil
+}
+
+func validateSession(auth authentication) error {
+	if err := validateAuth(Salesforce{auth: &auth}); err != nil {
+		return err
+	}
+	resp, err := doRequest(http.MethodGet, "/limits", jsonType, auth, "")
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return processSalesforceError(*resp)
 	}
 	return nil
 }
@@ -61,7 +81,7 @@ func doAuth(url string, body *strings.Reader) (*authentication, error) {
 
 func usernamePasswordFlow(domain string, username string, password string, securityToken string, consumerKey string, consumerSecret string) (*authentication, error) {
 	payload := url.Values{
-		"grant_type":    {"password"},
+		"grant_type":    {grantTypePassword},
 		"client_id":     {consumerKey},
 		"client_secret": {consumerSecret},
 		"username":      {username},
@@ -78,7 +98,7 @@ func usernamePasswordFlow(domain string, username string, password string, secur
 
 func clientCredentialsFlow(domain string, consumerKey string, consumerSecret string) (*authentication, error) {
 	payload := url.Values{
-		"grant_type":    {"client_credentials"},
+		"grant_type":    {grantTypeClientCredentials},
 		"client_id":     {consumerKey},
 		"client_secret": {consumerSecret},
 	}
@@ -86,6 +106,14 @@ func clientCredentialsFlow(domain string, consumerKey string, consumerSecret str
 	body := strings.NewReader(payload.Encode())
 	auth, err := doAuth(domain+endpoint, body)
 	if err != nil {
+		return nil, err
+	}
+	return auth, nil
+}
+
+func setAccessToken(domain string, accessToken string) (*authentication, error) {
+	auth := &authentication{InstanceUrl: domain, AccessToken: accessToken}
+	if err := validateSession(*auth); err != nil {
 		return nil, err
 	}
 	return auth, nil

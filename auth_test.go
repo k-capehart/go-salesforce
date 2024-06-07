@@ -2,7 +2,6 @@ package salesforce
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"reflect"
 	"testing"
 )
@@ -53,9 +52,7 @@ func Test_usernamePasswordFlow(t *testing.T) {
 	server, _ := setupTestServer(auth, http.StatusOK)
 	defer server.Close()
 
-	badServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusForbidden)
-	}))
+	badServer, _ := setupTestServer(auth, http.StatusForbidden)
 	defer badServer.Close()
 
 	type args struct {
@@ -124,9 +121,7 @@ func Test_clientCredentialsFlow(t *testing.T) {
 	server, _ := setupTestServer(auth, http.StatusOK)
 	defer server.Close()
 
-	badServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusForbidden)
-	}))
+	badServer, _ := setupTestServer(auth, http.StatusForbidden)
 	defer badServer.Close()
 
 	type args struct {
@@ -170,6 +165,70 @@ func Test_clientCredentialsFlow(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("clientCredentialsFlow() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_setAccessToken(t *testing.T) {
+	auth := authentication{
+		InstanceUrl: "example.com",
+		AccessToken: "1234",
+	}
+	server, _ := setupTestServer(auth, http.StatusOK)
+	defer server.Close()
+
+	badServer, _ := setupTestServer(auth, http.StatusForbidden)
+	defer badServer.Close()
+
+	type args struct {
+		domain      string
+		accessToken string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *authentication
+		wantErr bool
+	}{
+		{
+			name: "authentication_success",
+			args: args{
+				domain:      server.URL,
+				accessToken: "1234",
+			},
+			want:    &auth,
+			wantErr: false,
+		},
+		{
+			name: "authentication_fail_http_error",
+			args: args{
+				domain:      badServer.URL,
+				accessToken: "1234",
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "authentication_fail_no_token",
+			args: args{
+				domain:      server.URL,
+				accessToken: "",
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := setAccessToken(tt.args.domain, tt.args.accessToken)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("setAccessToken() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if (tt.want == nil && !reflect.DeepEqual(got, tt.want)) ||
+				(tt.want != nil && !reflect.DeepEqual(got.AccessToken, tt.want.AccessToken)) {
+				t.Errorf("setAccessToken() = %v, want %v", got, tt.want)
 			}
 		})
 	}

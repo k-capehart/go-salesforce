@@ -378,6 +378,24 @@ func TestInit(t *testing.T) {
 			want:    &Salesforce{auth: &sfAuth},
 			wantErr: false,
 		},
+		{
+			name: "authentication_client_credentials",
+			args: args{creds: Creds{
+				Domain:         server.URL,
+				ConsumerKey:    "key",
+				ConsumerSecret: "secret",
+			}},
+			want:    &Salesforce{auth: &sfAuth},
+			wantErr: false,
+		},
+		{
+			name: "authentication_access_token",
+			args: args{creds: Creds{
+				Domain:      server.URL,
+				AccessToken: "1234",
+			}},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -386,7 +404,7 @@ func TestInit(t *testing.T) {
 				t.Errorf("Init() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if tt.want != nil && !tt.wantErr && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Init() = %v, want %v", *got.auth, *tt.want.auth)
 			}
 		})

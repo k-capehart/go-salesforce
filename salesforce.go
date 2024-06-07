@@ -192,14 +192,6 @@ func Init(creds Creds) (*Salesforce, error) {
 	var auth *authentication
 	var err error
 	if creds != (Creds{}) && creds.Domain != "" && creds.ConsumerKey != "" && creds.ConsumerSecret != "" &&
-		(creds.Username == "" || creds.Password == "" || creds.SecurityToken == "") {
-
-		auth, err = clientCredentialsFlow(
-			creds.Domain,
-			creds.ConsumerKey,
-			creds.ConsumerSecret,
-		)
-	} else if creds != (Creds{}) && creds.Domain != "" && creds.ConsumerKey != "" && creds.ConsumerSecret != "" &&
 		creds.Username != "" && creds.Password != "" && creds.SecurityToken != "" {
 
 		auth, err = usernamePasswordFlow(
@@ -209,6 +201,17 @@ func Init(creds Creds) (*Salesforce, error) {
 			creds.SecurityToken,
 			creds.ConsumerKey,
 			creds.ConsumerSecret,
+		)
+	} else if creds != (Creds{}) && creds.Domain != "" && creds.ConsumerKey != "" && creds.ConsumerSecret != "" {
+		auth, err = clientCredentialsFlow(
+			creds.Domain,
+			creds.ConsumerKey,
+			creds.ConsumerSecret,
+		)
+	} else if creds != (Creds{}) && creds.AccessToken != "" {
+		auth, err = setAccessToken(
+			creds.Domain,
+			creds.AccessToken,
 		)
 	}
 
