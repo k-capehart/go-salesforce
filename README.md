@@ -70,6 +70,20 @@ if err != nil {
 }
 ```
 
+Authenticate with an Access Token
+- Implement your own OAuth flow and use the resulting `access_token` in the response
+
+```go
+sf, sfErr := salesforce.Init(salesforce.Creds{
+    Domain:      DOMAIN,
+    AccessToken: ACCESS_TOKEN,
+})
+if err != nil {
+    panic(err)
+}
+```
+
+
 ## SOQL
 Query Salesforce records
 - [Review Salesforce REST API resources for queries](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm)
