@@ -33,14 +33,13 @@ func performQuery(auth authentication, query string, sObject any) error {
 			return processSalesforceError(*resp)
 		}
 
-		respBody, readErr := io.ReadAll(resp.Body)
-		if readErr != nil {
-			return readErr
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
 		}
 
 		tempQueryResp := &queryResponse{}
-		queryResponseError := json.Unmarshal(respBody, &tempQueryResp)
-		if queryResponseError != nil {
+		if err = json.Unmarshal(respBody, &tempQueryResp); err != nil {
 			return err
 		}
 
@@ -52,9 +51,8 @@ func performQuery(auth authentication, query string, sObject any) error {
 		}
 	}
 
-	sObjectError := mapstructure.Decode(queryResp.Records, sObject)
-	if sObjectError != nil {
-		return sObjectError
+	if err := mapstructure.Decode(queryResp.Records, sObject); err != nil {
+		return err
 	}
 
 	return nil
