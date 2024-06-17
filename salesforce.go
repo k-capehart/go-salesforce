@@ -36,7 +36,7 @@ const (
 	bulkBatchSizeMax = 10000
 )
 
-func doRequest(method string, uri string, content string, auth authentication, body string) (*http.Response, error) {
+func doRequest(method string, uri string, content string, auth authentication, body string, expectedStatus int) (*http.Response, error) {
 	var reader *strings.Reader
 	var req *http.Request
 	var err error
@@ -57,7 +57,15 @@ func doRequest(method string, uri string, content string, auth authentication, b
 	req.Header.Set("Accept", content)
 	req.Header.Set("Authorization", "Bearer "+auth.AccessToken)
 
-	return http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return resp, err
+	}
+	if expectedStatus != 0 && resp.StatusCode != expectedStatus {
+		return resp, processSalesforceError(*resp)
+	}
+
+	return resp, nil
 }
 
 func validateOfTypeSlice(data any) error {
@@ -229,7 +237,7 @@ func (sf *Salesforce) DoRequest(method string, uri string, body []byte) (*http.R
 		return nil, authErr
 	}
 
-	resp, err := doRequest(method, uri, jsonType, *sf.auth, string(body))
+	resp, err := doRequest(method, uri, jsonType, *sf.auth, string(body), 0)
 	if err != nil {
 		return nil, err
 	}

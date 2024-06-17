@@ -25,21 +25,19 @@ func performQuery(auth authentication, query string, sObject any) error {
 	}
 
 	for !queryResp.Done {
-		resp, err := doRequest(http.MethodGet, queryResp.NextRecordsUrl, jsonType, auth, "")
+		resp, err := doRequest(http.MethodGet, queryResp.NextRecordsUrl, jsonType, auth, "", http.StatusOK)
 		if err != nil {
 			return err
-		}
-		if resp.StatusCode != http.StatusOK {
-			return processSalesforceError(*resp)
 		}
 
-		respBody, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return err
+		respBody, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return readErr
 		}
 
 		tempQueryResp := &queryResponse{}
-		if err = json.Unmarshal(respBody, &tempQueryResp); err != nil {
+		queryResponseError := json.Unmarshal(respBody, &tempQueryResp)
+		if queryResponseError != nil {
 			return err
 		}
 
@@ -51,8 +49,9 @@ func performQuery(auth authentication, query string, sObject any) error {
 		}
 	}
 
-	if err := mapstructure.Decode(queryResp.Records, sObject); err != nil {
-		return err
+	sObjectError := mapstructure.Decode(queryResp.Records, sObject)
+	if sObjectError != nil {
+		return sObjectError
 	}
 
 	return nil

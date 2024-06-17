@@ -1,8 +1,11 @@
 package salesforce
 
 import (
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -11,16 +14,48 @@ func Test_performQuery(t *testing.T) {
 		Id   string
 		Name string
 	}
-	resp := queryResponse{
-		TotalSize: 1,
-		Done:      true,
+
+	queryMoreResp := queryResponse{
+		TotalSize:      1,
+		Done:           false,
+		NextRecordsUrl: "/queryMore",
 		Records: []map[string]any{{
 			"Id":   "123abc",
 			"Name": "test account",
 		}},
 	}
-	server, _ := setupTestServer(resp, http.StatusOK)
+	queryMoreRespBody, _ := json.Marshal(queryMoreResp)
+
+	queryDoneResp := queryResponse{
+		TotalSize:      1,
+		Done:           true,
+		NextRecordsUrl: "",
+		Records: []map[string]any{{
+			"Id":   "123abc",
+			"Name": "test account",
+		}},
+	}
+	queryDoneRespBody, _ := json.Marshal(queryDoneResp)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.RequestURI, "/query/") {
+			if _, err := w.Write(queryMoreRespBody); err != nil {
+				panic(err.Error())
+			}
+		} else {
+			if _, err := w.Write(queryDoneRespBody); err != nil {
+				panic(err.Error())
+			}
+		}
+	}))
 	defer server.Close()
+	sfAuth := authentication{
+		InstanceUrl: server.URL,
+		AccessToken: "accesstoken",
+	}
+
+	badServer, badSfAuth := setupTestServer("", http.StatusBadRequest)
+	defer badServer.Close()
 
 	type args struct {
 		auth    authentication
@@ -36,18 +71,31 @@ func Test_performQuery(t *testing.T) {
 		{
 			name: "query account",
 			args: args{
-				auth: authentication{
-					InstanceUrl: server.URL,
-					AccessToken: "accesstoken",
-				},
+				auth:    sfAuth,
 				query:   "SELECT Id, Name FROM Account",
 				sObject: []account{},
 			},
-			want: []account{{
-				Id:   "123abc",
-				Name: "test account",
-			}},
+			want: []account{
+				{
+					Id:   "123abc",
+					Name: "test account",
+				},
+				{
+					Id:   "123abc",
+					Name: "test account",
+				},
+			},
 			wantErr: false,
+		},
+		{
+			name: "http error",
+			args: args{
+				auth:    badSfAuth,
+				query:   "SELECT Id, Name FROM Account",
+				sObject: []account{},
+			},
+			want:    []account{},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {

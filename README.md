@@ -966,8 +966,7 @@ Anyone is welcome to contribute.
 - Run tests
   - `go test -cover`
 - Generate code coverage output
-  - `go test -v -coverprofile cover.out`
-  - `go tool cover -html cover.out -o cover.html`
+  - `go test -v -coverprofile cover.out && go tool cover -html cover.out -o cover.html`
 - Linting
   - Install [golangci-lint](https://github.com/golangci/golangci-lint)
     - MacOS: `brew install golangci-lint`
