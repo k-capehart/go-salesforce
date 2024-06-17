@@ -269,30 +269,6 @@ func mapsToCSV(maps []map[string]any) (string, error) {
 	return buf.String(), nil
 }
 
-func mapsToCSVSlices(maps []map[string]string) ([][]string, error) {
-	var data [][]string
-	var headers []string
-
-	if len(maps) > 0 {
-		headers = make([]string, 0, len(maps[0]))
-		for header := range maps[0] {
-			headers = append(headers, header)
-		}
-		data = append(data, headers)
-	}
-
-	for _, m := range maps {
-		row := make([]string, 0, len(headers))
-		for _, header := range headers {
-			val := m[header]
-			row = append(row, val)
-		}
-		data = append(data, row)
-	}
-
-	return data, nil
-}
-
 func readCSVFile(filePath string) ([][]string, error) {
 	file, fileErr := appFs.Open(filePath)
 	if fileErr != nil {
@@ -334,10 +310,7 @@ func constructBulkJobRequest(auth authentication, sObjectName string, operation 
 		Operation:           operation,
 		ExternalIdFieldName: fieldName,
 	}
-	body, jsonError := json.Marshal(jobReq)
-	if jsonError != nil {
-		return bulkJob{}, jsonError
-	}
+	body, _ := json.Marshal(jobReq)
 
 	job, jobCreationErr := createBulkJob(auth, ingestJobType, body)
 	if jobCreationErr != nil {

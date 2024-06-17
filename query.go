@@ -38,7 +38,7 @@ func performQuery(auth authentication, query string, sObject any) error {
 		tempQueryResp := &queryResponse{}
 		queryResponseError := json.Unmarshal(respBody, &tempQueryResp)
 		if queryResponseError != nil {
-			return err
+			return queryResponseError
 		}
 
 		queryResp.TotalSize = queryResp.TotalSize + tempQueryResp.TotalSize

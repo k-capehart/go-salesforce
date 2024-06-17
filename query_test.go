@@ -57,6 +57,9 @@ func Test_performQuery(t *testing.T) {
 	badServer, badSfAuth := setupTestServer("", http.StatusBadRequest)
 	defer badServer.Close()
 
+	badRespServer, badRespSfAuth := setupTestServer("1", http.StatusOK)
+	defer badRespServer.Close()
+
 	type args struct {
 		auth    authentication
 		query   string
@@ -69,7 +72,7 @@ func Test_performQuery(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "query account",
+			name: "query_account",
 			args: args{
 				auth:    sfAuth,
 				query:   "SELECT Id, Name FROM Account",
@@ -88,10 +91,20 @@ func Test_performQuery(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "http error",
+			name: "http_error",
 			args: args{
 				auth:    badSfAuth,
 				query:   "SELECT Id, Name FROM Account",
+				sObject: []account{},
+			},
+			want:    []account{},
+			wantErr: true,
+		},
+		{
+			name: "bad_response",
+			args: args{
+				auth:    badRespSfAuth,
+				query:   "SELECT Id FROM Account",
 				sObject: []account{},
 			},
 			want:    []account{},
