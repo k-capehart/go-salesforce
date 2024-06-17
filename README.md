@@ -71,10 +71,10 @@ if err != nil {
 ```
 
 Authenticate with an Access Token
-- Implement your own OAuth flow and use the resulting `access_token` in the response
+- Implement your own OAuth flow and use the resulting `access_token` from the response to initialize go-salesforce
 
 ```go
-sf, sfErr := salesforce.Init(salesforce.Creds{
+sf, err := salesforce.Init(salesforce.Creds{
     Domain:      DOMAIN,
     AccessToken: ACCESS_TOKEN,
 })
