@@ -45,13 +45,11 @@ func validateSession(auth authentication) error {
 	if err := validateAuth(Salesforce{auth: &auth}); err != nil {
 		return err
 	}
-	resp, err := doRequest(http.MethodGet, "/limits", jsonType, auth, "")
+	_, err := doRequest(http.MethodGet, "/limits", jsonType, auth, "", http.StatusOK)
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != http.StatusOK {
-		return processSalesforceError(*resp)
-	}
+
 	return nil
 }
 

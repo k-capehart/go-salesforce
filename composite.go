@@ -37,12 +37,9 @@ func doCompositeRequest(auth authentication, compReq compositeRequest) error {
 	if jsonErr != nil {
 		return jsonErr
 	}
-	resp, httpErr := doRequest(http.MethodPost, "/composite", jsonType, auth, string(body))
+	resp, httpErr := doRequest(http.MethodPost, "/composite", jsonType, auth, string(body), http.StatusOK)
 	if httpErr != nil {
 		return httpErr
-	}
-	if resp.StatusCode != http.StatusOK {
-		return processSalesforceError(*resp)
 	}
 	salesforceErrors := processCompositeResponse(*resp)
 	if salesforceErrors != nil {

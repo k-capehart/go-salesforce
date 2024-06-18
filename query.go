@@ -25,12 +25,9 @@ func performQuery(auth authentication, query string, sObject any) error {
 	}
 
 	for !queryResp.Done {
-		resp, err := doRequest(http.MethodGet, queryResp.NextRecordsUrl, jsonType, auth, "")
+		resp, err := doRequest(http.MethodGet, queryResp.NextRecordsUrl, jsonType, auth, "", http.StatusOK)
 		if err != nil {
 			return err
-		}
-		if resp.StatusCode != http.StatusOK {
-			return processSalesforceError(*resp)
 		}
 
 		respBody, readErr := io.ReadAll(resp.Body)
@@ -41,7 +38,7 @@ func performQuery(auth authentication, query string, sObject any) error {
 		tempQueryResp := &queryResponse{}
 		queryResponseError := json.Unmarshal(respBody, &tempQueryResp)
 		if queryResponseError != nil {
-			return err
+			return queryResponseError
 		}
 
 		queryResp.TotalSize = queryResp.TotalSize + tempQueryResp.TotalSize

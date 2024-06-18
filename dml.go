@@ -62,14 +62,10 @@ func doBatchedRequestsForCollection(auth authentication, method string, url stri
 			break
 		}
 
-		resp, err := doRequest(method, url, jsonType, auth, string(body))
+		resp, err := doRequest(method, url, jsonType, auth, string(body), http.StatusOK)
 		if err != nil {
 			dmlErrors = errors.Join(dmlErrors, err)
 			break
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			dmlErrors = errors.Join(dmlErrors, processSalesforceError(*resp))
 		}
 		salesforceErrors := processSalesforceResponse(*resp)
 		if salesforceErrors != nil {
@@ -93,12 +89,9 @@ func doInsertOne(auth authentication, sObjectName string, record any) error {
 		return err
 	}
 
-	resp, err := doRequest(http.MethodPost, "/sobjects/"+sObjectName, jsonType, auth, string(body))
+	_, err = doRequest(http.MethodPost, "/sobjects/"+sObjectName, jsonType, auth, string(body), http.StatusCreated)
 	if err != nil {
 		return err
-	}
-	if resp.StatusCode != http.StatusCreated {
-		return processSalesforceError(*resp)
 	}
 
 	return nil
@@ -123,12 +116,9 @@ func doUpdateOne(auth authentication, sObjectName string, record any) error {
 		return err
 	}
 
-	resp, err := doRequest(http.MethodPatch, "/sobjects/"+sObjectName+"/"+recordId, jsonType, auth, string(body))
+	_, err = doRequest(http.MethodPatch, "/sobjects/"+sObjectName+"/"+recordId, jsonType, auth, string(body), http.StatusNoContent)
 	if err != nil {
 		return err
-	}
-	if resp.StatusCode != http.StatusNoContent {
-		return processSalesforceError(*resp)
 	}
 
 	return nil
@@ -154,13 +144,9 @@ func doUpsertOne(auth authentication, sObjectName string, fieldName string, reco
 		return err
 	}
 
-	resp, err := doRequest(http.MethodPatch, "/sobjects/"+sObjectName+"/"+fieldName+"/"+externalIdValue, jsonType, auth, string(body))
+	_, err = doRequest(http.MethodPatch, "/sobjects/"+sObjectName+"/"+fieldName+"/"+externalIdValue, jsonType, auth, string(body), http.StatusOK)
 	if err != nil {
 		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return processSalesforceError(*resp)
 	}
 
 	return nil
@@ -177,13 +163,9 @@ func doDeleteOne(auth authentication, sObjectName string, record any) error {
 		return errors.New("salesforce id not found in object data")
 	}
 
-	resp, err := doRequest(http.MethodDelete, "/sobjects/"+sObjectName+"/"+recordId, jsonType, auth, "")
+	_, err = doRequest(http.MethodDelete, "/sobjects/"+sObjectName+"/"+recordId, jsonType, auth, "", http.StatusNoContent)
 	if err != nil {
 		return err
-	}
-
-	if resp.StatusCode != http.StatusNoContent {
-		return processSalesforceError(*resp)
 	}
 
 	return nil
@@ -267,14 +249,10 @@ func doDeleteCollection(auth authentication, sObjectName string, records any, ba
 			}
 		}
 
-		resp, err := doRequest(http.MethodDelete, "/composite/sobjects/?ids="+ids+"&allOrNone=false", jsonType, auth, "")
+		resp, err := doRequest(http.MethodDelete, "/composite/sobjects/?ids="+ids+"&allOrNone=false", jsonType, auth, "", http.StatusOK)
 		if err != nil {
 			dmlErrors = errors.Join(dmlErrors, err)
 			break
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			dmlErrors = errors.Join(dmlErrors, processSalesforceError(*resp))
 		}
 		salesforceErrors := processSalesforceResponse(*resp)
 		if salesforceErrors != nil {
