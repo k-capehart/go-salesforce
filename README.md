@@ -7,9 +7,9 @@ A REST API wrapper for interacting with Salesforce using the Go programming lang
 [![codecov](https://codecov.io/gh/k-capehart/go-salesforce/graph/badge.svg?token=20V6A05GMH)](https://codecov.io/gh/k-capehart/go-salesforce)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/k-capehart/go-salesforce/blob/main/LICENSE)
 
-- [Read my blog post about go-salesforce](https://www.kylecapehart.com/posts/go-salesforce/)
-- [Read about the Salesforce REST API](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_list.htm)
-- [Read about Golang](https://go.dev/doc/)
+- Read my [blog post](https://www.kylecapehart.com/posts/go-salesforce/) for an in-depth example
+- Read the [Salesforce REST API documentation](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_list.htm)
+- Read the [Golang documentation](https://go.dev/doc/)
 
 ## Installation
 
@@ -967,9 +967,8 @@ Anyone is welcome to contribute.
   - `go test -cover`
 - Generate code coverage output
   - `go test -v -coverprofile cover.out && go tool cover -html cover.out -o cover.html`
+  - Note that [codecov](https://app.codecov.io/gh/k-capehart/go-salesforce) does not count partial lines so calculations may differ
 - Linting
-  - Install [golangci-lint](https://github.com/golangci/golangci-lint)
-    - MacOS: `brew install golangci-lint`
-    - Windows: `choco install golangci-lint`
+  - Install [golangci-lint](https://golangci-lint.run/welcome/install/)
   - `golangci-lint run`
 - Create a PR and link the issue

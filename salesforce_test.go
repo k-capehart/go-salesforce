@@ -831,6 +831,7 @@ func TestSalesforce_InsertOne(t *testing.T) {
 	type account struct {
 		Name string
 	}
+
 	server, sfAuth := setupTestServer("", http.StatusCreated)
 	defer server.Close()
 
@@ -1107,6 +1108,9 @@ func TestSalesforce_InsertCollection(t *testing.T) {
 	server, sfAuth := setupTestServer([]salesforceError{{Success: true}}, http.StatusOK)
 	defer server.Close()
 
+	badReqServer, badReqSfAuth := setupTestServer([]salesforceError{{Success: false}}, http.StatusBadRequest)
+	defer badReqServer.Close()
+
 	type fields struct {
 		auth *authentication
 	}
@@ -1149,6 +1153,22 @@ func TestSalesforce_InsertCollection(t *testing.T) {
 				sObjectName: "Account",
 				records: account{
 					Name: "test account 1",
+				},
+				batchSize: 200,
+			},
+			wantErr: true,
+		},
+		{
+			name: "bad_request",
+			fields: fields{
+				auth: &badReqSfAuth,
+			},
+			args: args{
+				sObjectName: "Account",
+				records: []account{
+					{
+						Name: "test account 1",
+					},
 				},
 				batchSize: 200,
 			},
@@ -1429,6 +1449,9 @@ func TestSalesforce_InsertComposite(t *testing.T) {
 	server, sfAuth := setupTestServer(compositeRequestResult{}, http.StatusOK)
 	defer server.Close()
 
+	badReqServer, badReqSfAuth := setupTestServer([]salesforceError{{Success: false}}, http.StatusBadRequest)
+	defer badReqServer.Close()
+
 	type fields struct {
 		auth *authentication
 	}
@@ -1479,6 +1502,23 @@ func TestSalesforce_InsertComposite(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "bad_request",
+			fields: fields{
+				auth: &badReqSfAuth,
+			},
+			args: args{
+				sObjectName: "Account",
+				records: []account{
+					{
+						Name: "test account 1",
+					},
+				},
+				batchSize: 200,
+				allOrNone: true,
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1499,6 +1539,9 @@ func TestSalesforce_UpdateComposite(t *testing.T) {
 	}
 	server, sfAuth := setupTestServer(compositeRequestResult{}, http.StatusOK)
 	defer server.Close()
+
+	badReqServer, badReqSfAuth := setupTestServer([]salesforceError{{Success: false}}, http.StatusBadRequest)
+	defer badReqServer.Close()
 
 	type fields struct {
 		auth *authentication
@@ -1551,18 +1594,16 @@ func TestSalesforce_UpdateComposite(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "fail_no_id",
+			name: "bad_request",
 			fields: fields{
-				auth: &sfAuth,
+				auth: &badReqSfAuth,
 			},
 			args: args{
 				sObjectName: "Account",
 				records: []account{
 					{
+						Id:   "1234",
 						Name: "test account 1",
-					},
-					{
-						Name: "test account 2",
 					},
 				},
 				batchSize: 200,
@@ -1590,6 +1631,9 @@ func TestSalesforce_UpsertComposite(t *testing.T) {
 	}
 	server, sfAuth := setupTestServer(compositeRequestResult{}, http.StatusOK)
 	defer server.Close()
+
+	badReqServer, badReqSfAuth := setupTestServer([]salesforceError{{Success: false}}, http.StatusBadRequest)
+	defer badReqServer.Close()
 
 	type fields struct {
 		auth *authentication
@@ -1645,19 +1689,17 @@ func TestSalesforce_UpsertComposite(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "fail_no_external_id",
+			name: "bad_request",
 			fields: fields{
-				auth: &sfAuth,
+				auth: &badReqSfAuth,
 			},
 			args: args{
 				sObjectName:         "Account",
 				externalIdFieldName: "ExternalId__c",
 				records: []account{
 					{
-						Name: "test account 1",
-					},
-					{
-						Name: "test account 2",
+						ExternalId__c: "1234",
+						Name:          "test account 1",
 					},
 				},
 				batchSize: 200,
@@ -1684,6 +1726,9 @@ func TestSalesforce_DeleteComposite(t *testing.T) {
 	}
 	server, sfAuth := setupTestServer(compositeRequestResult{}, http.StatusOK)
 	defer server.Close()
+
+	badReqServer, badReqSfAuth := setupTestServer([]salesforceError{{Success: false}}, http.StatusBadRequest)
+	defer badReqServer.Close()
 
 	type fields struct {
 		auth *authentication
@@ -1732,14 +1777,16 @@ func TestSalesforce_DeleteComposite(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "fail_no_id",
+			name: "bad_req",
 			fields: fields{
-				auth: &sfAuth,
+				auth: &badReqSfAuth,
 			},
 			args: args{
 				sObjectName: "Account",
-				records:     []account{{}, {}},
-				batchSize:   200,
+				records: []account{{
+					Id: "1234",
+				}},
+				batchSize: 200,
 			},
 			wantErr: true,
 		},
