@@ -2,7 +2,7 @@
 
 A REST API wrapper for interacting with Salesforce using the Go programming language.
 
-[![GoDoc](https://godoc.org/github.com/k-capehart/go-salesforce?status.png)](https://godoc.org/github.com/k-capehart/go-salesforce)
+[![GoDoc](https://godoc.org/github.com/k-capehart/go-salesforce?status.png)](https://pkg.go.dev/github.com/k-capehart/go-salesforce)
 [![Go Report Card](https://goreportcard.com/badge/github.com/k-capehart/go-salesforce)](https://goreportcard.com/report/github.com/k-capehart/go-salesforce)
 [![codecov](https://codecov.io/gh/k-capehart/go-salesforce/graph/badge.svg?token=20V6A05GMH)](https://codecov.io/gh/k-capehart/go-salesforce)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/k-capehart/go-salesforce/blob/main/LICENSE)
