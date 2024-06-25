@@ -6,6 +6,7 @@ A REST API wrapper for interacting with Salesforce using the Go programming lang
 [![Go Report Card](https://goreportcard.com/badge/github.com/k-capehart/go-salesforce)](https://goreportcard.com/report/github.com/k-capehart/go-salesforce)
 [![codecov](https://codecov.io/gh/k-capehart/go-salesforce/graph/badge.svg?token=20V6A05GMH)](https://codecov.io/gh/k-capehart/go-salesforce)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/k-capehart/go-salesforce/blob/main/LICENSE)
+[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)
 
 - Read my [blog post](https://www.kylecapehart.com/posts/go-salesforce/) for an in-depth example
 - Read the [Salesforce REST API documentation](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_list.htm)
