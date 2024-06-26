@@ -18,7 +18,7 @@ func Test_validateAuth(t *testing.T) {
 		{
 			name: "validation_success",
 			args: args{
-				sf: Salesforce{Auth: &authentication{
+				sf: Salesforce{auth: &authentication{
 					AccessToken: "1234",
 				}},
 			},
