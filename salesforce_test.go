@@ -377,7 +377,7 @@ func TestInit(t *testing.T) {
 				ConsumerKey:    "key",
 				ConsumerSecret: "secret",
 			}},
-			want:    &Salesforce{auth: &sfAuth},
+			want:    &Salesforce{auth: &sfAuth, AccessToken: sfAuth.AccessToken},
 			wantErr: false,
 		},
 		{
@@ -387,7 +387,7 @@ func TestInit(t *testing.T) {
 				ConsumerKey:    "key",
 				ConsumerSecret: "secret",
 			}},
-			want:    &Salesforce{auth: &sfAuth},
+			want:    &Salesforce{auth: &sfAuth, AccessToken: sfAuth.AccessToken},
 			wantErr: false,
 		},
 		{
