@@ -35,14 +35,14 @@ const (
 )
 
 func validateAuth(sf Salesforce) error {
-	if sf.auth == nil || sf.auth.AccessToken == "" {
+	if sf.Auth == nil || sf.Auth.AccessToken == "" {
 		return errors.New("not authenticated: please use salesforce.Init()")
 	}
 	return nil
 }
 
 func validateSession(auth authentication) error {
-	if err := validateAuth(Salesforce{auth: &auth}); err != nil {
+	if err := validateAuth(Salesforce{Auth: &auth}); err != nil {
 		return err
 	}
 	_, err := doRequest(http.MethodGet, "/limits", jsonType, auth, "", http.StatusOK)
