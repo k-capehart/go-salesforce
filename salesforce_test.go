@@ -293,12 +293,12 @@ func Test_processSalesforceError(t *testing.T) {
 }
 
 func Test_processSalesforceResponse(t *testing.T) {
-	message := []salesforceErrorMessage{{
+	message := []SalesforceErrorMessage{{
 		Message:    "example error",
 		StatusCode: "500",
 		Fields:     []string{"Name: bad name"},
 	}}
-	exampleError := []salesforceError{{
+	exampleError := []SalesforceResult{{
 		Id:      "12345",
 		Errors:  message,
 		Success: false,
@@ -330,7 +330,7 @@ func Test_processSalesforceResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := processSalesforceResponse(tt.args.resp)
+			_, err := processSalesforceResponse(tt.args.resp)
 			if err != nil != tt.wantErr {
 				t.Errorf("processSalesforceResponse() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -878,7 +878,7 @@ func TestSalesforce_InsertOne(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if err := sf.InsertOne(tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
+			if _, err := sf.InsertOne(tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.InsertOne() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1105,10 +1105,10 @@ func TestSalesforce_InsertCollection(t *testing.T) {
 	type account struct {
 		Name string
 	}
-	server, sfAuth := setupTestServer([]salesforceError{{Success: true}}, http.StatusOK)
+	server, sfAuth := setupTestServer([]SalesforceResult{{Success: true}}, http.StatusOK)
 	defer server.Close()
 
-	badReqServer, badReqSfAuth := setupTestServer([]salesforceError{{Success: false}}, http.StatusBadRequest)
+	badReqServer, badReqSfAuth := setupTestServer([]SalesforceResult{{Success: false}}, http.StatusBadRequest)
 	defer badReqServer.Close()
 
 	type fields struct {
@@ -1180,7 +1180,7 @@ func TestSalesforce_InsertCollection(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if err := sf.InsertCollection(tt.args.sObjectName, tt.args.records, tt.args.batchSize); (err != nil) != tt.wantErr {
+			if _, err := sf.InsertCollection(tt.args.sObjectName, tt.args.records, tt.args.batchSize); (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.InsertCollection() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1192,7 +1192,7 @@ func TestSalesforce_UpdateCollection(t *testing.T) {
 		Id   string
 		Name string
 	}
-	server, sfAuth := setupTestServer([]salesforceError{{Success: true}}, http.StatusOK)
+	server, sfAuth := setupTestServer([]SalesforceResult{{Success: true}}, http.StatusOK)
 	defer server.Close()
 
 	type fields struct {
@@ -1267,7 +1267,7 @@ func TestSalesforce_UpdateCollection(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if err := sf.UpdateCollection(tt.args.sObjectName, tt.args.records, tt.args.batchSize); (err != nil) != tt.wantErr {
+			if _, err := sf.UpdateCollection(tt.args.sObjectName, tt.args.records, tt.args.batchSize); (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.UpdateCollection() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1279,7 +1279,7 @@ func TestSalesforce_UpsertCollection(t *testing.T) {
 		ExternalId__c string
 		Name          string
 	}
-	server, sfAuth := setupTestServer([]salesforceError{{Success: true}}, http.StatusOK)
+	server, sfAuth := setupTestServer([]SalesforceResult{{Success: true}}, http.StatusOK)
 	defer server.Close()
 
 	type fields struct {
@@ -1358,7 +1358,7 @@ func TestSalesforce_UpsertCollection(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if err := sf.UpsertCollection(tt.args.sObjectName, tt.args.externalIdFieldName, tt.args.records, tt.args.batchSize); (err != nil) != tt.wantErr {
+			if _, err := sf.UpsertCollection(tt.args.sObjectName, tt.args.externalIdFieldName, tt.args.records, tt.args.batchSize); (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.UpsertCollection() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1369,7 +1369,7 @@ func TestSalesforce_DeleteCollection(t *testing.T) {
 	type account struct {
 		Id string
 	}
-	server, sfAuth := setupTestServer([]salesforceError{{Success: true}}, http.StatusOK)
+	server, sfAuth := setupTestServer([]SalesforceResult{{Success: true}}, http.StatusOK)
 	defer server.Close()
 
 	type fields struct {
@@ -1435,7 +1435,7 @@ func TestSalesforce_DeleteCollection(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if err := sf.DeleteCollection(tt.args.sObjectName, tt.args.records, tt.args.batchSize); (err != nil) != tt.wantErr {
+			if _, err := sf.DeleteCollection(tt.args.sObjectName, tt.args.records, tt.args.batchSize); (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.DeleteCollection() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1449,7 +1449,7 @@ func TestSalesforce_InsertComposite(t *testing.T) {
 	server, sfAuth := setupTestServer(compositeRequestResult{}, http.StatusOK)
 	defer server.Close()
 
-	badReqServer, badReqSfAuth := setupTestServer([]salesforceError{{Success: false}}, http.StatusBadRequest)
+	badReqServer, badReqSfAuth := setupTestServer([]SalesforceResult{{Success: false}}, http.StatusBadRequest)
 	defer badReqServer.Close()
 
 	type fields struct {
@@ -1540,7 +1540,7 @@ func TestSalesforce_UpdateComposite(t *testing.T) {
 	server, sfAuth := setupTestServer(compositeRequestResult{}, http.StatusOK)
 	defer server.Close()
 
-	badReqServer, badReqSfAuth := setupTestServer([]salesforceError{{Success: false}}, http.StatusBadRequest)
+	badReqServer, badReqSfAuth := setupTestServer([]SalesforceResult{{Success: false}}, http.StatusBadRequest)
 	defer badReqServer.Close()
 
 	type fields struct {
@@ -1632,7 +1632,7 @@ func TestSalesforce_UpsertComposite(t *testing.T) {
 	server, sfAuth := setupTestServer(compositeRequestResult{}, http.StatusOK)
 	defer server.Close()
 
-	badReqServer, badReqSfAuth := setupTestServer([]salesforceError{{Success: false}}, http.StatusBadRequest)
+	badReqServer, badReqSfAuth := setupTestServer([]SalesforceResult{{Success: false}}, http.StatusBadRequest)
 	defer badReqServer.Close()
 
 	type fields struct {
@@ -1727,7 +1727,7 @@ func TestSalesforce_DeleteComposite(t *testing.T) {
 	server, sfAuth := setupTestServer(compositeRequestResult{}, http.StatusOK)
 	defer server.Close()
 
-	badReqServer, badReqSfAuth := setupTestServer([]salesforceError{{Success: false}}, http.StatusBadRequest)
+	badReqServer, badReqSfAuth := setupTestServer([]SalesforceResult{{Success: false}}, http.StatusBadRequest)
 	defer badReqServer.Close()
 
 	type fields struct {

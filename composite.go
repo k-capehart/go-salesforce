@@ -26,10 +26,10 @@ type compositeRequestResult struct {
 }
 
 type composteSubRequestResult struct {
-	Body           []salesforceError `json:"body"`
-	HttpHeaders    map[string]string `json:"httpHeaders"`
-	HttpStatusCode int               `json:"httpStatusCode"`
-	ReferenceId    string            `json:"referenceId"`
+	Body           []SalesforceResult `json:"body"`
+	HttpHeaders    map[string]string  `json:"httpHeaders"`
+	HttpStatusCode int                `json:"httpStatusCode"`
+	ReferenceId    string             `json:"referenceId"`
 }
 
 func doCompositeRequest(auth authentication, compReq compositeRequest) error {
