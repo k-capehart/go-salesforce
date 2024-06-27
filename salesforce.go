@@ -360,8 +360,7 @@ func (sf *Salesforce) DeleteCollection(sObjectName string, records any, batchSiz
 		return nil, validationErr
 	}
 
-	salesforceError, dmlErr := doDeleteCollection(*sf.auth, sObjectName, records, batchSize)
-	return salesforceError, dmlErr
+	return doDeleteCollection(*sf.auth, sObjectName, records, batchSize)
 
 }
 
