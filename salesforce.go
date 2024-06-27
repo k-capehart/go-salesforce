@@ -3,7 +3,6 @@ package salesforce
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"reflect"
@@ -179,7 +178,6 @@ func processSalesforceResponse(resp http.Response) (sfErrors []SalesforceResult,
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("Response Data: ", string(responseData))
 	jsonError := json.Unmarshal(responseData, &sfErrors)
 	if jsonError != nil {
 		return nil, jsonError
