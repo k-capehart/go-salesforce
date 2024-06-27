@@ -603,5 +603,8 @@ func (sf *Salesforce) GetJobResults(bulkJobId string) (BulkJobResults, error) {
 }
 
 func (sf *Salesforce) GetAccessToken() string {
-	return sf.auth.AccessToken
+	if sf.auth != nil {
+		return sf.auth.AccessToken
+	}
+	return ""
 }
