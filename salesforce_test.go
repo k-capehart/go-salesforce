@@ -2684,3 +2684,35 @@ func TestSalesforce_QueryStructBulkExport(t *testing.T) {
 		})
 	}
 }
+
+func TestGetAccessToken(t *testing.T) {
+	sfAuth := authentication{
+		AccessToken: "1234",
+		InstanceUrl: "example.com",
+		Id:          "123abc",
+		IssuedAt:    "01/01/1970",
+		Signature:   "signed",
+	}
+
+	sf := &Salesforce{auth: &sfAuth}
+
+	tests := []struct {
+		name string
+		sf   *Salesforce
+		want string
+	}{
+		{
+			name: "valid_access_token",
+			sf:   sf,
+			want: "1234",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.sf.GetAccessToken(); got != tt.want {
+				t.Errorf("GetAccessToken() error = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
