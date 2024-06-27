@@ -69,7 +69,13 @@ func doBatchedRequestsForCollection(auth authentication, method string, url stri
 			dmlErrors = errors.Join(dmlErrors, err)
 			break
 		}
-		salesforceErrors, err = processSalesforceResponse(*resp)
+		_salesforceErrors, err := processSalesforceResponse(*resp)
+		if err != nil {
+			dmlErrors = errors.Join(dmlErrors, err)
+			break
+		}
+
+		salesforceErrors = append(salesforceErrors, _salesforceErrors...)
 	}
 
 	return salesforceErrors, dmlErrors
@@ -267,7 +273,13 @@ func doDeleteCollection(auth authentication, sObjectName string, records any, ba
 			dmlErrors = errors.Join(dmlErrors, err)
 			break
 		}
-		salesforceErrors, err = processSalesforceResponse(*resp)
+		_salesforceErrors, err := processSalesforceResponse(*resp)
+		if err != nil {
+			dmlErrors = errors.Join(dmlErrors, err)
+			break
+		}
+
+		salesforceErrors = append(salesforceErrors, _salesforceErrors...)
 	}
 
 	return salesforceErrors, dmlErrors
