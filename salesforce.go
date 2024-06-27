@@ -13,8 +13,7 @@ import (
 )
 
 type Salesforce struct {
-	auth        *authentication
-	AccessToken string
+	auth *authentication
 }
 
 type salesforceErrorMessage struct {
@@ -229,7 +228,7 @@ func Init(creds Creds) (*Salesforce, error) {
 	} else if auth == nil || auth.AccessToken == "" {
 		return nil, errors.New("unknown authentication error")
 	}
-	return &Salesforce{auth: auth, AccessToken: auth.AccessToken}, nil
+	return &Salesforce{auth: auth}, nil
 }
 
 func (sf *Salesforce) DoRequest(method string, uri string, body []byte) (*http.Response, error) {
@@ -601,4 +600,8 @@ func (sf *Salesforce) GetJobResults(bulkJobId string) (BulkJobResults, error) {
 	}
 
 	return job, nil
+}
+
+func (sf *Salesforce) GetAccessToken() string {
+	return sf.auth.AccessToken
 }
