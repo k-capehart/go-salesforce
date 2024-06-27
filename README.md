@@ -12,6 +12,17 @@ A REST API wrapper for interacting with Salesforce using the Go programming lang
 - Read the [Salesforce REST API documentation](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_list.htm)
 - Read the [Golang documentation](https://go.dev/doc/)
 
+## Table of Contents
+- [Installation](#installation)
+- [Authentication](#authentication)
+- [SOQL](#soql)
+- [SObject Single Record Operations](#sobject-single-record-operations)
+- [SObject Collections](#sobject-collections)
+- [Composite Requests](#composite-requests)
+- [Bulk v2](#bulk-v2)
+- [Other](#other)
+- [Contributing](#contributing)
+
 ## Installation
 
 ```
@@ -91,6 +102,16 @@ sf, err := salesforce.Init(salesforce.Creds{
 if err != nil {
     panic(err)
 }
+```
+
+### GetAccessToken()
+
+`func (sf *Salesforce) GetAccessToken() string`
+
+Returns the current session's Access Token as a string.
+
+```go
+fmt.Println(sf.GetAccessToken())
 ```
 
 ## SOQL
