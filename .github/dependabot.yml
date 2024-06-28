@@ -11,3 +11,7 @@ updates:
       prefix: fix(deps)
     groups:
       dev-dependencies:
+        applies-to: version-updates
+        update-types:
+        - "minor"
+        - "patch"
