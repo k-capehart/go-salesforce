@@ -9,6 +9,7 @@ updates:
       separator: '-'
     commit-message:
       prefix: fix(deps)
+      prefix-development: fix(deps)
     groups:
       dev-dependencies:
         applies-to: version-updates
