@@ -13,6 +13,9 @@ updates:
     groups:
       dev-dependencies:
         applies-to: version-updates
+        dependency-type:
+        - "development"
+        - "production"
         update-types:
         - "minor"
         - "patch"
