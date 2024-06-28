@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: 'gomod'
+    directory: '/'
+    schedule:
+      interval: 'monthly'
+      day: 'monday'
+    versioning-strategy: 'increase'
+    pull-request-branch-name:
+      separator: '-'
+    commit-message:
+      prefix: fix(deps)
+    groups:
+      dev-dependencies:
+        applies-to: version-updates
