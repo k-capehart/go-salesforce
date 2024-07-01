@@ -186,6 +186,29 @@ if err != nil {
 }
 ```
 
+### Handling Relationship Queries
+
+When querying Salesforce objects, it's common to access fields that are related through parent-child or lookup relationships. For instance, querying `Account.Name` with related `Contact` might look like this:
+
+##### Example SOQL Query
+```sql
+SELECT Id, Account.Name FROM Contact
+```
+
+#### Corresponding Go Structs
+To effectively handle the data returned by this query, define your Go structs as follows:
+
+```go
+type ContentDocumentLink struct {
+    Id       string
+    Account Account
+}
+
+type Account struct {
+    Name string
+}
+```
+
 ## SObject Single Record Operations
 
 Insert, Update, Upsert, or Delete one record at a time
