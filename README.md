@@ -214,6 +214,7 @@ type Account struct {
 Insert, Update, Upsert, or Delete one record at a time
 
 - [Review Salesforce REST API resources for working with records](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/using_resources_working_with_records.htm?q=update)
+- DML errors will return with a status code of 400
 
 ### InsertOne
 
@@ -330,6 +331,7 @@ Insert, Update, Upsert, or Delete collections of records
 - [Review Salesforce REST API resources for working with collections](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_composite_sobjects_collections.htm)
 - Perform operations in batches of up to 200 records at a time
 - Some operations might perform slowly, consider making a Bulk request for very large operations
+- Partial successes are enabled - if a record fails then successes are still committed to the database
 
 ### InsertCollection
 
@@ -474,6 +476,7 @@ Make numerous 'subrequests' contained within a single 'composite request', reduc
   - For DML operations, max number of records to be processed is determined by batch size (`25 * (batch size)`)
   - So if batch size is 1, then max number of records to be included in request is 25
   - If batch size is 200, then max is 5000
+- Can optionally allow partial successes
 
 ### InsertComposite
 

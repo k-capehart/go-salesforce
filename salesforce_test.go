@@ -1,9 +1,7 @@
 package salesforce
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -287,55 +285,6 @@ func Test_processSalesforceError(t *testing.T) {
 			}
 			if !reflect.DeepEqual(err.Error(), tt.want) {
 				t.Errorf("processSalesforceError() = %v, want %v", err.Error(), tt.want)
-			}
-		})
-	}
-}
-
-func Test_processSalesforceResponse(t *testing.T) {
-	message := []SalesforceErrorMessage{{
-		Message:    "example error",
-		StatusCode: "500",
-		Fields:     []string{"Name: bad name"},
-	}}
-	exampleError := []SalesforceResult{{
-		Id:      "12345",
-		Errors:  message,
-		Success: false,
-	}}
-	jsonBody, _ := json.Marshal(exampleError)
-	body := io.NopCloser(bytes.NewReader(jsonBody))
-	httpResp := http.Response{
-		Status:     fmt.Sprint(http.StatusInternalServerError),
-		StatusCode: http.StatusInternalServerError,
-		Body:       body,
-	}
-	type args struct {
-		resp http.Response
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
-	}{
-		{
-			name: "process_500_error",
-			args: args{
-				resp: httpResp,
-			},
-			want:    "500: example error 12345",
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := processSalesforceResponse(tt.args.resp)
-			if err != nil != tt.wantErr {
-				t.Errorf("processSalesforceResponse() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if !reflect.DeepEqual(err.Error(), tt.want) {
-				t.Errorf("processSalesforceResponse() = %v, want %v", err.Error(), tt.want)
 			}
 		})
 	}
@@ -847,6 +796,7 @@ func TestSalesforce_InsertOne(t *testing.T) {
 		fields  fields
 		args    args
 		wantErr bool
+		want    SalesforceResult
 	}{
 		{
 			name: "successful_insert",
@@ -878,8 +828,12 @@ func TestSalesforce_InsertOne(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if _, err := sf.InsertOne(tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
+			got, err := sf.InsertOne(tt.args.sObjectName, tt.args.record)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.InsertOne() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.InsertOne() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -905,6 +859,7 @@ func TestSalesforce_UpdateOne(t *testing.T) {
 		fields  fields
 		args    args
 		wantErr bool
+		want    SalesforceResult
 	}{
 		{
 			name: "successful_update",
@@ -950,8 +905,12 @@ func TestSalesforce_UpdateOne(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if err := sf.UpdateOne(tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
+			got, err := sf.UpdateOne(tt.args.sObjectName, tt.args.record)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.UpdateOne() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.UpdateOne() = %v, want %v", got, tt.want)
 			}
 		})
 	}

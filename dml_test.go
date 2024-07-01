@@ -1,6 +1,10 @@
 package salesforce
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"reflect"
 	"testing"
@@ -108,6 +112,55 @@ func Test_convertToSliceOfMaps(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("convertToSliceOfMaps() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_processSalesforceResponse(t *testing.T) {
+	message := []SalesforceErrorMessage{{
+		Message:    "example error",
+		StatusCode: "500",
+		Fields:     []string{"Name: bad name"},
+	}}
+	exampleError := []SalesforceResult{{
+		Id:      "12345",
+		Errors:  message,
+		Success: false,
+	}}
+	jsonBody, _ := json.Marshal(exampleError)
+	body := io.NopCloser(bytes.NewReader(jsonBody))
+	httpResp := http.Response{
+		Status:     fmt.Sprint(http.StatusInternalServerError),
+		StatusCode: http.StatusInternalServerError,
+		Body:       body,
+	}
+	type args struct {
+		resp http.Response
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "process_500_error",
+			args: args{
+				resp: httpResp,
+			},
+			want:    "500: example error 12345",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := processSalesforceResponse(tt.args.resp)
+			if err != nil != tt.wantErr {
+				t.Errorf("processSalesforceResponse() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(err.Error(), tt.want) {
+				t.Errorf("processSalesforceResponse() = %v, want %v", err.Error(), tt.want)
 			}
 		})
 	}
