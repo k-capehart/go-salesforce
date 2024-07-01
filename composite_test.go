@@ -154,12 +154,12 @@ func Test_createCompositeRequestForCollection(t *testing.T) {
 }
 
 func Test_processCompositeResponse(t *testing.T) {
-	message := []salesforceErrorMessage{{
+	message := []SalesforceErrorMessage{{
 		Message:    "example error",
 		StatusCode: "500",
 		Fields:     []string{"Name: bad name"},
 	}}
-	exampleError := []salesforceError{{
+	exampleError := []SalesforceResult{{
 		Id:      "12345",
 		Errors:  message,
 		Success: false,
@@ -183,9 +183,9 @@ func Test_processCompositeResponse(t *testing.T) {
 		Body:       body,
 	}
 
-	exampleErrorNoMessage := []salesforceError{{
+	exampleErrorNoMessage := []SalesforceResult{{
 		Id:      "12345",
-		Errors:  []salesforceErrorMessage{},
+		Errors:  []SalesforceErrorMessage{},
 		Success: false,
 	}}
 	compSubResultsNoMessage := []composteSubRequestResult{
@@ -242,7 +242,7 @@ func Test_processCompositeResponse(t *testing.T) {
 func Test_doCompositeRequest(t *testing.T) {
 	compReqResultSuccess := compositeRequestResult{
 		CompositeResponse: []composteSubRequestResult{{
-			Body:           []salesforceError{{Success: true}},
+			Body:           []SalesforceResult{{Success: true}},
 			HttpHeaders:    map[string]string{},
 			HttpStatusCode: http.StatusOK,
 			ReferenceId:    "sobject",
@@ -251,9 +251,9 @@ func Test_doCompositeRequest(t *testing.T) {
 
 	compReqResultFail := compositeRequestResult{
 		CompositeResponse: []composteSubRequestResult{{
-			Body: []salesforceError{{
+			Body: []SalesforceResult{{
 				Success: false,
-				Errors: []salesforceErrorMessage{{
+				Errors: []SalesforceErrorMessage{{
 					Message:    "error",
 					StatusCode: "500",
 				}},
