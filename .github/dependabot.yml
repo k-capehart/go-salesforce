@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: 'gomod'
+    directory: '/'
+    schedule:
+      interval: 'monthly'
+      day: 'monday'
+    pull-request-branch-name:
+      separator: '-'
+    commit-message:
+      prefix: fix(deps)
+      prefix-development: fix(deps)
+    groups:
+      dependencies:
+        applies-to: version-updates
+        update-types:
+        - "minor"
+        - "patch"

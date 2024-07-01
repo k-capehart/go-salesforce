@@ -2706,6 +2706,11 @@ func TestGetAccessToken(t *testing.T) {
 			sf:   sf,
 			want: "1234",
 		},
+		{
+			name: "no_access_token",
+			sf:   &Salesforce{},
+			want: "",
+		},
 	}
 
 	for _, tt := range tests {
