@@ -164,7 +164,7 @@ func Test_processCompositeResponse(t *testing.T) {
 		Errors:  message,
 		Success: false,
 	}}
-	compSubResults := []composteSubRequestResult{
+	compSubResults := []compositeSubRequestResult{
 		{
 			Body:           exampleError,
 			HttpHeaders:    map[string]string{},
@@ -188,7 +188,7 @@ func Test_processCompositeResponse(t *testing.T) {
 		Errors:  []SalesforceErrorMessage{},
 		Success: false,
 	}}
-	compSubResultsNoMessage := []composteSubRequestResult{
+	compSubResultsNoMessage := []compositeSubRequestResult{
 		{
 			Body:           exampleErrorNoMessage,
 			HttpHeaders:    map[string]string{},
@@ -208,7 +208,8 @@ func Test_processCompositeResponse(t *testing.T) {
 	}
 
 	type args struct {
-		resp http.Response
+		resp      http.Response
+		allOrNone bool
 	}
 	tests := []struct {
 		name    string
@@ -232,7 +233,7 @@ func Test_processCompositeResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := processCompositeResponse(tt.args.resp); (err != nil) != tt.wantErr {
+			if _, err := processCompositeResponse(tt.args.resp, tt.args.allOrNone); (err != nil) != tt.wantErr {
 				t.Errorf("processCompositeResponse() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -241,7 +242,7 @@ func Test_processCompositeResponse(t *testing.T) {
 
 func Test_doCompositeRequest(t *testing.T) {
 	compReqResultSuccess := compositeRequestResult{
-		CompositeResponse: []composteSubRequestResult{{
+		CompositeResponse: []compositeSubRequestResult{{
 			Body:           []SalesforceResult{{Success: true}},
 			HttpHeaders:    map[string]string{},
 			HttpStatusCode: http.StatusOK,
@@ -250,7 +251,7 @@ func Test_doCompositeRequest(t *testing.T) {
 	}
 
 	compReqResultFail := compositeRequestResult{
-		CompositeResponse: []composteSubRequestResult{{
+		CompositeResponse: []compositeSubRequestResult{{
 			Body: []SalesforceResult{{
 				Success: false,
 				Errors: []SalesforceErrorMessage{{
@@ -322,7 +323,7 @@ func Test_doCompositeRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := doCompositeRequest(tt.args.auth, tt.args.compReq); (err != nil) != tt.wantErr {
+			if _, err := doCompositeRequest(tt.args.auth, tt.args.compReq); (err != nil) != tt.wantErr {
 				t.Errorf("doCompositeRequest() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -381,7 +382,7 @@ func Test_doInsertComposite(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := doInsertComposite(tt.args.auth, tt.args.sObjectName, tt.args.records, tt.args.allOrNone, tt.args.batchSize); (err != nil) != tt.wantErr {
+			if _, err := doInsertComposite(tt.args.auth, tt.args.sObjectName, tt.args.records, tt.args.allOrNone, tt.args.batchSize); (err != nil) != tt.wantErr {
 				t.Errorf("doInsertComposite() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -458,7 +459,7 @@ func Test_doUpdateComposite(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := doUpdateComposite(tt.args.auth, tt.args.sObjectName, tt.args.records, tt.args.allOrNone, tt.args.batchSize); (err != nil) != tt.wantErr {
+			if _, err := doUpdateComposite(tt.args.auth, tt.args.sObjectName, tt.args.records, tt.args.allOrNone, tt.args.batchSize); (err != nil) != tt.wantErr {
 				t.Errorf("doUpdateComposite() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -539,7 +540,7 @@ func Test_doUpsertComposite(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := doUpsertComposite(tt.args.auth, tt.args.sObjectName, tt.args.fieldName, tt.args.records, tt.args.allOrNone, tt.args.batchSize); (err != nil) != tt.wantErr {
+			if _, err := doUpsertComposite(tt.args.auth, tt.args.sObjectName, tt.args.fieldName, tt.args.records, tt.args.allOrNone, tt.args.batchSize); (err != nil) != tt.wantErr {
 				t.Errorf("doUpsertComposite() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -627,7 +628,7 @@ func Test_doDeleteComposite(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := doDeleteComposite(tt.args.auth, tt.args.sObjectName, tt.args.records, tt.args.allOrNone, tt.args.batchSize); (err != nil) != tt.wantErr {
+			if _, err := doDeleteComposite(tt.args.auth, tt.args.sObjectName, tt.args.records, tt.args.allOrNone, tt.args.batchSize); (err != nil) != tt.wantErr {
 				t.Errorf("doDeleteComposite() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

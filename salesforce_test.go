@@ -985,7 +985,7 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if err := sf.UpsertOne(tt.args.sObjectName, tt.args.externalIdFieldName, tt.args.record); (err != nil) != tt.wantErr {
+			if _, err := sf.UpsertOne(tt.args.sObjectName, tt.args.externalIdFieldName, tt.args.record); (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.UpsertOne() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1053,7 +1053,7 @@ func TestSalesforce_DeleteOne(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if err := sf.DeleteOne(tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
+			if _, err := sf.DeleteOne(tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.DeleteOne() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1484,7 +1484,7 @@ func TestSalesforce_InsertComposite(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if err := sf.InsertComposite(tt.args.sObjectName, tt.args.records, tt.args.batchSize, tt.args.allOrNone); (err != nil) != tt.wantErr {
+			if _, err := sf.InsertComposite(tt.args.sObjectName, tt.args.records, tt.args.batchSize, tt.args.allOrNone); (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.InsertComposite() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1576,7 +1576,7 @@ func TestSalesforce_UpdateComposite(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if err := sf.UpdateComposite(tt.args.sObjectName, tt.args.records, tt.args.batchSize, tt.args.allOrNone); (err != nil) != tt.wantErr {
+			if _, err := sf.UpdateComposite(tt.args.sObjectName, tt.args.records, tt.args.batchSize, tt.args.allOrNone); (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.UpdateComposite() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1672,7 +1672,7 @@ func TestSalesforce_UpsertComposite(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if err := sf.UpsertComposite(tt.args.sObjectName, tt.args.externalIdFieldName, tt.args.records, tt.args.batchSize, tt.args.allOrNone); (err != nil) != tt.wantErr {
+			if _, err := sf.UpsertComposite(tt.args.sObjectName, tt.args.externalIdFieldName, tt.args.records, tt.args.batchSize, tt.args.allOrNone); (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.UpsertComposite() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1755,7 +1755,7 @@ func TestSalesforce_DeleteComposite(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if err := sf.DeleteComposite(tt.args.sObjectName, tt.args.records, tt.args.batchSize, tt.args.allOrNone); (err != nil) != tt.wantErr {
+			if _, err := sf.DeleteComposite(tt.args.sObjectName, tt.args.records, tt.args.batchSize, tt.args.allOrNone); (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.DeleteComposite() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

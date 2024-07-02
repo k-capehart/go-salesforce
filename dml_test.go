@@ -390,7 +390,7 @@ func Test_doUpdateOne(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := doUpdateOne(tt.args.auth, tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
+			if _, err := doUpdateOne(tt.args.auth, tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
 				t.Errorf("doUpdateOne() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -459,7 +459,7 @@ func Test_doUpsertOne(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := doUpsertOne(tt.args.auth, tt.args.sObjectName, tt.args.fieldName, tt.args.record); (err != nil) != tt.wantErr {
+			if _, err := doUpsertOne(tt.args.auth, tt.args.sObjectName, tt.args.fieldName, tt.args.record); (err != nil) != tt.wantErr {
 				t.Errorf("doUpsertOne() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -521,7 +521,7 @@ func Test_doDeleteOne(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := doDeleteOne(tt.args.auth, tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
+			if _, err := doDeleteOne(tt.args.auth, tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
 				t.Errorf("doDeleteOne() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

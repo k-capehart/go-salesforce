@@ -703,44 +703,6 @@ func Test_doBulkJob(t *testing.T) {
 	}
 }
 
-func Test_getFailedRecords(t *testing.T) {
-	server, sfAuth := setupTestServer("error", http.StatusOK)
-	defer server.Close()
-
-	type args struct {
-		auth      authentication
-		bulkJobId string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
-	}{
-		{
-			name: "get_failed_records",
-			args: args{
-				auth:      sfAuth,
-				bulkJobId: "1234",
-			},
-			want:    "\"error\"",
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := getFailedRecords(tt.args.auth, tt.args.bulkJobId)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("getFailedRecords() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("getFailedRecords() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_waitForJobResultsAsync(t *testing.T) {
 	jobResults := BulkJobResults{
 		Id:    "1234",
