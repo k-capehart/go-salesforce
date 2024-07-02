@@ -74,16 +74,16 @@ func doBatchedRequestsForCollection(auth authentication, method string, url stri
 
 		body, err := json.Marshal(payload)
 		if err != nil {
-			return nil, err
+			return &results, err
 		}
 
 		resp, err := doRequest(method, url, jsonType, auth, string(body), http.StatusOK)
 		if err != nil {
-			return nil, err
+			return &results, err
 		}
 		_results, err := processSalesforceResponse(*resp)
 		if err != nil {
-			return nil, err
+			return &results, err
 		}
 
 		results.Results = append(results.Results, _results...)
@@ -294,7 +294,7 @@ func doDeleteCollection(auth authentication, sObjectName string, records any, ba
 			recordId, ok := batch[i]["Id"].(string)
 			if !ok || recordId == "" {
 				err := errors.New("salesforce id not found in object data")
-				return nil, err
+				return &results, err
 			}
 			if i == len(batch)-1 {
 				ids = ids + recordId
@@ -305,11 +305,11 @@ func doDeleteCollection(auth authentication, sObjectName string, records any, ba
 
 		resp, err := doRequest(http.MethodDelete, "/composite/sobjects/?ids="+ids+"&allOrNone=false", jsonType, auth, "", http.StatusOK)
 		if err != nil {
-			return nil, err
+			return &results, err
 		}
 		_results, err := processSalesforceResponse(*resp)
 		if err != nil {
-			return nil, err
+			return &results, err
 		}
 
 		results.Results = append(results.Results, _results...)

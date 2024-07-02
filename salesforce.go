@@ -516,6 +516,13 @@ func (sf *Salesforce) GetJobResults(bulkJobId string) (BulkJobResults, error) {
 		return BulkJobResults{}, err
 	}
 
+	if job.State == jobStateJobComplete {
+		job, err = getJobRecordResults(*sf.auth, job)
+		if err != nil {
+			return job, err
+		}
+	}
+
 	return job, nil
 }
 

@@ -111,7 +111,7 @@ if err != nil {
 Returns the current session's Access Token as a string.
 
 ```go
-fmt.Println(sf.GetAccessToken())
+token := sf.GetAccessToken()
 ```
 
 ## SOQL
@@ -138,7 +138,7 @@ type Contact struct {
 
 ```go
 contacts := []Contact{}
-err := sf.Query("SELECT Id, LastName FROM Contact WHERE LastName = 'Capehart'", &contacts)
+err := sf.Query("SELECT Id, LastName FROM Contact WHERE LastName = 'Lee'", &contacts)
 if err != nil {
     panic(err)
 }
@@ -176,7 +176,7 @@ type ContactSoqlQuery struct {
 soqlStruct := ContactSoqlQuery{
     SelectClause: Contact{},
     WhereClause: ContactQueryCriteria{
-        LastName: "Capehart",
+        LastName: "Lee",
     },
 }
 contacts := []Contact{}
@@ -190,7 +190,8 @@ if err != nil {
 
 When querying Salesforce objects, it's common to access fields that are related through parent-child or lookup relationships. For instance, querying `Account.Name` with related `Contact` might look like this:
 
-##### Example SOQL Query
+#### Example SOQL Query
+
 ```sql
 SELECT Id, Account.Name FROM Contact
 ```
@@ -628,10 +629,12 @@ Create Bulk API Jobs to query, insert, update, upsert, and delete large collecti
 
 ```go
 type BulkJobResults struct {
-    Id                  string
-    State               string
-    NumberRecordsFailed int
-    ErrorMessage        string
+	Id                  string `json:"id"`
+	State               string `json:"state"`
+	NumberRecordsFailed int    `json:"numberRecordsFailed"`
+	ErrorMessage        string `json:"errorMessage"`
+	SuccessfulRecords   []map[string]any
+	FailedRecords       []map[string]any
 }
 ```
 
