@@ -134,17 +134,17 @@ func getJobResults(auth authentication, jobType string, bulkJobId string) (BulkJ
 
 func getJobRecordResults(auth authentication, bulkJobResults BulkJobResults) (BulkJobResults, error) {
 	successfulRecords, err := getBulkJobRecords(auth, bulkJobResults.Id, successfulResults)
-	bulkJobResults.SuccessfulRecords = successfulRecords
 	if err != nil {
 		fmt.Println("failed to get SuccessfulRecords")
 		return bulkJobResults, err
 	}
+	bulkJobResults.SuccessfulRecords = successfulRecords
 	failedRecords, err := getBulkJobRecords(auth, bulkJobResults.Id, failedResults)
-	bulkJobResults.FailedRecords = failedRecords
 	if err != nil {
 		fmt.Println("failed to get FailedRecords")
 		return bulkJobResults, err
 	}
+	bulkJobResults.FailedRecords = failedRecords
 	return bulkJobResults, err
 }
 
@@ -168,7 +168,7 @@ func waitForJobResultsAsync(auth authentication, bulkJobId string, jobType strin
 		if reqErr != nil {
 			return true, reqErr
 		}
-		return isBulkJobDone(auth, bulkJob)
+		return isBulkJobDone(bulkJob)
 	})
 	c <- err
 }
@@ -179,12 +179,12 @@ func waitForJobResults(auth authentication, bulkJobId string, jobType string, in
 		if reqErr != nil {
 			return true, reqErr
 		}
-		return isBulkJobDone(auth, bulkJob)
+		return isBulkJobDone(bulkJob)
 	})
 	return err
 }
 
-func isBulkJobDone(auth authentication, bulkJob BulkJobResults) (bool, error) {
+func isBulkJobDone(bulkJob BulkJobResults) (bool, error) {
 	if bulkJob.State == jobStateJobComplete || bulkJob.State == jobStateFailed {
 		if bulkJob.ErrorMessage != "" {
 			return true, errors.New(bulkJob.ErrorMessage)
@@ -288,16 +288,19 @@ func csvToMap(reader csv.Reader) ([]map[string]any, error) {
 	if readErr != nil {
 		return nil, readErr
 	}
-	headers := records[0]
-	var recordMap []map[string]any
-	for _, row := range records[1:] {
-		record := make(map[string]any)
-		for i, col := range row {
-			record[headers[i]] = col
+	if len(records) > 0 {
+		headers := records[0]
+		var recordMap []map[string]any
+		for _, row := range records[1:] {
+			record := make(map[string]any)
+			for i, col := range row {
+				record[headers[i]] = col
+			}
+			recordMap = append(recordMap, record)
 		}
-		recordMap = append(recordMap, record)
+		return recordMap, nil
 	}
-	return recordMap, nil
+	return nil, nil
 }
 
 func readCSVFile(filePath string) ([][]string, error) {

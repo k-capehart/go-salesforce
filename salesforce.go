@@ -263,10 +263,10 @@ func (sf *Salesforce) InsertOne(sObjectName string, record any) (*SalesforceResu
 	return doInsertOne(*sf.auth, sObjectName, record)
 }
 
-func (sf *Salesforce) UpdateOne(sObjectName string, record any) (*SalesforceResult, error) {
+func (sf *Salesforce) UpdateOne(sObjectName string, record any) error {
 	validationErr := validateSingles(*sf, record)
 	if validationErr != nil {
-		return nil, validationErr
+		return validationErr
 	}
 
 	return doUpdateOne(*sf.auth, sObjectName, record)
@@ -281,10 +281,10 @@ func (sf *Salesforce) UpsertOne(sObjectName string, externalIdFieldName string, 
 	return doUpsertOne(*sf.auth, sObjectName, externalIdFieldName, record)
 }
 
-func (sf *Salesforce) DeleteOne(sObjectName string, record any) (*SalesforceResult, error) {
+func (sf *Salesforce) DeleteOne(sObjectName string, record any) error {
 	validationErr := validateSingles(*sf, record)
 	if validationErr != nil {
-		return nil, validationErr
+		return validationErr
 	}
 
 	return doDeleteOne(*sf.auth, sObjectName, record)

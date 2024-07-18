@@ -133,15 +133,15 @@ func doInsertOne(auth authentication, sObjectName string, record any) (*Salesfor
 	return &data, nil
 }
 
-func doUpdateOne(auth authentication, sObjectName string, record any) (*SalesforceResult, error) {
+func doUpdateOne(auth authentication, sObjectName string, record any) error {
 	recordMap, err := convertToMap(record)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	recordId, ok := recordMap["Id"].(string)
 	if !ok || recordId == "" {
-		return nil, errors.New("salesforce id not found in object data")
+		return errors.New("salesforce id not found in object data")
 	}
 
 	recordMap["attributes"] = map[string]string{"type": sObjectName}
@@ -149,21 +149,15 @@ func doUpdateOne(auth authentication, sObjectName string, record any) (*Salesfor
 
 	body, err := json.Marshal(recordMap)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	resp, err := doRequest(http.MethodPatch, "/sobjects/"+sObjectName+"/"+recordId, jsonType, auth, string(body), http.StatusNoContent)
+	_, err = doRequest(http.MethodPatch, "/sobjects/"+sObjectName+"/"+recordId, jsonType, auth, string(body), http.StatusNoContent)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	data, err := decodeResponseBody(resp)
-	if err != nil {
-		fmt.Println("Error decoding: ", err)
-		return nil, err
-	}
-
-	return &data, nil
+	return nil
 }
 
 func doUpsertOne(auth authentication, sObjectName string, fieldName string, record any) (*SalesforceResult, error) {
@@ -200,29 +194,23 @@ func doUpsertOne(auth authentication, sObjectName string, fieldName string, reco
 	return &data, nil
 }
 
-func doDeleteOne(auth authentication, sObjectName string, record any) (*SalesforceResult, error) {
+func doDeleteOne(auth authentication, sObjectName string, record any) error {
 	recordMap, err := convertToMap(record)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	recordId, ok := recordMap["Id"].(string)
 	if !ok || recordId == "" {
-		return nil, errors.New("salesforce id not found in object data")
+		return errors.New("salesforce id not found in object data")
 	}
 
-	resp, err := doRequest(http.MethodDelete, "/sobjects/"+sObjectName+"/"+recordId, jsonType, auth, "", http.StatusNoContent)
+	_, err = doRequest(http.MethodDelete, "/sobjects/"+sObjectName+"/"+recordId, jsonType, auth, "", http.StatusNoContent)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	data, err := decodeResponseBody(resp)
-	if err != nil {
-		fmt.Println("Error decoding: ", err)
-		return nil, err
-	}
-
-	return &data, nil
+	return nil
 }
 
 func doInsertCollection(auth authentication, sObjectName string, records any, batchSize int) (*SalesforceResults, error) {
@@ -278,8 +266,8 @@ func doDeleteCollection(auth authentication, sObjectName string, records any, ba
 		return nil, err
 	}
 
-	var results = SalesforceResults{}
-
+	// we want to verify that ids are present before we start deleting
+	batchedIds := []string{}
 	for len(recordMap) > 0 {
 		var batch, remaining []map[string]any
 		if len(recordMap) > batchSize {
@@ -290,11 +278,11 @@ func doDeleteCollection(auth authentication, sObjectName string, records any, ba
 		recordMap = remaining
 
 		var ids string
-		for i := 0; i < len(batch); i++ {
+		for i := range batch {
+			batch[i]["attributes"] = map[string]string{"type": sObjectName}
 			recordId, ok := batch[i]["Id"].(string)
 			if !ok || recordId == "" {
-				err := errors.New("salesforce id not found in object data")
-				return &results, err
+				return nil, errors.New("salesforce id not found in object data")
 			}
 			if i == len(batch)-1 {
 				ids = ids + recordId
@@ -302,8 +290,13 @@ func doDeleteCollection(auth authentication, sObjectName string, records any, ba
 				ids = ids + recordId + ","
 			}
 		}
+		batchedIds = append(batchedIds, ids)
+	}
 
-		resp, err := doRequest(http.MethodDelete, "/composite/sobjects/?ids="+ids+"&allOrNone=false", jsonType, auth, "", http.StatusOK)
+	var results = SalesforceResults{}
+
+	for i := range batchedIds {
+		resp, err := doRequest(http.MethodDelete, "/composite/sobjects/?ids="+batchedIds[i]+"&allOrNone=false", jsonType, auth, "", http.StatusOK)
 		if err != nil {
 			return &results, err
 		}
@@ -313,6 +306,13 @@ func doDeleteCollection(auth authentication, sObjectName string, records any, ba
 		}
 
 		results.Results = append(results.Results, _results...)
+	}
+
+	for _, result := range results.Results {
+		if !result.Success {
+			results.HasErrors = true
+			break
+		}
 	}
 
 	return &results, nil

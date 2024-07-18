@@ -629,10 +629,10 @@ Create Bulk API Jobs to query, insert, update, upsert, and delete large collecti
 
 ```go
 type BulkJobResults struct {
-	Id                  string `json:"id"`
-	State               string `json:"state"`
-	NumberRecordsFailed int    `json:"numberRecordsFailed"`
-	ErrorMessage        string `json:"errorMessage"`
+	Id                  string
+	State               string
+	NumberRecordsFailed int
+	ErrorMessage        string
 	SuccessfulRecords   []map[string]any
 	FailedRecords       []map[string]any
 }

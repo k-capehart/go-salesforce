@@ -781,7 +781,13 @@ func TestSalesforce_InsertOne(t *testing.T) {
 		Name string
 	}
 
-	server, sfAuth := setupTestServer("", http.StatusCreated)
+	successfulResult := SalesforceResult{
+		Id:      "1234",
+		Errors:  []SalesforceErrorMessage{},
+		Success: true,
+	}
+
+	server, sfAuth := setupTestServer(successfulResult, http.StatusCreated)
 	defer server.Close()
 
 	type fields struct {
@@ -796,7 +802,7 @@ func TestSalesforce_InsertOne(t *testing.T) {
 		fields  fields
 		args    args
 		wantErr bool
-		want    SalesforceResult
+		want    *SalesforceResult
 	}{
 		{
 			name: "successful_insert",
@@ -809,6 +815,7 @@ func TestSalesforce_InsertOne(t *testing.T) {
 					Name: "test account",
 				},
 			},
+			want:    &successfulResult,
 			wantErr: false,
 		},
 		{
@@ -820,6 +827,7 @@ func TestSalesforce_InsertOne(t *testing.T) {
 				sObjectName: "Account",
 				record:      0,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 	}
@@ -859,7 +867,6 @@ func TestSalesforce_UpdateOne(t *testing.T) {
 		fields  fields
 		args    args
 		wantErr bool
-		want    SalesforceResult
 	}{
 		{
 			name: "successful_update",
@@ -905,12 +912,8 @@ func TestSalesforce_UpdateOne(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			got, err := sf.UpdateOne(tt.args.sObjectName, tt.args.record)
-			if (err != nil) != tt.wantErr {
+			if err := sf.UpdateOne(tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.UpdateOne() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Salesforce.UpdateOne() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -921,7 +924,14 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 		ExternalId__c string
 		Name          string
 	}
-	server, sfAuth := setupTestServer("", http.StatusOK)
+
+	successfulResult := SalesforceResult{
+		Id:      "1234",
+		Errors:  []SalesforceErrorMessage{},
+		Success: true,
+	}
+
+	server, sfAuth := setupTestServer(successfulResult, http.StatusOK)
 	defer server.Close()
 
 	type fields struct {
@@ -936,6 +946,7 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
+		want    *SalesforceResult
 		wantErr bool
 	}{
 		{
@@ -951,6 +962,7 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 					Name:          "test account",
 				},
 			},
+			want:    &successfulResult,
 			wantErr: false,
 		},
 		{
@@ -963,6 +975,7 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 				externalIdFieldName: "ExternalId__c",
 				record:              0,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -977,6 +990,7 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 					Name: "test account",
 				},
 			},
+			want:    nil,
 			wantErr: true,
 		},
 	}
@@ -985,8 +999,12 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if _, err := sf.UpsertOne(tt.args.sObjectName, tt.args.externalIdFieldName, tt.args.record); (err != nil) != tt.wantErr {
+			got, err := sf.UpsertOne(tt.args.sObjectName, tt.args.externalIdFieldName, tt.args.record)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.UpsertOne() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.UpsertOne() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -1053,7 +1071,7 @@ func TestSalesforce_DeleteOne(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if _, err := sf.DeleteOne(tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
+			if err := sf.DeleteOne(tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.DeleteOne() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1064,10 +1082,20 @@ func TestSalesforce_InsertCollection(t *testing.T) {
 	type account struct {
 		Name string
 	}
-	server, sfAuth := setupTestServer([]SalesforceResult{{Success: true}}, http.StatusOK)
+
+	successfulResults := SalesforceResults{
+		Results: []SalesforceResult{{
+			Id:      "1234",
+			Errors:  []SalesforceErrorMessage{},
+			Success: true,
+		}},
+		HasErrors: false,
+	}
+
+	server, sfAuth := setupTestServer(successfulResults.Results, http.StatusOK)
 	defer server.Close()
 
-	badReqServer, badReqSfAuth := setupTestServer([]SalesforceResult{{Success: false}}, http.StatusBadRequest)
+	badReqServer, badReqSfAuth := setupTestServer("", http.StatusBadRequest)
 	defer badReqServer.Close()
 
 	type fields struct {
@@ -1082,6 +1110,7 @@ func TestSalesforce_InsertCollection(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
+		want    *SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -1101,6 +1130,7 @@ func TestSalesforce_InsertCollection(t *testing.T) {
 				},
 				batchSize: 200,
 			},
+			want:    &successfulResults,
 			wantErr: false,
 		},
 		{
@@ -1115,6 +1145,7 @@ func TestSalesforce_InsertCollection(t *testing.T) {
 				},
 				batchSize: 200,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -1131,6 +1162,7 @@ func TestSalesforce_InsertCollection(t *testing.T) {
 				},
 				batchSize: 200,
 			},
+			want:    &SalesforceResults{},
 			wantErr: true,
 		},
 	}
@@ -1139,8 +1171,12 @@ func TestSalesforce_InsertCollection(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if _, err := sf.InsertCollection(tt.args.sObjectName, tt.args.records, tt.args.batchSize); (err != nil) != tt.wantErr {
+			got, err := sf.InsertCollection(tt.args.sObjectName, tt.args.records, tt.args.batchSize)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.InsertCollection() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.InsertCollection() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -1151,7 +1187,17 @@ func TestSalesforce_UpdateCollection(t *testing.T) {
 		Id   string
 		Name string
 	}
-	server, sfAuth := setupTestServer([]SalesforceResult{{Success: true}}, http.StatusOK)
+
+	successfulResults := SalesforceResults{
+		Results: []SalesforceResult{{
+			Id:      "1234",
+			Errors:  []SalesforceErrorMessage{},
+			Success: true,
+		}},
+		HasErrors: false,
+	}
+
+	server, sfAuth := setupTestServer(successfulResults.Results, http.StatusOK)
 	defer server.Close()
 
 	type fields struct {
@@ -1166,6 +1212,7 @@ func TestSalesforce_UpdateCollection(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
+		want    *SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -1187,6 +1234,7 @@ func TestSalesforce_UpdateCollection(t *testing.T) {
 				},
 				batchSize: 200,
 			},
+			want:    &successfulResults,
 			wantErr: false,
 		},
 		{
@@ -1199,6 +1247,7 @@ func TestSalesforce_UpdateCollection(t *testing.T) {
 				records:     0,
 				batchSize:   200,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -1218,6 +1267,7 @@ func TestSalesforce_UpdateCollection(t *testing.T) {
 				},
 				batchSize: 200,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 	}
@@ -1226,8 +1276,12 @@ func TestSalesforce_UpdateCollection(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if _, err := sf.UpdateCollection(tt.args.sObjectName, tt.args.records, tt.args.batchSize); (err != nil) != tt.wantErr {
+			got, err := sf.UpdateCollection(tt.args.sObjectName, tt.args.records, tt.args.batchSize)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.UpdateCollection() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.UpdateCollection() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -1238,7 +1292,17 @@ func TestSalesforce_UpsertCollection(t *testing.T) {
 		ExternalId__c string
 		Name          string
 	}
-	server, sfAuth := setupTestServer([]SalesforceResult{{Success: true}}, http.StatusOK)
+
+	successfulResults := SalesforceResults{
+		Results: []SalesforceResult{{
+			Id:      "1234",
+			Errors:  []SalesforceErrorMessage{},
+			Success: true,
+		}},
+		HasErrors: false,
+	}
+
+	server, sfAuth := setupTestServer(successfulResults.Results, http.StatusOK)
 	defer server.Close()
 
 	type fields struct {
@@ -1254,6 +1318,7 @@ func TestSalesforce_UpsertCollection(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
+		want    *SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -1276,6 +1341,7 @@ func TestSalesforce_UpsertCollection(t *testing.T) {
 				},
 				batchSize: 200,
 			},
+			want:    &successfulResults,
 			wantErr: false,
 		},
 		{
@@ -1289,6 +1355,7 @@ func TestSalesforce_UpsertCollection(t *testing.T) {
 				records:             0,
 				batchSize:           200,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -1309,6 +1376,7 @@ func TestSalesforce_UpsertCollection(t *testing.T) {
 				},
 				batchSize: 200,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 	}
@@ -1317,8 +1385,12 @@ func TestSalesforce_UpsertCollection(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if _, err := sf.UpsertCollection(tt.args.sObjectName, tt.args.externalIdFieldName, tt.args.records, tt.args.batchSize); (err != nil) != tt.wantErr {
+			got, err := sf.UpsertCollection(tt.args.sObjectName, tt.args.externalIdFieldName, tt.args.records, tt.args.batchSize)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.UpsertCollection() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.UpsertCollection() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -1328,7 +1400,17 @@ func TestSalesforce_DeleteCollection(t *testing.T) {
 	type account struct {
 		Id string
 	}
-	server, sfAuth := setupTestServer([]SalesforceResult{{Success: true}}, http.StatusOK)
+
+	successfulResults := SalesforceResults{
+		Results: []SalesforceResult{{
+			Id:      "1234",
+			Errors:  []SalesforceErrorMessage{},
+			Success: true,
+		}},
+		HasErrors: false,
+	}
+
+	server, sfAuth := setupTestServer(successfulResults.Results, http.StatusOK)
 	defer server.Close()
 
 	type fields struct {
@@ -1343,6 +1425,7 @@ func TestSalesforce_DeleteCollection(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
+		want    *SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -1362,6 +1445,7 @@ func TestSalesforce_DeleteCollection(t *testing.T) {
 				},
 				batchSize: 200,
 			},
+			want:    &successfulResults,
 			wantErr: false,
 		},
 		{
@@ -1374,6 +1458,7 @@ func TestSalesforce_DeleteCollection(t *testing.T) {
 				records:     0,
 				batchSize:   200,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -1386,6 +1471,7 @@ func TestSalesforce_DeleteCollection(t *testing.T) {
 				records:     []account{{}, {}},
 				batchSize:   200,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 	}
@@ -1394,8 +1480,12 @@ func TestSalesforce_DeleteCollection(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if _, err := sf.DeleteCollection(tt.args.sObjectName, tt.args.records, tt.args.batchSize); (err != nil) != tt.wantErr {
+			got, err := sf.DeleteCollection(tt.args.sObjectName, tt.args.records, tt.args.batchSize)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.DeleteCollection() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.DeleteCollection() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -1405,10 +1495,21 @@ func TestSalesforce_InsertComposite(t *testing.T) {
 	type account struct {
 		Name string
 	}
-	server, sfAuth := setupTestServer(compositeRequestResult{}, http.StatusOK)
+
+	compResult := compositeRequestResult{
+		CompositeResponse: []compositeSubRequestResult{{
+			Body: []SalesforceResult{{
+				Id:      "1234",
+				Errors:  []SalesforceErrorMessage{},
+				Success: true,
+			}},
+		}},
+	}
+
+	server, sfAuth := setupTestServer(compResult, http.StatusOK)
 	defer server.Close()
 
-	badReqServer, badReqSfAuth := setupTestServer([]SalesforceResult{{Success: false}}, http.StatusBadRequest)
+	badReqServer, badReqSfAuth := setupTestServer("", http.StatusBadRequest)
 	defer badReqServer.Close()
 
 	type fields struct {
@@ -1424,6 +1525,7 @@ func TestSalesforce_InsertComposite(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
+		want    *SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -1444,6 +1546,10 @@ func TestSalesforce_InsertComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
+			want: &SalesforceResults{
+				Results:   compResult.CompositeResponse[0].Body,
+				HasErrors: false,
+			},
 			wantErr: false,
 		},
 		{
@@ -1459,6 +1565,7 @@ func TestSalesforce_InsertComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -1476,6 +1583,7 @@ func TestSalesforce_InsertComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 	}
@@ -1484,8 +1592,12 @@ func TestSalesforce_InsertComposite(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if _, err := sf.InsertComposite(tt.args.sObjectName, tt.args.records, tt.args.batchSize, tt.args.allOrNone); (err != nil) != tt.wantErr {
+			got, err := sf.InsertComposite(tt.args.sObjectName, tt.args.records, tt.args.batchSize, tt.args.allOrNone)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.InsertComposite() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.InsertComposite() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -1496,10 +1608,21 @@ func TestSalesforce_UpdateComposite(t *testing.T) {
 		Id   string
 		Name string
 	}
-	server, sfAuth := setupTestServer(compositeRequestResult{}, http.StatusOK)
+
+	compResult := compositeRequestResult{
+		CompositeResponse: []compositeSubRequestResult{{
+			Body: []SalesforceResult{{
+				Id:      "1234",
+				Errors:  []SalesforceErrorMessage{},
+				Success: true,
+			}},
+		}},
+	}
+
+	server, sfAuth := setupTestServer(compResult, http.StatusOK)
 	defer server.Close()
 
-	badReqServer, badReqSfAuth := setupTestServer([]SalesforceResult{{Success: false}}, http.StatusBadRequest)
+	badReqServer, badReqSfAuth := setupTestServer("", http.StatusBadRequest)
 	defer badReqServer.Close()
 
 	type fields struct {
@@ -1515,6 +1638,7 @@ func TestSalesforce_UpdateComposite(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
+		want    *SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -1537,6 +1661,10 @@ func TestSalesforce_UpdateComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
+			want: &SalesforceResults{
+				Results:   compResult.CompositeResponse[0].Body,
+				HasErrors: false,
+			},
 			wantErr: false,
 		},
 		{
@@ -1550,6 +1678,7 @@ func TestSalesforce_UpdateComposite(t *testing.T) {
 				batchSize:   200,
 				allOrNone:   true,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -1568,6 +1697,7 @@ func TestSalesforce_UpdateComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 	}
@@ -1576,8 +1706,12 @@ func TestSalesforce_UpdateComposite(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if _, err := sf.UpdateComposite(tt.args.sObjectName, tt.args.records, tt.args.batchSize, tt.args.allOrNone); (err != nil) != tt.wantErr {
+			got, err := sf.UpdateComposite(tt.args.sObjectName, tt.args.records, tt.args.batchSize, tt.args.allOrNone)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.UpdateComposite() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.UpdateComposite() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -1588,10 +1722,21 @@ func TestSalesforce_UpsertComposite(t *testing.T) {
 		ExternalId__c string
 		Name          string
 	}
-	server, sfAuth := setupTestServer(compositeRequestResult{}, http.StatusOK)
+
+	compResult := compositeRequestResult{
+		CompositeResponse: []compositeSubRequestResult{{
+			Body: []SalesforceResult{{
+				Id:      "1234",
+				Errors:  []SalesforceErrorMessage{},
+				Success: true,
+			}},
+		}},
+	}
+
+	server, sfAuth := setupTestServer(compResult, http.StatusOK)
 	defer server.Close()
 
-	badReqServer, badReqSfAuth := setupTestServer([]SalesforceResult{{Success: false}}, http.StatusBadRequest)
+	badReqServer, badReqSfAuth := setupTestServer("", http.StatusBadRequest)
 	defer badReqServer.Close()
 
 	type fields struct {
@@ -1608,6 +1753,7 @@ func TestSalesforce_UpsertComposite(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
+		want    *SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -1631,6 +1777,10 @@ func TestSalesforce_UpsertComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
+			want: &SalesforceResults{
+				Results:   compResult.CompositeResponse[0].Body,
+				HasErrors: false,
+			},
 			wantErr: false,
 		},
 		{
@@ -1645,6 +1795,7 @@ func TestSalesforce_UpsertComposite(t *testing.T) {
 				batchSize:           200,
 				allOrNone:           true,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -1664,6 +1815,7 @@ func TestSalesforce_UpsertComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 	}
@@ -1672,8 +1824,12 @@ func TestSalesforce_UpsertComposite(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if _, err := sf.UpsertComposite(tt.args.sObjectName, tt.args.externalIdFieldName, tt.args.records, tt.args.batchSize, tt.args.allOrNone); (err != nil) != tt.wantErr {
+			got, err := sf.UpsertComposite(tt.args.sObjectName, tt.args.externalIdFieldName, tt.args.records, tt.args.batchSize, tt.args.allOrNone)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.UpsertComposite() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.UpsertComposite() = %v, want %v", err, tt.want)
 			}
 		})
 	}
@@ -1683,10 +1839,21 @@ func TestSalesforce_DeleteComposite(t *testing.T) {
 	type account struct {
 		Id string
 	}
-	server, sfAuth := setupTestServer(compositeRequestResult{}, http.StatusOK)
+
+	compResult := compositeRequestResult{
+		CompositeResponse: []compositeSubRequestResult{{
+			Body: []SalesforceResult{{
+				Id:      "1234",
+				Errors:  []SalesforceErrorMessage{},
+				Success: true,
+			}},
+		}},
+	}
+
+	server, sfAuth := setupTestServer(compResult, http.StatusOK)
 	defer server.Close()
 
-	badReqServer, badReqSfAuth := setupTestServer([]SalesforceResult{{Success: false}}, http.StatusBadRequest)
+	badReqServer, badReqSfAuth := setupTestServer("", http.StatusBadRequest)
 	defer badReqServer.Close()
 
 	type fields struct {
@@ -1702,6 +1869,7 @@ func TestSalesforce_DeleteComposite(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
+		want    *SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -1721,6 +1889,10 @@ func TestSalesforce_DeleteComposite(t *testing.T) {
 				},
 				batchSize: 200,
 			},
+			want: &SalesforceResults{
+				Results:   compResult.CompositeResponse[0].Body,
+				HasErrors: false,
+			},
 			wantErr: false,
 		},
 		{
@@ -1733,6 +1905,7 @@ func TestSalesforce_DeleteComposite(t *testing.T) {
 				records:     0,
 				batchSize:   200,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -1747,6 +1920,7 @@ func TestSalesforce_DeleteComposite(t *testing.T) {
 				}},
 				batchSize: 200,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 	}
@@ -1755,8 +1929,12 @@ func TestSalesforce_DeleteComposite(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			if _, err := sf.DeleteComposite(tt.args.sObjectName, tt.args.records, tt.args.batchSize, tt.args.allOrNone); (err != nil) != tt.wantErr {
+			got, err := sf.DeleteComposite(tt.args.sObjectName, tt.args.records, tt.args.batchSize, tt.args.allOrNone)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.DeleteComposite() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.DeleteComposite() = %v, want %v", err, tt.want)
 			}
 		})
 	}

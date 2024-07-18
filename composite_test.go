@@ -177,7 +177,7 @@ func Test_processCompositeResponse(t *testing.T) {
 	}
 	jsonBody, _ := json.Marshal(compResult)
 	body := io.NopCloser(bytes.NewReader(jsonBody))
-	httpresp := http.Response{
+	httpResp := http.Response{
 		Status:     fmt.Sprint(http.StatusBadRequest),
 		StatusCode: http.StatusBadRequest,
 		Body:       body,
@@ -201,7 +201,7 @@ func Test_processCompositeResponse(t *testing.T) {
 	}
 	jsonBodyNoError, _ := json.Marshal(compResultNoMessage)
 	bodyNoError := io.NopCloser(bytes.NewReader(jsonBodyNoError))
-	httprespNoError := http.Response{
+	httpRespNoError := http.Response{
 		Status:     fmt.Sprint(http.StatusBadRequest),
 		StatusCode: http.StatusBadRequest,
 		Body:       bodyNoError,
@@ -214,27 +214,40 @@ func Test_processCompositeResponse(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
+		want    *SalesforceResults
 		wantErr bool
 	}{
 		{
 			name: "process_500_error",
 			args: args{
-				resp: httpresp,
+				resp: httpResp,
 			},
-			wantErr: true,
+			want: &SalesforceResults{
+				Results:   exampleError,
+				HasErrors: true,
+			},
+			wantErr: false,
 		},
 		{
 			name: "process_500_error_no_error_message",
 			args: args{
-				resp: httprespNoError,
+				resp: httpRespNoError,
 			},
-			wantErr: true,
+			want: &SalesforceResults{
+				Results:   exampleErrorNoMessage,
+				HasErrors: true,
+			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := processCompositeResponse(tt.args.resp, tt.args.allOrNone); (err != nil) != tt.wantErr {
+			got, err := processCompositeResponse(tt.args.resp, tt.args.allOrNone)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("processCompositeResponse() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("processCompositeResponse() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -250,15 +263,20 @@ func Test_doCompositeRequest(t *testing.T) {
 		}},
 	}
 
+	sfResultsFail := &SalesforceResults{
+		Results: []SalesforceResult{{
+			Success: false,
+			Errors: []SalesforceErrorMessage{{
+				Message:    "error",
+				StatusCode: "500",
+			}},
+		}},
+		HasErrors: true,
+	}
+
 	compReqResultFail := compositeRequestResult{
 		CompositeResponse: []compositeSubRequestResult{{
-			Body: []SalesforceResult{{
-				Success: false,
-				Errors: []SalesforceErrorMessage{{
-					Message:    "error",
-					StatusCode: "500",
-				}},
-			}},
+			Body:           sfResultsFail.Results,
 			HttpHeaders:    map[string]string{},
 			HttpStatusCode: http.StatusBadRequest,
 			ReferenceId:    "sobject",
@@ -294,6 +312,7 @@ func Test_doCompositeRequest(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
+		want    *SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -301,6 +320,10 @@ func Test_doCompositeRequest(t *testing.T) {
 			args: args{
 				auth:    sfAuth,
 				compReq: compReq,
+			},
+			want: &SalesforceResults{
+				Results:   []SalesforceResult{{Success: true}},
+				HasErrors: false,
 			},
 			wantErr: false,
 		},
@@ -310,6 +333,7 @@ func Test_doCompositeRequest(t *testing.T) {
 				auth:    badReqSfAuth,
 				compReq: compReq,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -318,13 +342,18 @@ func Test_doCompositeRequest(t *testing.T) {
 				auth:    sfErrorSfAuth,
 				compReq: compReq,
 			},
-			wantErr: true,
+			want:    sfResultsFail,
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := doCompositeRequest(tt.args.auth, tt.args.compReq); (err != nil) != tt.wantErr {
+			got, err := doCompositeRequest(tt.args.auth, tt.args.compReq)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("doCompositeRequest() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("doCompositeRequest() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -335,7 +364,17 @@ func Test_doInsertComposite(t *testing.T) {
 		Name string
 	}
 
-	server, sfAuth := setupTestServer(compositeRequestResult{}, http.StatusOK)
+	compResult := compositeRequestResult{
+		CompositeResponse: []compositeSubRequestResult{{
+			Body: []SalesforceResult{{
+				Id:      "1234",
+				Errors:  []SalesforceErrorMessage{},
+				Success: true,
+			}},
+		}},
+	}
+
+	server, sfAuth := setupTestServer(compResult, http.StatusOK)
 	defer server.Close()
 
 	type args struct {
@@ -348,6 +387,7 @@ func Test_doInsertComposite(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
+		want    *SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -366,6 +406,10 @@ func Test_doInsertComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
+			want: &SalesforceResults{
+				Results:   compResult.CompositeResponse[0].Body,
+				HasErrors: false,
+			},
 			wantErr: false,
 		},
 		{
@@ -377,13 +421,18 @@ func Test_doInsertComposite(t *testing.T) {
 				batchSize:   200,
 				allOrNone:   true,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := doInsertComposite(tt.args.auth, tt.args.sObjectName, tt.args.records, tt.args.allOrNone, tt.args.batchSize); (err != nil) != tt.wantErr {
+			got, err := doInsertComposite(tt.args.auth, tt.args.sObjectName, tt.args.records, tt.args.allOrNone, tt.args.batchSize)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("doInsertComposite() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("doInsertComposite() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -395,7 +444,17 @@ func Test_doUpdateComposite(t *testing.T) {
 		Name string
 	}
 
-	server, sfAuth := setupTestServer(compositeRequestResult{}, http.StatusOK)
+	compResult := compositeRequestResult{
+		CompositeResponse: []compositeSubRequestResult{{
+			Body: []SalesforceResult{{
+				Id:      "1234",
+				Errors:  []SalesforceErrorMessage{},
+				Success: true,
+			}},
+		}},
+	}
+
+	server, sfAuth := setupTestServer(compResult, http.StatusOK)
 	defer server.Close()
 
 	type args struct {
@@ -408,6 +467,7 @@ func Test_doUpdateComposite(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
+		want    *SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -428,6 +488,10 @@ func Test_doUpdateComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
+			want: &SalesforceResults{
+				Results:   compResult.CompositeResponse[0].Body,
+				HasErrors: false,
+			},
 			wantErr: false,
 		},
 		{
@@ -439,6 +503,7 @@ func Test_doUpdateComposite(t *testing.T) {
 				batchSize:   200,
 				allOrNone:   true,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -454,13 +519,18 @@ func Test_doUpdateComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := doUpdateComposite(tt.args.auth, tt.args.sObjectName, tt.args.records, tt.args.allOrNone, tt.args.batchSize); (err != nil) != tt.wantErr {
+			got, err := doUpdateComposite(tt.args.auth, tt.args.sObjectName, tt.args.records, tt.args.allOrNone, tt.args.batchSize)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("doUpdateComposite() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("doUpdateComposite() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -472,7 +542,17 @@ func Test_doUpsertComposite(t *testing.T) {
 		Name          string
 	}
 
-	server, sfAuth := setupTestServer(compositeRequestResult{}, http.StatusOK)
+	compResult := compositeRequestResult{
+		CompositeResponse: []compositeSubRequestResult{{
+			Body: []SalesforceResult{{
+				Id:      "1234",
+				Errors:  []SalesforceErrorMessage{},
+				Success: true,
+			}},
+		}},
+	}
+
+	server, sfAuth := setupTestServer(compResult, http.StatusOK)
 	defer server.Close()
 
 	type args struct {
@@ -486,6 +566,7 @@ func Test_doUpsertComposite(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
+		want    *SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -507,6 +588,10 @@ func Test_doUpsertComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
+			want: &SalesforceResults{
+				Results:   compResult.CompositeResponse[0].Body,
+				HasErrors: false,
+			},
 			wantErr: false,
 		},
 		{
@@ -519,6 +604,7 @@ func Test_doUpsertComposite(t *testing.T) {
 				batchSize:   200,
 				allOrNone:   true,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -535,13 +621,18 @@ func Test_doUpsertComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := doUpsertComposite(tt.args.auth, tt.args.sObjectName, tt.args.fieldName, tt.args.records, tt.args.allOrNone, tt.args.batchSize); (err != nil) != tt.wantErr {
+			got, err := doUpsertComposite(tt.args.auth, tt.args.sObjectName, tt.args.fieldName, tt.args.records, tt.args.allOrNone, tt.args.batchSize)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("doUpsertComposite() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("doUpsertComposite() = %v, want %v", err, tt.want)
 			}
 		})
 	}
@@ -552,7 +643,17 @@ func Test_doDeleteComposite(t *testing.T) {
 		Id string
 	}
 
-	server, sfAuth := setupTestServer(compositeRequestResult{}, http.StatusOK)
+	compResult := compositeRequestResult{
+		CompositeResponse: []compositeSubRequestResult{{
+			Body: []SalesforceResult{{
+				Id:      "1234",
+				Errors:  []SalesforceErrorMessage{},
+				Success: true,
+			}},
+		}},
+	}
+
+	server, sfAuth := setupTestServer(compResult, http.StatusOK)
 	defer server.Close()
 
 	type args struct {
@@ -565,6 +666,7 @@ func Test_doDeleteComposite(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
+		want    *SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -582,6 +684,10 @@ func Test_doDeleteComposite(t *testing.T) {
 				},
 				batchSize: 200,
 				allOrNone: true,
+			},
+			want: &SalesforceResults{
+				Results:   compResult.CompositeResponse[0].Body,
+				HasErrors: false,
 			},
 			wantErr: false,
 		},
@@ -601,6 +707,10 @@ func Test_doDeleteComposite(t *testing.T) {
 				batchSize: 1,
 				allOrNone: true,
 			},
+			want: &SalesforceResults{
+				Results:   compResult.CompositeResponse[0].Body,
+				HasErrors: false,
+			},
 			wantErr: false,
 		},
 		{
@@ -612,6 +722,7 @@ func Test_doDeleteComposite(t *testing.T) {
 				batchSize:   200,
 				allOrNone:   true,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 		{
@@ -623,13 +734,18 @@ func Test_doDeleteComposite(t *testing.T) {
 				batchSize:   200,
 				allOrNone:   true,
 			},
+			want:    nil,
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := doDeleteComposite(tt.args.auth, tt.args.sObjectName, tt.args.records, tt.args.allOrNone, tt.args.batchSize); (err != nil) != tt.wantErr {
+			got, err := doDeleteComposite(tt.args.auth, tt.args.sObjectName, tt.args.records, tt.args.allOrNone, tt.args.batchSize)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("doDeleteComposite() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("doDeleteComposite() = %v, want %v", err, tt.want)
 			}
 		})
 	}

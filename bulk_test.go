@@ -1,6 +1,7 @@
 package salesforce
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -171,14 +172,7 @@ func Test_getJobResults(t *testing.T) {
 }
 
 func Test_isBulkJobDone(t *testing.T) {
-	server, sfAuth := setupTestServer("example error", http.StatusOK)
-	defer server.Close()
-
-	badServer, badSfAuth := setupTestServer("", http.StatusBadRequest)
-	defer badServer.Close()
-
 	type args struct {
-		auth    authentication
 		bulkJob BulkJobResults
 	}
 	tests := []struct {
@@ -190,7 +184,6 @@ func Test_isBulkJobDone(t *testing.T) {
 		{
 			name: "bulk_job_complete",
 			args: args{
-				auth: authentication{},
 				bulkJob: BulkJobResults{
 					Id:                  "1234",
 					State:               jobStateJobComplete,
@@ -204,7 +197,6 @@ func Test_isBulkJobDone(t *testing.T) {
 		{
 			name: "bulk_job_not_complete",
 			args: args{
-				auth: authentication{},
 				bulkJob: BulkJobResults{
 					Id:                  "1234",
 					State:               jobStateOpen,
@@ -218,7 +210,6 @@ func Test_isBulkJobDone(t *testing.T) {
 		{
 			name: "bulk_job_aborted",
 			args: args{
-				auth: authentication{},
 				bulkJob: BulkJobResults{
 					Id:                  "1234",
 					State:               jobStateAborted,
@@ -232,7 +223,6 @@ func Test_isBulkJobDone(t *testing.T) {
 		{
 			name: "bulk_job_failed",
 			args: args{
-				auth: sfAuth,
 				bulkJob: BulkJobResults{
 					Id:                  "1234",
 					State:               jobStateFailed,
@@ -243,38 +233,10 @@ func Test_isBulkJobDone(t *testing.T) {
 			want:    true,
 			wantErr: true,
 		},
-		{
-			name: "bulk_job_failed_records",
-			args: args{
-				auth: sfAuth,
-				bulkJob: BulkJobResults{
-					Id:                  "1234",
-					State:               jobStateFailed,
-					NumberRecordsFailed: 1,
-					ErrorMessage:        "",
-				},
-			},
-			want:    true,
-			wantErr: true,
-		},
-		{
-			name: "bulk_job_failed_to_get_failed_records",
-			args: args{
-				auth: badSfAuth,
-				bulkJob: BulkJobResults{
-					Id:                  "1234",
-					State:               jobStateFailed,
-					NumberRecordsFailed: 1,
-					ErrorMessage:        "",
-				},
-			},
-			want:    true,
-			wantErr: true,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := isBulkJobDone(tt.args.auth, tt.args.bulkJob)
+			got, err := isBulkJobDone(tt.args.bulkJob)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("isBulkJobDone() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1342,6 +1304,238 @@ func Test_doQueryBulk(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := doQueryBulk(tt.args.auth, tt.args.filePath, tt.args.query); (err != nil) != tt.wantErr {
 				t.Errorf("doQueryBulk() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_getJobRecordResults(t *testing.T) {
+	csvData := `"name"` + "\n" + `"test account"`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, err := w.Write([]byte(csvData)); err != nil {
+			t.Fatalf(err.Error())
+		}
+	}))
+	sfAuth := authentication{
+		InstanceUrl: server.URL,
+		AccessToken: "accesstokenvalue",
+	}
+	defer server.Close()
+
+	badRequestServer, badRequestAuth := setupTestServer("", http.StatusBadRequest)
+	defer badRequestServer.Close()
+
+	successThenFailServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.RequestURI, successfulResults) {
+			if _, err := w.Write([]byte(csvData)); err != nil {
+				t.Fatalf(err.Error())
+			}
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	successThenFailAuth := authentication{
+		InstanceUrl: successThenFailServer.URL,
+		AccessToken: "accesstokenvalue",
+	}
+	defer successThenFailServer.Close()
+
+	type args struct {
+		auth           authentication
+		bulkJobResults BulkJobResults
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    BulkJobResults
+		wantErr bool
+	}{
+		{
+			name: "successful_get_job_record_results",
+			args: args{
+				auth:           sfAuth,
+				bulkJobResults: BulkJobResults{Id: "1234"},
+			},
+			want: BulkJobResults{
+				Id: "1234",
+				FailedRecords: []map[string]any{{
+					"name": "test account",
+				}},
+				SuccessfulRecords: []map[string]any{{
+					"name": "test account",
+				}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "failed_to_get_successful_records",
+			args: args{
+				auth:           badRequestAuth,
+				bulkJobResults: BulkJobResults{Id: "1234"},
+			},
+			want:    BulkJobResults{Id: "1234"},
+			wantErr: true,
+		},
+		{
+			name: "failed_to_get_failed_records",
+			args: args{
+				auth:           successThenFailAuth,
+				bulkJobResults: BulkJobResults{Id: "1234"},
+			},
+			want: BulkJobResults{
+				Id: "1234",
+				SuccessfulRecords: []map[string]any{{
+					"name": "test account",
+				}},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := getJobRecordResults(tt.args.auth, tt.args.bulkJobResults)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getJobRecordResults() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getJobRecordResults() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_getBulkJobRecords(t *testing.T) {
+	csvData := `"name"` + "\n" + `"test account"`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, err := w.Write([]byte(csvData)); err != nil {
+			t.Fatalf(err.Error())
+		}
+	}))
+	sfAuth := authentication{
+		InstanceUrl: server.URL,
+		AccessToken: "accesstokenvalue",
+	}
+	defer server.Close()
+
+	badReqServer, badReqAuth := setupTestServer("", http.StatusBadRequest)
+	defer badReqServer.Close()
+
+	badDataServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, err := w.Write([]byte("name,type\ntest")); err != nil {
+			t.Fatalf(err.Error())
+		}
+	}))
+	badDataAuth := authentication{
+		InstanceUrl: badDataServer.URL,
+		AccessToken: "accesstokenvalue",
+	}
+	defer badDataServer.Close()
+
+	type args struct {
+		auth       authentication
+		bulkJobId  string
+		resultType string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []map[string]any
+		wantErr bool
+	}{
+		{
+			name: "successful_get_failed_job_records",
+			args: args{
+				auth:       sfAuth,
+				bulkJobId:  "1234",
+				resultType: failedResults,
+			},
+			want: []map[string]any{{
+				"name": "test account",
+			}},
+			wantErr: false,
+		},
+		{
+			name: "failed_bad_request",
+			args: args{
+				auth:       badReqAuth,
+				bulkJobId:  "1234",
+				resultType: failedResults,
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "failed_conversion",
+			args: args{
+				auth:       badDataAuth,
+				bulkJobId:  "1234",
+				resultType: failedResults,
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := getBulkJobRecords(tt.args.auth, tt.args.bulkJobId, tt.args.resultType)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getBulkJobRecords() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getBulkJobRecords() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_csvToMap(t *testing.T) {
+	type args struct {
+		reader csv.Reader
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []map[string]any
+		wantErr bool
+	}{
+		{
+			name: "successful_csv_to_map_conversion",
+			args: args{
+				reader: *csv.NewReader(strings.NewReader("name\ntest account")),
+			},
+			want: []map[string]any{{
+				"name": "test account",
+			}},
+			wantErr: false,
+		},
+		{
+			name: "successful_empty_csv",
+			args: args{
+				reader: *csv.NewReader(strings.NewReader("")),
+			},
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name: "failed_conversion",
+			args: args{
+				reader: *csv.NewReader(strings.NewReader("name,type\nshop")),
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := csvToMap(tt.args.reader)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("csvToMap() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("csvToMap() = %v, want %v", got, tt.want)
 			}
 		})
 	}
