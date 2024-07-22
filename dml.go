@@ -92,7 +92,7 @@ func doBatchedRequestsForCollection(auth authentication, method string, url stri
 	for _, result := range results.Results {
 		if !result.Success {
 			results.HasErrors = true
-			break
+			return results, nil
 		}
 	}
 
@@ -168,7 +168,7 @@ func doUpsertOne(auth authentication, sObjectName string, fieldName string, reco
 
 	externalIdValue, ok := recordMap[fieldName].(string)
 	if !ok || externalIdValue == "" {
-		return nil, errors.New("salesforce externalId: " + fieldName + " not found in " + sObjectName + " data. make sure to append custom fields with '__c'")
+		return nil, fmt.Errorf("salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'", fieldName, sObjectName)
 	}
 
 	recordMap["attributes"] = map[string]string{"type": sObjectName}
@@ -251,7 +251,7 @@ func doUpsertCollection(auth authentication, sObjectName string, fieldName strin
 		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
 		externalIdValue, ok := recordMap[i][fieldName].(string)
 		if !ok || externalIdValue == "" {
-			return nil, errors.New("salesforce externalId: " + fieldName + " not found in " + sObjectName + " data. make sure to append custom fields with '__c'")
+			return nil, fmt.Errorf("salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'", fieldName, sObjectName)
 		}
 	}
 

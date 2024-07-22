@@ -187,7 +187,7 @@ func doUpsertComposite(auth authentication, sObjectName string, fieldName string
 		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
 		externalIdValue, ok := recordMap[i][fieldName].(string)
 		if !ok || externalIdValue == "" {
-			return nil, errors.New("salesforce externalId: " + fieldName + " not found in " + sObjectName + " data. make sure to append custom fields with '__c'")
+			return nil, fmt.Errorf("salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'", fieldName, sObjectName)
 		}
 	}
 
