@@ -47,8 +47,8 @@ type Creds struct {
 }
 
 type SalesforceResults struct {
-	Results   []SalesforceResult
-	HasErrors bool
+	Results             []SalesforceResult
+	HasSalesforceErrors bool
 }
 
 type SalesforceResult struct {
@@ -507,11 +507,12 @@ Make numerous 'subrequests' contained within a single 'composite request', reduc
   - For DML operations, max number of records to be processed is determined by batch size (`25 * (batch size)`)
   - So if batch size is 1, then max number of records to be included in request is 25
   - If batch size is 200, then max is 5000
-- Can optionally allow partial successes
+- Can optionally allow partial successes by setting allOrNone parameter
+    - If true, then successes are still committed to the database even if a record fails
 
 ### InsertComposite
 
-`func (sf *Salesforce) InsertComposite(sObjectName string, records any, batchSize int, allOrNone bool) error`
+`func (sf *Salesforce) InsertComposite(sObjectName string, records any, batchSize int, allOrNone bool) (*SalesforceResults, error)`
 
 Inserts a list of salesforce records in a single request
 

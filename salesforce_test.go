@@ -800,7 +800,7 @@ func TestSalesforce_InsertOne(t *testing.T) {
 		fields  fields
 		args    args
 		wantErr bool
-		want    *SalesforceResult
+		want    SalesforceResult
 	}{
 		{
 			name: "successful_insert",
@@ -813,7 +813,7 @@ func TestSalesforce_InsertOne(t *testing.T) {
 					Name: "test account",
 				},
 			},
-			want:    &successfulResult,
+			want:    successfulResult,
 			wantErr: false,
 		},
 		{
@@ -825,7 +825,7 @@ func TestSalesforce_InsertOne(t *testing.T) {
 				sObjectName: "Account",
 				record:      0,
 			},
-			want:    nil,
+			want:    SalesforceResult{},
 			wantErr: true,
 		},
 	}
@@ -944,7 +944,7 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *SalesforceResult
+		want    SalesforceResult
 		wantErr bool
 	}{
 		{
@@ -960,7 +960,7 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 					Name:          "test account",
 				},
 			},
-			want:    &successfulResult,
+			want:    successfulResult,
 			wantErr: false,
 		},
 		{
@@ -973,7 +973,7 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 				externalIdFieldName: "ExternalId__c",
 				record:              0,
 			},
-			want:    nil,
+			want:    SalesforceResult{},
 			wantErr: true,
 		},
 		{
@@ -988,7 +988,7 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 					Name: "test account",
 				},
 			},
-			want:    nil,
+			want:    SalesforceResult{},
 			wantErr: true,
 		},
 	}
@@ -1087,7 +1087,7 @@ func TestSalesforce_InsertCollection(t *testing.T) {
 			Errors:  []SalesforceErrorMessage{},
 			Success: true,
 		}},
-		HasErrors: false,
+		HasSalesforceErrors: false,
 	}
 
 	server, sfAuth := setupTestServer(successfulResults.Results, http.StatusOK)
@@ -1108,7 +1108,7 @@ func TestSalesforce_InsertCollection(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *SalesforceResults
+		want    SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -1128,7 +1128,7 @@ func TestSalesforce_InsertCollection(t *testing.T) {
 				},
 				batchSize: 200,
 			},
-			want:    &successfulResults,
+			want:    successfulResults,
 			wantErr: false,
 		},
 		{
@@ -1143,7 +1143,7 @@ func TestSalesforce_InsertCollection(t *testing.T) {
 				},
 				batchSize: 200,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 		{
@@ -1160,7 +1160,7 @@ func TestSalesforce_InsertCollection(t *testing.T) {
 				},
 				batchSize: 200,
 			},
-			want:    &SalesforceResults{},
+			want:    SalesforceResults{Results: []SalesforceResult{}},
 			wantErr: true,
 		},
 	}
@@ -1192,7 +1192,7 @@ func TestSalesforce_UpdateCollection(t *testing.T) {
 			Errors:  []SalesforceErrorMessage{},
 			Success: true,
 		}},
-		HasErrors: false,
+		HasSalesforceErrors: false,
 	}
 
 	server, sfAuth := setupTestServer(successfulResults.Results, http.StatusOK)
@@ -1210,7 +1210,7 @@ func TestSalesforce_UpdateCollection(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *SalesforceResults
+		want    SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -1232,7 +1232,7 @@ func TestSalesforce_UpdateCollection(t *testing.T) {
 				},
 				batchSize: 200,
 			},
-			want:    &successfulResults,
+			want:    successfulResults,
 			wantErr: false,
 		},
 		{
@@ -1245,7 +1245,7 @@ func TestSalesforce_UpdateCollection(t *testing.T) {
 				records:     0,
 				batchSize:   200,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 		{
@@ -1265,7 +1265,7 @@ func TestSalesforce_UpdateCollection(t *testing.T) {
 				},
 				batchSize: 200,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 	}
@@ -1297,7 +1297,7 @@ func TestSalesforce_UpsertCollection(t *testing.T) {
 			Errors:  []SalesforceErrorMessage{},
 			Success: true,
 		}},
-		HasErrors: false,
+		HasSalesforceErrors: false,
 	}
 
 	server, sfAuth := setupTestServer(successfulResults.Results, http.StatusOK)
@@ -1316,7 +1316,7 @@ func TestSalesforce_UpsertCollection(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *SalesforceResults
+		want    SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -1339,7 +1339,7 @@ func TestSalesforce_UpsertCollection(t *testing.T) {
 				},
 				batchSize: 200,
 			},
-			want:    &successfulResults,
+			want:    successfulResults,
 			wantErr: false,
 		},
 		{
@@ -1353,7 +1353,7 @@ func TestSalesforce_UpsertCollection(t *testing.T) {
 				records:             0,
 				batchSize:           200,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 		{
@@ -1374,7 +1374,7 @@ func TestSalesforce_UpsertCollection(t *testing.T) {
 				},
 				batchSize: 200,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 	}
@@ -1405,7 +1405,7 @@ func TestSalesforce_DeleteCollection(t *testing.T) {
 			Errors:  []SalesforceErrorMessage{},
 			Success: true,
 		}},
-		HasErrors: false,
+		HasSalesforceErrors: false,
 	}
 
 	server, sfAuth := setupTestServer(successfulResults.Results, http.StatusOK)
@@ -1423,7 +1423,7 @@ func TestSalesforce_DeleteCollection(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *SalesforceResults
+		want    SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -1443,7 +1443,7 @@ func TestSalesforce_DeleteCollection(t *testing.T) {
 				},
 				batchSize: 200,
 			},
-			want:    &successfulResults,
+			want:    successfulResults,
 			wantErr: false,
 		},
 		{
@@ -1456,7 +1456,7 @@ func TestSalesforce_DeleteCollection(t *testing.T) {
 				records:     0,
 				batchSize:   200,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 		{
@@ -1469,7 +1469,7 @@ func TestSalesforce_DeleteCollection(t *testing.T) {
 				records:     []account{{}, {}},
 				batchSize:   200,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 	}
@@ -1523,7 +1523,7 @@ func TestSalesforce_InsertComposite(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *SalesforceResults
+		want    SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -1544,9 +1544,9 @@ func TestSalesforce_InsertComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
-			want: &SalesforceResults{
-				Results:   compResult.CompositeResponse[0].Body,
-				HasErrors: false,
+			want: SalesforceResults{
+				Results:             compResult.CompositeResponse[0].Body,
+				HasSalesforceErrors: false,
 			},
 			wantErr: false,
 		},
@@ -1563,7 +1563,7 @@ func TestSalesforce_InsertComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 		{
@@ -1581,7 +1581,7 @@ func TestSalesforce_InsertComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 	}
@@ -1636,7 +1636,7 @@ func TestSalesforce_UpdateComposite(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *SalesforceResults
+		want    SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -1659,9 +1659,9 @@ func TestSalesforce_UpdateComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
-			want: &SalesforceResults{
-				Results:   compResult.CompositeResponse[0].Body,
-				HasErrors: false,
+			want: SalesforceResults{
+				Results:             compResult.CompositeResponse[0].Body,
+				HasSalesforceErrors: false,
 			},
 			wantErr: false,
 		},
@@ -1676,7 +1676,7 @@ func TestSalesforce_UpdateComposite(t *testing.T) {
 				batchSize:   200,
 				allOrNone:   true,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 		{
@@ -1695,7 +1695,7 @@ func TestSalesforce_UpdateComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 	}
@@ -1751,7 +1751,7 @@ func TestSalesforce_UpsertComposite(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *SalesforceResults
+		want    SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -1775,9 +1775,9 @@ func TestSalesforce_UpsertComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
-			want: &SalesforceResults{
-				Results:   compResult.CompositeResponse[0].Body,
-				HasErrors: false,
+			want: SalesforceResults{
+				Results:             compResult.CompositeResponse[0].Body,
+				HasSalesforceErrors: false,
 			},
 			wantErr: false,
 		},
@@ -1793,7 +1793,7 @@ func TestSalesforce_UpsertComposite(t *testing.T) {
 				batchSize:           200,
 				allOrNone:           true,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 		{
@@ -1813,7 +1813,7 @@ func TestSalesforce_UpsertComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 	}
@@ -1867,7 +1867,7 @@ func TestSalesforce_DeleteComposite(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *SalesforceResults
+		want    SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -1887,9 +1887,9 @@ func TestSalesforce_DeleteComposite(t *testing.T) {
 				},
 				batchSize: 200,
 			},
-			want: &SalesforceResults{
-				Results:   compResult.CompositeResponse[0].Body,
-				HasErrors: false,
+			want: SalesforceResults{
+				Results:             compResult.CompositeResponse[0].Body,
+				HasSalesforceErrors: false,
 			},
 			wantErr: false,
 		},
@@ -1903,7 +1903,7 @@ func TestSalesforce_DeleteComposite(t *testing.T) {
 				records:     0,
 				batchSize:   200,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 		{
@@ -1918,7 +1918,7 @@ func TestSalesforce_DeleteComposite(t *testing.T) {
 				}},
 				batchSize: 200,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 	}

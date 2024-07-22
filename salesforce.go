@@ -28,8 +28,8 @@ type SalesforceResult struct {
 }
 
 type SalesforceResults struct {
-	Results   []SalesforceResult
-	HasErrors bool
+	Results             []SalesforceResult
+	HasSalesforceErrors bool
 }
 
 const (
@@ -254,10 +254,10 @@ func (sf *Salesforce) QueryStruct(soqlStruct any, sObject any) error {
 	return nil
 }
 
-func (sf *Salesforce) InsertOne(sObjectName string, record any) (*SalesforceResult, error) {
+func (sf *Salesforce) InsertOne(sObjectName string, record any) (SalesforceResult, error) {
 	validationErr := validateSingles(*sf, record)
 	if validationErr != nil {
-		return nil, validationErr
+		return SalesforceResult{}, validationErr
 	}
 
 	return doInsertOne(*sf.auth, sObjectName, record)
@@ -272,10 +272,10 @@ func (sf *Salesforce) UpdateOne(sObjectName string, record any) error {
 	return doUpdateOne(*sf.auth, sObjectName, record)
 }
 
-func (sf *Salesforce) UpsertOne(sObjectName string, externalIdFieldName string, record any) (*SalesforceResult, error) {
+func (sf *Salesforce) UpsertOne(sObjectName string, externalIdFieldName string, record any) (SalesforceResult, error) {
 	validationErr := validateSingles(*sf, record)
 	if validationErr != nil {
-		return nil, validationErr
+		return SalesforceResult{}, validationErr
 	}
 
 	return doUpsertOne(*sf.auth, sObjectName, externalIdFieldName, record)
@@ -290,73 +290,73 @@ func (sf *Salesforce) DeleteOne(sObjectName string, record any) error {
 	return doDeleteOne(*sf.auth, sObjectName, record)
 }
 
-func (sf *Salesforce) InsertCollection(sObjectName string, records any, batchSize int) (*SalesforceResults, error) {
+func (sf *Salesforce) InsertCollection(sObjectName string, records any, batchSize int) (SalesforceResults, error) {
 	validationErr := validateCollections(*sf, records, batchSize)
 	if validationErr != nil {
-		return nil, validationErr
+		return SalesforceResults{}, validationErr
 	}
 
 	return doInsertCollection(*sf.auth, sObjectName, records, batchSize)
 }
 
-func (sf *Salesforce) UpdateCollection(sObjectName string, records any, batchSize int) (*SalesforceResults, error) {
+func (sf *Salesforce) UpdateCollection(sObjectName string, records any, batchSize int) (SalesforceResults, error) {
 	validationErr := validateCollections(*sf, records, batchSize)
 	if validationErr != nil {
-		return nil, validationErr
+		return SalesforceResults{}, validationErr
 	}
 
 	return doUpdateCollection(*sf.auth, sObjectName, records, batchSize)
 }
 
-func (sf *Salesforce) UpsertCollection(sObjectName string, externalIdFieldName string, records any, batchSize int) (*SalesforceResults, error) {
+func (sf *Salesforce) UpsertCollection(sObjectName string, externalIdFieldName string, records any, batchSize int) (SalesforceResults, error) {
 	validationErr := validateCollections(*sf, records, batchSize)
 	if validationErr != nil {
-		return nil, validationErr
+		return SalesforceResults{}, validationErr
 	}
 
 	return doUpsertCollection(*sf.auth, sObjectName, externalIdFieldName, records, batchSize)
 }
 
-func (sf *Salesforce) DeleteCollection(sObjectName string, records any, batchSize int) (*SalesforceResults, error) {
+func (sf *Salesforce) DeleteCollection(sObjectName string, records any, batchSize int) (SalesforceResults, error) {
 	validationErr := validateCollections(*sf, records, batchSize)
 	if validationErr != nil {
-		return nil, validationErr
+		return SalesforceResults{}, validationErr
 	}
 
 	return doDeleteCollection(*sf.auth, sObjectName, records, batchSize)
 }
 
-func (sf *Salesforce) InsertComposite(sObjectName string, records any, batchSize int, allOrNone bool) (*SalesforceResults, error) {
+func (sf *Salesforce) InsertComposite(sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error) {
 	validationErr := validateCollections(*sf, records, batchSize)
 	if validationErr != nil {
-		return nil, validationErr
+		return SalesforceResults{}, validationErr
 	}
 
 	return doInsertComposite(*sf.auth, sObjectName, records, allOrNone, batchSize)
 }
 
-func (sf *Salesforce) UpdateComposite(sObjectName string, records any, batchSize int, allOrNone bool) (*SalesforceResults, error) {
+func (sf *Salesforce) UpdateComposite(sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error) {
 	validationErr := validateCollections(*sf, records, batchSize)
 	if validationErr != nil {
-		return nil, validationErr
+		return SalesforceResults{}, validationErr
 	}
 
 	return doUpdateComposite(*sf.auth, sObjectName, records, allOrNone, batchSize)
 }
 
-func (sf *Salesforce) UpsertComposite(sObjectName string, externalIdFieldName string, records any, batchSize int, allOrNone bool) (*SalesforceResults, error) {
+func (sf *Salesforce) UpsertComposite(sObjectName string, externalIdFieldName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error) {
 	validationErr := validateCollections(*sf, records, batchSize)
 	if validationErr != nil {
-		return nil, validationErr
+		return SalesforceResults{}, validationErr
 	}
 
 	return doUpsertComposite(*sf.auth, sObjectName, externalIdFieldName, records, allOrNone, batchSize)
 }
 
-func (sf *Salesforce) DeleteComposite(sObjectName string, records any, batchSize int, allOrNone bool) (*SalesforceResults, error) {
+func (sf *Salesforce) DeleteComposite(sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error) {
 	validationErr := validateCollections(*sf, records, batchSize)
 	if validationErr != nil {
-		return nil, validationErr
+		return SalesforceResults{}, validationErr
 	}
 
 	return doDeleteComposite(*sf.auth, sObjectName, records, allOrNone, batchSize)

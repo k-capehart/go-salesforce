@@ -214,7 +214,7 @@ func Test_processCompositeResponse(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *SalesforceResults
+		want    SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -222,9 +222,9 @@ func Test_processCompositeResponse(t *testing.T) {
 			args: args{
 				resp: httpResp,
 			},
-			want: &SalesforceResults{
-				Results:   exampleError,
-				HasErrors: true,
+			want: SalesforceResults{
+				Results:             exampleError,
+				HasSalesforceErrors: true,
 			},
 			wantErr: false,
 		},
@@ -233,9 +233,9 @@ func Test_processCompositeResponse(t *testing.T) {
 			args: args{
 				resp: httpRespNoError,
 			},
-			want: &SalesforceResults{
-				Results:   exampleErrorNoMessage,
-				HasErrors: true,
+			want: SalesforceResults{
+				Results:             exampleErrorNoMessage,
+				HasSalesforceErrors: true,
 			},
 			wantErr: false,
 		},
@@ -263,7 +263,7 @@ func Test_doCompositeRequest(t *testing.T) {
 		}},
 	}
 
-	sfResultsFail := &SalesforceResults{
+	sfResultsFail := SalesforceResults{
 		Results: []SalesforceResult{{
 			Success: false,
 			Errors: []SalesforceErrorMessage{{
@@ -271,7 +271,7 @@ func Test_doCompositeRequest(t *testing.T) {
 				StatusCode: "500",
 			}},
 		}},
-		HasErrors: true,
+		HasSalesforceErrors: true,
 	}
 
 	compReqResultFail := compositeRequestResult{
@@ -312,7 +312,7 @@ func Test_doCompositeRequest(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *SalesforceResults
+		want    SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -321,9 +321,9 @@ func Test_doCompositeRequest(t *testing.T) {
 				auth:    sfAuth,
 				compReq: compReq,
 			},
-			want: &SalesforceResults{
-				Results:   []SalesforceResult{{Success: true}},
-				HasErrors: false,
+			want: SalesforceResults{
+				Results:             []SalesforceResult{{Success: true}},
+				HasSalesforceErrors: false,
 			},
 			wantErr: false,
 		},
@@ -333,7 +333,7 @@ func Test_doCompositeRequest(t *testing.T) {
 				auth:    badReqSfAuth,
 				compReq: compReq,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 		{
@@ -387,7 +387,7 @@ func Test_doInsertComposite(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *SalesforceResults
+		want    SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -406,9 +406,9 @@ func Test_doInsertComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
-			want: &SalesforceResults{
-				Results:   compResult.CompositeResponse[0].Body,
-				HasErrors: false,
+			want: SalesforceResults{
+				Results:             compResult.CompositeResponse[0].Body,
+				HasSalesforceErrors: false,
 			},
 			wantErr: false,
 		},
@@ -421,7 +421,7 @@ func Test_doInsertComposite(t *testing.T) {
 				batchSize:   200,
 				allOrNone:   true,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 	}
@@ -467,7 +467,7 @@ func Test_doUpdateComposite(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *SalesforceResults
+		want    SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -488,9 +488,9 @@ func Test_doUpdateComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
-			want: &SalesforceResults{
-				Results:   compResult.CompositeResponse[0].Body,
-				HasErrors: false,
+			want: SalesforceResults{
+				Results:             compResult.CompositeResponse[0].Body,
+				HasSalesforceErrors: false,
 			},
 			wantErr: false,
 		},
@@ -503,7 +503,7 @@ func Test_doUpdateComposite(t *testing.T) {
 				batchSize:   200,
 				allOrNone:   true,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 		{
@@ -519,7 +519,7 @@ func Test_doUpdateComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 	}
@@ -566,7 +566,7 @@ func Test_doUpsertComposite(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *SalesforceResults
+		want    SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -588,9 +588,9 @@ func Test_doUpsertComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
-			want: &SalesforceResults{
-				Results:   compResult.CompositeResponse[0].Body,
-				HasErrors: false,
+			want: SalesforceResults{
+				Results:             compResult.CompositeResponse[0].Body,
+				HasSalesforceErrors: false,
 			},
 			wantErr: false,
 		},
@@ -604,7 +604,7 @@ func Test_doUpsertComposite(t *testing.T) {
 				batchSize:   200,
 				allOrNone:   true,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 		{
@@ -621,7 +621,7 @@ func Test_doUpsertComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 	}
@@ -666,7 +666,7 @@ func Test_doDeleteComposite(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *SalesforceResults
+		want    SalesforceResults
 		wantErr bool
 	}{
 		{
@@ -685,9 +685,9 @@ func Test_doDeleteComposite(t *testing.T) {
 				batchSize: 200,
 				allOrNone: true,
 			},
-			want: &SalesforceResults{
-				Results:   compResult.CompositeResponse[0].Body,
-				HasErrors: false,
+			want: SalesforceResults{
+				Results:             compResult.CompositeResponse[0].Body,
+				HasSalesforceErrors: false,
 			},
 			wantErr: false,
 		},
@@ -707,9 +707,9 @@ func Test_doDeleteComposite(t *testing.T) {
 				batchSize: 1,
 				allOrNone: true,
 			},
-			want: &SalesforceResults{
-				Results:   compResult.CompositeResponse[0].Body,
-				HasErrors: false,
+			want: SalesforceResults{
+				Results:             compResult.CompositeResponse[0].Body,
+				HasSalesforceErrors: false,
 			},
 			wantErr: false,
 		},
@@ -722,7 +722,7 @@ func Test_doDeleteComposite(t *testing.T) {
 				batchSize:   200,
 				allOrNone:   true,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 		{
@@ -734,7 +734,7 @@ func Test_doDeleteComposite(t *testing.T) {
 				batchSize:   200,
 				allOrNone:   true,
 			},
-			want:    nil,
+			want:    SalesforceResults{},
 			wantErr: true,
 		},
 	}

@@ -55,8 +55,8 @@ func processSalesforceResponse(resp http.Response) ([]SalesforceResult, error) {
 	return results, nil
 }
 
-func doBatchedRequestsForCollection(auth authentication, method string, url string, batchSize int, recordMap []map[string]any) (*SalesforceResults, error) {
-	var results = SalesforceResults{}
+func doBatchedRequestsForCollection(auth authentication, method string, url string, batchSize int, recordMap []map[string]any) (SalesforceResults, error) {
+	var results = []SalesforceResult{}
 
 	for len(recordMap) > 0 {
 		var batch, remaining []map[string]any
@@ -74,29 +74,28 @@ func doBatchedRequestsForCollection(auth authentication, method string, url stri
 
 		body, err := json.Marshal(payload)
 		if err != nil {
-			return &results, err
+			return SalesforceResults{Results: results}, err
 		}
 
 		resp, err := doRequest(method, url, jsonType, auth, string(body))
 		if err != nil {
-			return &results, err
+			return SalesforceResults{Results: results}, err
 		}
 		currentResults, err := processSalesforceResponse(*resp)
 		if err != nil {
-			return &results, err
+			return SalesforceResults{Results: results}, err
 		}
 
-		results.Results = append(results.Results, currentResults...)
+		results = append(results, currentResults...)
 	}
 
-	for _, result := range results.Results {
+	for _, result := range results {
 		if !result.Success {
-			results.HasErrors = true
-			return &results, nil
+			return SalesforceResults{Results: results, HasSalesforceErrors: true}, nil
 		}
 	}
 
-	return &results, nil
+	return SalesforceResults{Results: results}, nil
 }
 
 func decodeResponseBody(response *http.Response) (value SalesforceResult, err error) {
@@ -106,31 +105,31 @@ func decodeResponseBody(response *http.Response) (value SalesforceResult, err er
 	return value, err
 }
 
-func doInsertOne(auth authentication, sObjectName string, record any) (*SalesforceResult, error) {
+func doInsertOne(auth authentication, sObjectName string, record any) (SalesforceResult, error) {
 	recordMap, err := convertToMap(record)
 	if err != nil {
-		return nil, err
+		return SalesforceResult{}, err
 	}
 	recordMap["attributes"] = map[string]string{"type": sObjectName}
 	delete(recordMap, "Id")
 
 	body, err := json.Marshal(recordMap)
 	if err != nil {
-		return nil, err
+		return SalesforceResult{}, err
 	}
 
 	resp, err := doRequest(http.MethodPost, "/sobjects/"+sObjectName, jsonType, auth, string(body))
 	if err != nil {
-		return nil, err
+		return SalesforceResult{}, err
 	}
 
 	data, err := decodeResponseBody(resp)
 	if err != nil {
 		fmt.Println("Error decoding: ", err)
-		return nil, err
+		return SalesforceResult{}, err
 	}
 
-	return &data, nil
+	return data, nil
 }
 
 func doUpdateOne(auth authentication, sObjectName string, record any) error {
@@ -160,15 +159,15 @@ func doUpdateOne(auth authentication, sObjectName string, record any) error {
 	return nil
 }
 
-func doUpsertOne(auth authentication, sObjectName string, fieldName string, record any) (*SalesforceResult, error) {
+func doUpsertOne(auth authentication, sObjectName string, fieldName string, record any) (SalesforceResult, error) {
 	recordMap, err := convertToMap(record)
 	if err != nil {
-		return nil, err
+		return SalesforceResult{}, err
 	}
 
 	externalIdValue, ok := recordMap[fieldName].(string)
 	if !ok || externalIdValue == "" {
-		return nil, fmt.Errorf("salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'", fieldName, sObjectName)
+		return SalesforceResult{}, fmt.Errorf("salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'", fieldName, sObjectName)
 	}
 
 	recordMap["attributes"] = map[string]string{"type": sObjectName}
@@ -177,21 +176,21 @@ func doUpsertOne(auth authentication, sObjectName string, fieldName string, reco
 
 	body, err := json.Marshal(recordMap)
 	if err != nil {
-		return nil, err
+		return SalesforceResult{}, err
 	}
 
 	resp, err := doRequest(http.MethodPatch, "/sobjects/"+sObjectName+"/"+fieldName+"/"+externalIdValue, jsonType, auth, string(body))
 	if err != nil {
-		return nil, err
+		return SalesforceResult{}, err
 	}
 
 	data, err := decodeResponseBody(resp)
 	if err != nil {
 		fmt.Println("Error decoding: ", err)
-		return nil, err
+		return SalesforceResult{}, err
 	}
 
-	return &data, nil
+	return data, nil
 }
 
 func doDeleteOne(auth authentication, sObjectName string, record any) error {
@@ -213,10 +212,10 @@ func doDeleteOne(auth authentication, sObjectName string, record any) error {
 	return nil
 }
 
-func doInsertCollection(auth authentication, sObjectName string, records any, batchSize int) (*SalesforceResults, error) {
+func doInsertCollection(auth authentication, sObjectName string, records any, batchSize int) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
-		return nil, err
+		return SalesforceResults{}, err
 	}
 	for i := range recordMap {
 		delete(recordMap[i], "Id")
@@ -226,32 +225,32 @@ func doInsertCollection(auth authentication, sObjectName string, records any, ba
 	return doBatchedRequestsForCollection(auth, http.MethodPost, "/composite/sobjects/", batchSize, recordMap)
 }
 
-func doUpdateCollection(auth authentication, sObjectName string, records any, batchSize int) (*SalesforceResults, error) {
+func doUpdateCollection(auth authentication, sObjectName string, records any, batchSize int) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
-		return nil, err
+		return SalesforceResults{}, err
 	}
 	for i := range recordMap {
 		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
 		recordId, ok := recordMap[i]["Id"].(string)
 		if !ok || recordId == "" {
-			return nil, errors.New("salesforce id not found in object data")
+			return SalesforceResults{}, errors.New("salesforce id not found in object data")
 		}
 	}
 
 	return doBatchedRequestsForCollection(auth, http.MethodPatch, "/composite/sobjects/", batchSize, recordMap)
 }
 
-func doUpsertCollection(auth authentication, sObjectName string, fieldName string, records any, batchSize int) (*SalesforceResults, error) {
+func doUpsertCollection(auth authentication, sObjectName string, fieldName string, records any, batchSize int) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
-		return nil, err
+		return SalesforceResults{}, err
 	}
 	for i := range recordMap {
 		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
 		externalIdValue, ok := recordMap[i][fieldName].(string)
 		if !ok || externalIdValue == "" {
-			return nil, fmt.Errorf("salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'", fieldName, sObjectName)
+			return SalesforceResults{}, fmt.Errorf("salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'", fieldName, sObjectName)
 		}
 	}
 
@@ -260,10 +259,10 @@ func doUpsertCollection(auth authentication, sObjectName string, fieldName strin
 
 }
 
-func doDeleteCollection(auth authentication, sObjectName string, records any, batchSize int) (*SalesforceResults, error) {
+func doDeleteCollection(auth authentication, sObjectName string, records any, batchSize int) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
-		return nil, err
+		return SalesforceResults{}, err
 	}
 
 	// we want to verify that ids are present before we start deleting
@@ -282,7 +281,7 @@ func doDeleteCollection(auth authentication, sObjectName string, records any, ba
 			batch[i]["attributes"] = map[string]string{"type": sObjectName}
 			recordId, ok := batch[i]["Id"].(string)
 			if !ok || recordId == "" {
-				return nil, errors.New("salesforce id not found in object data")
+				return SalesforceResults{}, errors.New("salesforce id not found in object data")
 			}
 			if i == len(batch)-1 {
 				ids = ids + recordId
@@ -293,27 +292,26 @@ func doDeleteCollection(auth authentication, sObjectName string, records any, ba
 		batchedIds = append(batchedIds, ids)
 	}
 
-	var results = SalesforceResults{}
+	var results = []SalesforceResult{}
 
 	for i := range batchedIds {
 		resp, err := doRequest(http.MethodDelete, "/composite/sobjects/?ids="+batchedIds[i]+"&allOrNone=false", jsonType, auth, "")
 		if err != nil {
-			return &results, err
+			return SalesforceResults{Results: results}, err
 		}
 		currentResults, err := processSalesforceResponse(*resp)
 		if err != nil {
-			return &results, err
+			return SalesforceResults{Results: results}, err
 		}
 
-		results.Results = append(results.Results, currentResults...)
+		results = append(results, currentResults...)
 	}
 
-	for _, result := range results.Results {
+	for _, result := range results {
 		if !result.Success {
-			results.HasErrors = true
-			break
+			return SalesforceResults{Results: results, HasSalesforceErrors: true}, nil
 		}
 	}
 
-	return &results, nil
+	return SalesforceResults{Results: results}, nil
 }

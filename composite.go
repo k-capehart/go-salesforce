@@ -33,18 +33,18 @@ type compositeSubRequestResult struct {
 	ReferenceId    string             `json:"referenceId"`
 }
 
-func doCompositeRequest(auth authentication, compReq compositeRequest) (*SalesforceResults, error) {
+func doCompositeRequest(auth authentication, compReq compositeRequest) (SalesforceResults, error) {
 	body, jsonErr := json.Marshal(compReq)
 	if jsonErr != nil {
-		return nil, jsonErr
+		return SalesforceResults{}, jsonErr
 	}
 	resp, httpErr := doRequest(http.MethodPost, "/composite", jsonType, auth, string(body))
 	if httpErr != nil {
-		return nil, httpErr
+		return SalesforceResults{}, httpErr
 	}
 	results, salesforceErrors := processCompositeResponse(*resp, compReq.AllOrNone)
 	if salesforceErrors != nil {
-		return nil, salesforceErrors
+		return SalesforceResults{}, salesforceErrors
 	}
 	return results, nil
 }
@@ -97,39 +97,39 @@ func createCompositeRequestForCollection(method string, url string, allOrNone bo
 	}, nil
 }
 
-func processCompositeResponse(resp http.Response, allOrNone bool) (*SalesforceResults, error) {
+func processCompositeResponse(resp http.Response, allOrNone bool) (SalesforceResults, error) {
 	compositeResults := compositeRequestResult{}
 	results := SalesforceResults{}
 
 	responseData, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return SalesforceResults{}, err
 	}
 	jsonError := json.Unmarshal(responseData, &compositeResults)
 	if jsonError != nil {
-		return nil, jsonError
+		return SalesforceResults{}, jsonError
 	}
 
 	for _, subResult := range compositeResults.CompositeResponse {
 		for _, result := range subResult.Body {
 			if !result.Success {
-				results.HasErrors = true
+				results.HasSalesforceErrors = true
 			}
 		}
 		results.Results = append(results.Results, subResult.Body...)
 	}
 
-	if results.HasErrors && allOrNone {
+	if results.HasSalesforceErrors && allOrNone {
 		fmt.Println("Records rolled back because not all records were valid and the request was using AllOrNone header")
 	}
 
-	return &results, nil
+	return results, nil
 }
 
-func doInsertComposite(auth authentication, sObjectName string, records any, allOrNone bool, batchSize int) (*SalesforceResults, error) {
+func doInsertComposite(auth authentication, sObjectName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
-		return nil, err
+		return SalesforceResults{}, err
 	}
 
 	for i := range recordMap {
@@ -140,74 +140,74 @@ func doInsertComposite(auth authentication, sObjectName string, records any, all
 	uri := "/services/data/" + apiVersion + "/composite/sobjects"
 	compReq, compositeErr := createCompositeRequestForCollection(http.MethodPost, uri, allOrNone, batchSize, recordMap)
 	if compositeErr != nil {
-		return nil, compositeErr
+		return SalesforceResults{}, compositeErr
 	}
 	results, compositeReqErr := doCompositeRequest(auth, compReq)
 	if compositeReqErr != nil {
-		return nil, compositeReqErr
+		return SalesforceResults{}, compositeReqErr
 	}
 
 	return results, nil
 }
 
-func doUpdateComposite(auth authentication, sObjectName string, records any, allOrNone bool, batchSize int) (*SalesforceResults, error) {
+func doUpdateComposite(auth authentication, sObjectName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
-		return nil, err
+		return SalesforceResults{}, err
 	}
 
 	for i := range recordMap {
 		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
 		recordId, ok := recordMap[i]["Id"].(string)
 		if !ok || recordId == "" {
-			return nil, errors.New("salesforce id not found in object data")
+			return SalesforceResults{}, errors.New("salesforce id not found in object data")
 		}
 	}
 
 	uri := "/services/data/" + apiVersion + "/composite/sobjects"
 	compReq, compositeErr := createCompositeRequestForCollection(http.MethodPatch, uri, allOrNone, batchSize, recordMap)
 	if compositeErr != nil {
-		return nil, compositeErr
+		return SalesforceResults{}, compositeErr
 	}
 	results, compositeReqErr := doCompositeRequest(auth, compReq)
 	if compositeReqErr != nil {
-		return nil, compositeReqErr
+		return SalesforceResults{}, compositeReqErr
 	}
 
 	return results, nil
 }
 
-func doUpsertComposite(auth authentication, sObjectName string, fieldName string, records any, allOrNone bool, batchSize int) (*SalesforceResults, error) {
+func doUpsertComposite(auth authentication, sObjectName string, fieldName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
-		return nil, err
+		return SalesforceResults{}, err
 	}
 
 	for i := range recordMap {
 		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
 		externalIdValue, ok := recordMap[i][fieldName].(string)
 		if !ok || externalIdValue == "" {
-			return nil, fmt.Errorf("salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'", fieldName, sObjectName)
+			return SalesforceResults{}, fmt.Errorf("salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'", fieldName, sObjectName)
 		}
 	}
 
 	uri := "/services/data/" + apiVersion + "/composite/sobjects/" + sObjectName + "/" + fieldName
 	compReq, compositeErr := createCompositeRequestForCollection(http.MethodPatch, uri, allOrNone, batchSize, recordMap)
 	if compositeErr != nil {
-		return nil, compositeErr
+		return SalesforceResults{}, compositeErr
 	}
 	results, compositeReqErr := doCompositeRequest(auth, compReq)
 	if compositeReqErr != nil {
-		return nil, compositeReqErr
+		return SalesforceResults{}, compositeReqErr
 	}
 
 	return results, nil
 }
 
-func doDeleteComposite(auth authentication, sObjectName string, records any, allOrNone bool, batchSize int) (*SalesforceResults, error) {
+func doDeleteComposite(auth authentication, sObjectName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
-		return nil, err
+		return SalesforceResults{}, err
 	}
 
 	var subReqs []compositeSubRequest
@@ -225,7 +225,7 @@ func doDeleteComposite(auth authentication, sObjectName string, records any, all
 		for i := 0; i < len(batch); i++ {
 			recordId, ok := batch[i]["Id"].(string)
 			if !ok || recordId == "" {
-				return nil, errors.New("salesforce id not found in object data")
+				return SalesforceResults{}, errors.New("salesforce id not found in object data")
 			}
 			if i == len(batch)-1 {
 				ids = ids + recordId
@@ -251,7 +251,7 @@ func doDeleteComposite(auth authentication, sObjectName string, records any, all
 	}
 	results, compositeReqErr := doCompositeRequest(auth, compReq)
 	if compositeReqErr != nil {
-		return nil, compositeReqErr
+		return SalesforceResults{}, compositeReqErr
 	}
 
 	return results, nil
