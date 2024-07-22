@@ -247,7 +247,7 @@ Insert, Update, Upsert, or Delete one record at a time
 
 ### InsertOne
 
-`func (sf *Salesforce) InsertOne(sObjectName string, record any) (*SalesforceResult, error)`
+`func (sf *Salesforce) InsertOne(sObjectName string, record any) (SalesforceResult, error)`
 
 InsertOne inserts one salesforce record of the given type
 
@@ -300,7 +300,7 @@ if err != nil {
 
 ### UpsertOne
 
-`func (sf *Salesforce) UpsertOne(sObjectName string, externalIdFieldName string, record any) (*SalesforceResult, error)`
+`func (sf *Salesforce) UpsertOne(sObjectName string, externalIdFieldName string, record any) (SalesforceResult, error)`
 
 Updates (or inserts) one salesforce record using the given external Id
 
@@ -366,7 +366,7 @@ Insert, Update, Upsert, or Delete collections of records
 
 ### InsertCollection
 
-`func (sf *Salesforce) InsertCollection(sObjectName string, records any, batchSize int) (*SalesforceResults, error)`
+`func (sf *Salesforce) InsertCollection(sObjectName string, records any, batchSize int) (SalesforceResults, error)`
 
 Inserts a list of salesforce records of the given type
 
@@ -397,7 +397,7 @@ if err != nil {
 
 ### UpdateCollection
 
-`func (sf *Salesforce) UpdateCollection(sObjectName string, records any, batchSize int) (*SalesforceResults, error)`
+`func (sf *Salesforce) UpdateCollection(sObjectName string, records any, batchSize int) (SalesforceResults, error)`
 
 Updates a list of salesforce records of the given type
 
@@ -432,7 +432,7 @@ if err != nil {
 
 ### UpsertCollection
 
-`func (sf *Salesforce) UpsertCollection(sObjectName string, externalIdFieldName string, records any, batchSize int) (*SalesforceResults, error)`
+`func (sf *Salesforce) UpsertCollection(sObjectName string, externalIdFieldName string, records any, batchSize int) (SalesforceResults, error)`
 
 Updates (or inserts) a list of salesforce records using the given ExternalId
 
@@ -468,7 +468,7 @@ if err != nil {
 
 ### DeleteCollection
 
-`func (sf *Salesforce) DeleteCollection(sObjectName string, records any, batchSize int) (*SalesforceResults, error)`
+`func (sf *Salesforce) DeleteCollection(sObjectName string, records any, batchSize int) (SalesforceResults, error)`
 
 Deletes a list of salesforce records
 
@@ -512,7 +512,7 @@ Make numerous 'subrequests' contained within a single 'composite request', reduc
 
 ### InsertComposite
 
-`func (sf *Salesforce) InsertComposite(sObjectName string, records any, batchSize int, allOrNone bool) (*SalesforceResults, error)`
+`func (sf *Salesforce) InsertComposite(sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error)`
 
 Inserts a list of salesforce records in a single request
 
@@ -536,7 +536,7 @@ contacts := []Contact{
         LastName: "Murdock",
     },
 }
-err := sf.InsertComposite("Contact", contacts, 200, true)
+results, err := sf.InsertComposite("Contact", contacts, 200, true)
 if err != nil {
     panic(err)
 }
@@ -544,7 +544,7 @@ if err != nil {
 
 ### UpdateComposite
 
-`func (sf *Salesforce) UpdateComposite(sObjectName string, records any, batchSize int, allOrNone bool) error`
+`func (sf *Salesforce) UpdateComposite(sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error)`
 
 Updates a list of salesforce records in a single request
 
@@ -572,7 +572,7 @@ contacts := []Contact{
         LastName: "Storm",
     },
 }
-err := sf.UpdateComposite("Contact", contacts, 200, true)
+results, err := sf.UpdateComposite("Contact", contacts, 200, true)
 if err != nil {
     panic(err)
 }
@@ -580,7 +580,7 @@ if err != nil {
 
 ### UpsertComposite
 
-`func (sf *Salesforce) UpsertComposite(sObjectName string, externalIdFieldName string, records any, batchSize int, allOrNone bool) error`
+`func (sf *Salesforce) UpsertComposite(sObjectName string, externalIdFieldName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error)`
 
 Updates (or inserts) a list of salesforce records using the given ExternalId in a single request
 
@@ -609,15 +609,15 @@ contacts := []ContactWithExternalId{
         LastName:             "Wilson",
     },
 }
-updateErr := sf.UpsertComposite("Contact", "ContactExternalId__c", contacts, 200, true)
-if updateErr != nil {
-    panic(updateErr)
+results, err := sf.UpsertComposite("Contact", "ContactExternalId__c", contacts, 200, true)
+if err != nil {
+    panic(err)
 }
 ```
 
 ### DeleteComposite
 
-`func (sf *Salesforce) DeleteComposite(sObjectName string, records any, batchSize int, allOrNone bool) error`
+`func (sf *Salesforce) DeleteComposite(sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error)`
 
 Deletes a list of salesforce records in a single request
 
@@ -642,7 +642,7 @@ contacts := []Contact{
         Id: "003Dn00000pEi0NIAS",
     },
 }
-err := sf.DeleteComposite("Contact", contacts, 200, true)
+results, err := sf.DeleteComposite("Contact", contacts, 200, true)
 if err != nil {
     panic(err)
 }
