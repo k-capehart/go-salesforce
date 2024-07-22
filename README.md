@@ -14,6 +14,7 @@ A REST API wrapper for interacting with Salesforce using the Go programming lang
 
 ## Table of Contents
 - [Installation](#installation)
+- [Types](#types)
 - [Authentication](#authentication)
 - [SOQL](#soql)
 - [SObject Single Record Operations](#sobject-single-record-operations)
@@ -29,12 +30,7 @@ A REST API wrapper for interacting with Salesforce using the Go programming lang
 go get github.com/k-capehart/go-salesforce
 ```
 
-## Authentication
-
-- To begin using, create an instance of the `Salesforce` type by calling `salesforce.Init()` and passing your credentials as arguments
-- Once authenticated, all other functions can be called as methods using the resulting `Salesforce` instance
-
-### Types
+## Types
 
 ```go
 type Salesforce struct {
@@ -49,7 +45,38 @@ type Creds struct {
     ConsumerKey    string
     ConsumerSecret string
 }
+
+type SalesforceResults struct {
+	Results   []SalesforceResult
+	HasErrors bool
+}
+
+type SalesforceResult struct {
+	Id      string
+	Errors  []SalesforceErrorMessage
+	Success bool
+}
+
+type SalesforceErrorMessage struct {
+	Message    string
+	StatusCode string
+	Fields     []string
+}
+
+type BulkJobResults struct {
+	Id                  string
+	State               string
+	NumberRecordsFailed int
+	ErrorMessage        string
+	SuccessfulRecords   []map[string]any
+	FailedRecords       []map[string]any
+}
 ```
+
+## Authentication
+
+- To begin using, create an instance of the `Salesforce` type by calling `salesforce.Init()` and passing your credentials as arguments
+- Once authenticated, all other functions can be called as methods using the resulting `Salesforce` instance
 
 ### Init
 
@@ -215,24 +242,8 @@ type Account struct {
 Insert, Update, Upsert, or Delete one record at a time
 
 - [Review Salesforce REST API resources for working with records](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/using_resources_working_with_records.htm?q=update)
-- Only Insert and Upsert will return a `SalesforceResponse`, which contains record IDs
+- Only Insert and Upsert will return an instance of `SalesforceResult`, which contains the record ID
 - DML errors result in a status code of 400
-
-### Types
-
-```go
-type SalesforceResult struct {
-	Id      string
-	Errors  []SalesforceErrorMessage
-	Success bool
-}
-
-type SalesforceErrorMessage struct {
-	Message    string
-	StatusCode string
-	Fields     []string
-}
-```
 
 ### InsertOne
 
@@ -348,13 +359,14 @@ Insert, Update, Upsert, or Delete collections of records
 
 - [Review Salesforce REST API resources for working with collections](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_composite_sobjects_collections.htm)
 - Perform operations in batches of up to 200 records at a time
-- Some operations might perform slowly, consider making a Bulk request for very large operations
+- Consider making a Bulk request for very large operations
 - Partial successes are enabled
     - If a record fails then successes are still committed to the database
+- Will return an instance of `SalesforceResults` which contains information on each affected record and whether DML errors were encountered 
 
 ### InsertCollection
 
-`func (sf *Salesforce) InsertCollection(sObjectName string, records any, batchSize int) error`
+`func (sf *Salesforce) InsertCollection(sObjectName string, records any, batchSize int) (*SalesforceResults, error)`
 
 Inserts a list of salesforce records of the given type
 
@@ -377,7 +389,7 @@ contacts := []Contact{
         LastName: "Romanoff",
     },
 }
-err := sf.InsertCollection("Contact", contacts, 200)
+results, err := sf.InsertCollection("Contact", contacts, 200)
 if err != nil {
     panic(err)
 }
@@ -385,7 +397,7 @@ if err != nil {
 
 ### UpdateCollection
 
-`func (sf *Salesforce) UpdateCollection(sObjectName string, records any, batchSize int) error`
+`func (sf *Salesforce) UpdateCollection(sObjectName string, records any, batchSize int) (*SalesforceResults, error)`
 
 Updates a list of salesforce records of the given type
 
@@ -412,7 +424,7 @@ contacts := []Contact{
         LastName: "Odinson",
     },
 }
-err := sf.UpdateCollection("Contact", contacts, 200)
+results, err := sf.UpdateCollection("Contact", contacts, 200)
 if err != nil {
     panic(err)
 }
@@ -420,7 +432,7 @@ if err != nil {
 
 ### UpsertCollection
 
-`func (sf *Salesforce) UpsertCollection(sObjectName string, externalIdFieldName string, records any, batchSize int) error`
+`func (sf *Salesforce) UpsertCollection(sObjectName string, externalIdFieldName string, records any, batchSize int) (*SalesforceResults, error)`
 
 Updates (or inserts) a list of salesforce records using the given ExternalId
 
@@ -448,7 +460,7 @@ contacts := []ContactWithExternalId{
         LastName:             "Pym",
     },
 }
-err := sf.UpsertCollection("Contact", "ContactExternalId__c", contacts, 200)
+results, err := sf.UpsertCollection("Contact", "ContactExternalId__c", contacts, 200)
 if err != nil {
     panic(err)
 }
@@ -456,7 +468,7 @@ if err != nil {
 
 ### DeleteCollection
 
-`func (sf *Salesforce) DeleteCollection(sObjectName string, records any, batchSize int) error`
+`func (sf *Salesforce) DeleteCollection(sObjectName string, records any, batchSize int) (*SalesforceResults, error)`
 
 Deletes a list of salesforce records
 
@@ -480,7 +492,7 @@ contacts := []Contact{
         Id: "003Dn00000pEfy9IAC",
     },
 }
-err := sf.DeleteCollection("Contact", contacts, 200)
+results, err := sf.DeleteCollection("Contact", contacts, 200)
 if err != nil {
     panic(err)
 }
@@ -642,19 +654,6 @@ Create Bulk API Jobs to query, insert, update, upsert, and delete large collecti
 - [Review Salesforce REST API resources for Bulk v2](https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/bulk_api_2_0.htm)
 - Work with large lists of records by passing either a slice or records or the path to a csv file
 - Jobs can run asynchronously and optionally wait for them to finish so errors are available
-
-### Types
-
-```go
-type BulkJobResults struct {
-	Id                  string
-	State               string
-	NumberRecordsFailed int
-	ErrorMessage        string
-	SuccessfulRecords   []map[string]any
-	FailedRecords       []map[string]any
-}
-```
 
 ### QueryBulkExport
 
