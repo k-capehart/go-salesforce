@@ -77,16 +77,16 @@ func doBatchedRequestsForCollection(auth authentication, method string, url stri
 			return &results, err
 		}
 
-		resp, err := doRequest(method, url, jsonType, auth, string(body), http.StatusOK)
+		resp, err := doRequest(method, url, jsonType, auth, string(body))
 		if err != nil {
 			return &results, err
 		}
-		_results, err := processSalesforceResponse(*resp)
+		currentResults, err := processSalesforceResponse(*resp)
 		if err != nil {
 			return &results, err
 		}
 
-		results.Results = append(results.Results, _results...)
+		results.Results = append(results.Results, currentResults...)
 	}
 
 	for _, result := range results.Results {
@@ -119,7 +119,7 @@ func doInsertOne(auth authentication, sObjectName string, record any) (*Salesfor
 		return nil, err
 	}
 
-	resp, err := doRequest(http.MethodPost, "/sobjects/"+sObjectName, jsonType, auth, string(body), http.StatusCreated)
+	resp, err := doRequest(http.MethodPost, "/sobjects/"+sObjectName, jsonType, auth, string(body))
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func doUpdateOne(auth authentication, sObjectName string, record any) error {
 		return err
 	}
 
-	_, err = doRequest(http.MethodPatch, "/sobjects/"+sObjectName+"/"+recordId, jsonType, auth, string(body), http.StatusNoContent)
+	_, err = doRequest(http.MethodPatch, "/sobjects/"+sObjectName+"/"+recordId, jsonType, auth, string(body))
 	if err != nil {
 		return err
 	}
@@ -180,7 +180,7 @@ func doUpsertOne(auth authentication, sObjectName string, fieldName string, reco
 		return nil, err
 	}
 
-	resp, err := doRequest(http.MethodPatch, "/sobjects/"+sObjectName+"/"+fieldName+"/"+externalIdValue, jsonType, auth, string(body), http.StatusOK)
+	resp, err := doRequest(http.MethodPatch, "/sobjects/"+sObjectName+"/"+fieldName+"/"+externalIdValue, jsonType, auth, string(body))
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +205,7 @@ func doDeleteOne(auth authentication, sObjectName string, record any) error {
 		return errors.New("salesforce id not found in object data")
 	}
 
-	_, err = doRequest(http.MethodDelete, "/sobjects/"+sObjectName+"/"+recordId, jsonType, auth, "", http.StatusNoContent)
+	_, err = doRequest(http.MethodDelete, "/sobjects/"+sObjectName+"/"+recordId, jsonType, auth, "")
 	if err != nil {
 		return err
 	}
@@ -296,16 +296,16 @@ func doDeleteCollection(auth authentication, sObjectName string, records any, ba
 	var results = SalesforceResults{}
 
 	for i := range batchedIds {
-		resp, err := doRequest(http.MethodDelete, "/composite/sobjects/?ids="+batchedIds[i]+"&allOrNone=false", jsonType, auth, "", http.StatusOK)
+		resp, err := doRequest(http.MethodDelete, "/composite/sobjects/?ids="+batchedIds[i]+"&allOrNone=false", jsonType, auth, "")
 		if err != nil {
 			return &results, err
 		}
-		_results, err := processSalesforceResponse(*resp)
+		currentResults, err := processSalesforceResponse(*resp)
 		if err != nil {
 			return &results, err
 		}
 
-		results.Results = append(results.Results, _results...)
+		results.Results = append(results.Results, currentResults...)
 	}
 
 	for _, result := range results.Results {

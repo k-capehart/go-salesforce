@@ -68,7 +68,7 @@ var appFs = afero.NewOsFs() // afero.Fs type is a wrapper around os functions, a
 func updateJobState(job bulkJob, state string, auth authentication) error {
 	job.State = state
 	body, _ := json.Marshal(job)
-	_, err := doRequest(http.MethodPatch, "/jobs/ingest/"+job.Id, jsonType, auth, string(body), http.StatusOK)
+	_, err := doRequest(http.MethodPatch, "/jobs/ingest/"+job.Id, jsonType, auth, string(body))
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func updateJobState(job bulkJob, state string, auth authentication) error {
 }
 
 func createBulkJob(auth authentication, jobType string, body []byte) (bulkJob, error) {
-	resp, err := doRequest(http.MethodPost, "/jobs/"+jobType, jsonType, auth, string(body), http.StatusOK)
+	resp, err := doRequest(http.MethodPost, "/jobs/"+jobType, jsonType, auth, string(body))
 	if err != nil {
 		return bulkJob{}, err
 	}
@@ -97,7 +97,7 @@ func createBulkJob(auth authentication, jobType string, body []byte) (bulkJob, e
 }
 
 func uploadJobData(auth authentication, data string, bulkJob bulkJob) error {
-	_, uploadDataErr := doRequest("PUT", "/jobs/ingest/"+bulkJob.Id+"/batches", csvType, auth, data, http.StatusCreated)
+	_, uploadDataErr := doRequest("PUT", "/jobs/ingest/"+bulkJob.Id+"/batches", csvType, auth, data)
 	if uploadDataErr != nil {
 		if err := updateJobState(bulkJob, jobStateAborted, auth); err != nil {
 			return err
@@ -113,7 +113,7 @@ func uploadJobData(auth authentication, data string, bulkJob bulkJob) error {
 }
 
 func getJobResults(auth authentication, jobType string, bulkJobId string) (BulkJobResults, error) {
-	resp, err := doRequest(http.MethodGet, "/jobs/"+jobType+"/"+bulkJobId, jsonType, auth, "", http.StatusOK)
+	resp, err := doRequest(http.MethodGet, "/jobs/"+jobType+"/"+bulkJobId, jsonType, auth, "")
 	if err != nil {
 		return BulkJobResults{}, err
 	}
@@ -149,7 +149,7 @@ func getJobRecordResults(auth authentication, bulkJobResults BulkJobResults) (Bu
 }
 
 func getBulkJobRecords(auth authentication, bulkJobId string, resultType string) ([]map[string]any, error) {
-	resp, err := doRequest(http.MethodGet, "/jobs/ingest/"+bulkJobId+"/"+resultType, jsonType, auth, "", http.StatusOK)
+	resp, err := doRequest(http.MethodGet, "/jobs/ingest/"+bulkJobId+"/"+resultType, jsonType, auth, "")
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func getQueryJobResults(auth authentication, bulkJobId string, locator string) (
 	if locator != "" {
 		uri = uri + "/?locator=" + locator
 	}
-	resp, err := doRequest(http.MethodGet, uri, jsonType, auth, "", http.StatusOK)
+	resp, err := doRequest(http.MethodGet, uri, jsonType, auth, "")
 	if err != nil {
 		return bulkJobQueryResults{}, err
 	}

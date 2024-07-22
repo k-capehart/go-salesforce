@@ -45,7 +45,7 @@ func validateSession(auth authentication) error {
 	if err := validateAuth(Salesforce{auth: &auth}); err != nil {
 		return err
 	}
-	_, err := doRequest(http.MethodGet, "/limits", jsonType, auth, "", http.StatusOK)
+	_, err := doRequest(http.MethodGet, "/limits", jsonType, auth, "")
 	if err != nil {
 		return err
 	}

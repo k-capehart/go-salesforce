@@ -40,7 +40,7 @@ const (
 	bulkBatchSizeMax = 10000
 )
 
-func doRequest(method string, uri string, content string, auth authentication, body string, expectedStatus int) (*http.Response, error) {
+func doRequest(method string, uri string, content string, auth authentication, body string) (*http.Response, error) {
 	var reader *strings.Reader
 	var req *http.Request
 	var err error
@@ -65,7 +65,7 @@ func doRequest(method string, uri string, content string, auth authentication, b
 	if err != nil {
 		return resp, err
 	}
-	if expectedStatus != 0 && resp.StatusCode != expectedStatus {
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return resp, processSalesforceError(*resp)
 	}
 
@@ -214,7 +214,7 @@ func (sf *Salesforce) DoRequest(method string, uri string, body []byte) (*http.R
 		return nil, authErr
 	}
 
-	resp, err := doRequest(method, uri, jsonType, *sf.auth, string(body), 0)
+	resp, err := doRequest(method, uri, jsonType, *sf.auth, string(body))
 	if err != nil {
 		return nil, err
 	}

@@ -41,12 +41,11 @@ func Test_doRequest(t *testing.T) {
 	defer badServer.Close()
 
 	type args struct {
-		method         string
-		uri            string
-		content        string
-		auth           authentication
-		body           string
-		expectedStatus int
+		method  string
+		uri     string
+		content string
+		auth    authentication
+		body    string
 	}
 	tests := []struct {
 		name    string
@@ -57,12 +56,11 @@ func Test_doRequest(t *testing.T) {
 		{
 			name: "make_generic_http_call_ok",
 			args: args{
-				method:         http.MethodGet,
-				uri:            "",
-				content:        jsonType,
-				auth:           sfAuth,
-				body:           "",
-				expectedStatus: http.StatusOK,
+				method:  http.MethodGet,
+				uri:     "",
+				content: jsonType,
+				auth:    sfAuth,
+				body:    "",
 			},
 			want:    http.StatusOK,
 			wantErr: false,
@@ -77,12 +75,12 @@ func Test_doRequest(t *testing.T) {
 				body:    "",
 			},
 			want:    http.StatusBadRequest,
-			wantErr: false,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doRequest(tt.args.method, tt.args.uri, tt.args.content, tt.args.auth, tt.args.body, tt.args.expectedStatus)
+			got, err := doRequest(tt.args.method, tt.args.uri, tt.args.content, tt.args.auth, tt.args.body)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doRequest() error = %v, wantErr %v", err, tt.wantErr)
 				return

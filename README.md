@@ -215,11 +215,28 @@ type Account struct {
 Insert, Update, Upsert, or Delete one record at a time
 
 - [Review Salesforce REST API resources for working with records](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/using_resources_working_with_records.htm?q=update)
-- DML errors will return with a status code of 400
+- Only Insert and Upsert will return a `SalesforceResponse`, which contains record IDs
+- DML errors result in a status code of 400
+
+### Types
+
+```go
+type SalesforceResult struct {
+	Id      string
+	Errors  []SalesforceErrorMessage
+	Success bool
+}
+
+type SalesforceErrorMessage struct {
+	Message    string
+	StatusCode string
+	Fields     []string
+}
+```
 
 ### InsertOne
 
-`func (sf *Salesforce) InsertOne(sObjectName string, record any) error`
+`func (sf *Salesforce) InsertOne(sObjectName string, record any) (*SalesforceResult, error)`
 
 InsertOne inserts one salesforce record of the given type
 
@@ -236,7 +253,7 @@ type Contact struct {
 contact := Contact{
     LastName: "Stark",
 }
-err := sf.InsertOne("Contact", contact)
+result, err := sf.InsertOne("Contact", contact)
 if err != nil {
     panic(err)
 }
@@ -272,7 +289,7 @@ if err != nil {
 
 ### UpsertOne
 
-`func (sf *Salesforce) UpsertOne(sObjectName string, externalIdFieldName string, record any) error`
+`func (sf *Salesforce) UpsertOne(sObjectName string, externalIdFieldName string, record any) (*SalesforceResult, error)`
 
 Updates (or inserts) one salesforce record using the given external Id
 
@@ -332,7 +349,8 @@ Insert, Update, Upsert, or Delete collections of records
 - [Review Salesforce REST API resources for working with collections](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_composite_sobjects_collections.htm)
 - Perform operations in batches of up to 200 records at a time
 - Some operations might perform slowly, consider making a Bulk request for very large operations
-- Partial successes are enabled - if a record fails then successes are still committed to the database
+- Partial successes are enabled
+    - If a record fails then successes are still committed to the database
 
 ### InsertCollection
 
