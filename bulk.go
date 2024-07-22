@@ -135,8 +135,7 @@ func getJobResults(auth authentication, jobType string, bulkJobId string) (BulkJ
 func getJobRecordResults(auth authentication, bulkJobResults BulkJobResults) (BulkJobResults, error) {
 	successfulRecords, err := getBulkJobRecords(auth, bulkJobResults.Id, successfulResults)
 	if err != nil {
-		fmt.Println("failed to get SuccessfulRecords")
-		return bulkJobResults, err
+		return bulkJobResults, fmt.Errorf("failed to get SuccessfulRecords: %w", err)
 	}
 	bulkJobResults.SuccessfulRecords = successfulRecords
 	failedRecords, err := getBulkJobRecords(auth, bulkJobResults.Id, failedResults)
