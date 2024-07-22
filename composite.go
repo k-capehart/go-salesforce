@@ -119,10 +119,6 @@ func processCompositeResponse(resp http.Response, allOrNone bool) (SalesforceRes
 		results.Results = append(results.Results, subResult.Body...)
 	}
 
-	if results.HasSalesforceErrors && allOrNone {
-		fmt.Println("Records rolled back because not all records were valid and the request was using AllOrNone header")
-	}
-
 	return results, nil
 }
 
