@@ -92,7 +92,7 @@ func doBatchedRequestsForCollection(auth authentication, method string, url stri
 	for _, result := range results.Results {
 		if !result.Success {
 			results.HasErrors = true
-			return results, nil
+			return &results, nil
 		}
 	}
 
