@@ -47,29 +47,29 @@ type Creds struct {
 }
 
 type SalesforceResults struct {
-	Results             []SalesforceResult
-	HasSalesforceErrors bool
+    Results             []SalesforceResult
+    HasSalesforceErrors bool
 }
 
 type SalesforceResult struct {
-	Id      string
-	Errors  []SalesforceErrorMessage
-	Success bool
+    Id      string
+    Errors  []SalesforceErrorMessage
+    Success bool
 }
 
 type SalesforceErrorMessage struct {
-	Message    string
-	StatusCode string
-	Fields     []string
+    Message    string
+    StatusCode string
+    Fields     []string
 }
 
 type BulkJobResults struct {
-	Id                  string
-	State               string
-	NumberRecordsFailed int
-	ErrorMessage        string
-	SuccessfulRecords   []map[string]any
-	FailedRecords       []map[string]any
+    Id                  string
+    State               string
+    NumberRecordsFailed int
+    ErrorMessage        string
+    SuccessfulRecords   []map[string]any
+    FailedRecords       []map[string]any
 }
 ```
 
@@ -321,7 +321,7 @@ contact := ContactWithExternalId{
     ContactExternalId__c: "Avng0",
     LastName:             "Rogers",
 }
-err := sf.UpsertOne("Contact", "ContactExternalId__c", contact)
+result, err := sf.UpsertOne("Contact", "ContactExternalId__c", contact)
 if err != nil {
     panic(err)
 }
@@ -347,9 +347,9 @@ type Contact struct {
 contact := Contact{
     Id: "003Dn00000pEYQSIA4",
 }
-deleteErr := sf.DeleteOne("Contact", contact)
-if deleteErr != nil {
-    panic(deleteErr)
+err := sf.DeleteOne("Contact", contact)
+if err != nil {
+    panic(err)
 }
 ```
 
@@ -509,6 +509,7 @@ Make numerous 'subrequests' contained within a single 'composite request', reduc
   - If batch size is 200, then max is 5000
 - Can optionally allow partial successes by setting allOrNone parameter
     - If true, then successes are still committed to the database even if a record fails
+- Will return an instance of SalesforceResults which contains information on each affected record and whether DML errors were encountered
 
 ### InsertComposite
 
