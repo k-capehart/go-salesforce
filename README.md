@@ -27,7 +27,7 @@ A REST API wrapper for interacting with Salesforce using the Go programming lang
 ## Installation
 
 ```
-go get github.com/k-capehart/go-salesforce
+go get github.com/k-capehart/go-salesforce/v2
 ```
 
 ## Types
