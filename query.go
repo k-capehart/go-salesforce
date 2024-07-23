@@ -25,7 +25,7 @@ func performQuery(auth authentication, query string, sObject any) error {
 	}
 
 	for !queryResp.Done {
-		resp, err := doRequest(http.MethodGet, queryResp.NextRecordsUrl, jsonType, auth, "", http.StatusOK)
+		resp, err := doRequest(http.MethodGet, queryResp.NextRecordsUrl, jsonType, auth, "")
 		if err != nil {
 			return err
 		}

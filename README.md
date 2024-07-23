@@ -14,6 +14,7 @@ A REST API wrapper for interacting with Salesforce using the Go programming lang
 
 ## Table of Contents
 - [Installation](#installation)
+- [Types](#types)
 - [Authentication](#authentication)
 - [SOQL](#soql)
 - [SObject Single Record Operations](#sobject-single-record-operations)
@@ -29,12 +30,7 @@ A REST API wrapper for interacting with Salesforce using the Go programming lang
 go get github.com/k-capehart/go-salesforce
 ```
 
-## Authentication
-
-- To begin using, create an instance of the `Salesforce` type by calling `salesforce.Init()` and passing your credentials as arguments
-- Once authenticated, all other functions can be called as methods using the resulting `Salesforce` instance
-
-### Types
+## Types
 
 ```go
 type Salesforce struct {
@@ -49,7 +45,38 @@ type Creds struct {
     ConsumerKey    string
     ConsumerSecret string
 }
+
+type SalesforceResults struct {
+	Results             []SalesforceResult
+	HasSalesforceErrors bool
+}
+
+type SalesforceResult struct {
+	Id      string
+	Errors  []SalesforceErrorMessage
+	Success bool
+}
+
+type SalesforceErrorMessage struct {
+	Message    string
+	StatusCode string
+	Fields     []string
+}
+
+type BulkJobResults struct {
+	Id                  string
+	State               string
+	NumberRecordsFailed int
+	ErrorMessage        string
+	SuccessfulRecords   []map[string]any
+	FailedRecords       []map[string]any
+}
 ```
+
+## Authentication
+
+- To begin using, create an instance of the `Salesforce` type by calling `salesforce.Init()` and passing your credentials as arguments
+- Once authenticated, all other functions can be called as methods using the resulting `Salesforce` instance
 
 ### Init
 
@@ -111,7 +138,7 @@ if err != nil {
 Returns the current session's Access Token as a string.
 
 ```go
-fmt.Println(sf.GetAccessToken())
+token := sf.GetAccessToken()
 ```
 
 ## SOQL
@@ -138,7 +165,7 @@ type Contact struct {
 
 ```go
 contacts := []Contact{}
-err := sf.Query("SELECT Id, LastName FROM Contact WHERE LastName = 'Capehart'", &contacts)
+err := sf.Query("SELECT Id, LastName FROM Contact WHERE LastName = 'Lee'", &contacts)
 if err != nil {
     panic(err)
 }
@@ -176,7 +203,7 @@ type ContactSoqlQuery struct {
 soqlStruct := ContactSoqlQuery{
     SelectClause: Contact{},
     WhereClause: ContactQueryCriteria{
-        LastName: "Capehart",
+        LastName: "Lee",
     },
 }
 contacts := []Contact{}
@@ -190,7 +217,8 @@ if err != nil {
 
 When querying Salesforce objects, it's common to access fields that are related through parent-child or lookup relationships. For instance, querying `Account.Name` with related `Contact` might look like this:
 
-##### Example SOQL Query
+#### Example SOQL Query
+
 ```sql
 SELECT Id, Account.Name FROM Contact
 ```
@@ -214,10 +242,12 @@ type Account struct {
 Insert, Update, Upsert, or Delete one record at a time
 
 - [Review Salesforce REST API resources for working with records](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/using_resources_working_with_records.htm?q=update)
+- Only Insert and Upsert will return an instance of `SalesforceResult`, which contains the record ID
+- DML errors result in a status code of 400
 
 ### InsertOne
 
-`func (sf *Salesforce) InsertOne(sObjectName string, record any) error`
+`func (sf *Salesforce) InsertOne(sObjectName string, record any) (SalesforceResult, error)`
 
 InsertOne inserts one salesforce record of the given type
 
@@ -234,7 +264,7 @@ type Contact struct {
 contact := Contact{
     LastName: "Stark",
 }
-err := sf.InsertOne("Contact", contact)
+result, err := sf.InsertOne("Contact", contact)
 if err != nil {
     panic(err)
 }
@@ -270,7 +300,7 @@ if err != nil {
 
 ### UpsertOne
 
-`func (sf *Salesforce) UpsertOne(sObjectName string, externalIdFieldName string, record any) error`
+`func (sf *Salesforce) UpsertOne(sObjectName string, externalIdFieldName string, record any) (SalesforceResult, error)`
 
 Updates (or inserts) one salesforce record using the given external Id
 
@@ -329,11 +359,14 @@ Insert, Update, Upsert, or Delete collections of records
 
 - [Review Salesforce REST API resources for working with collections](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_composite_sobjects_collections.htm)
 - Perform operations in batches of up to 200 records at a time
-- Some operations might perform slowly, consider making a Bulk request for very large operations
+- Consider making a Bulk request for very large operations
+- Partial successes are enabled
+    - If a record fails then successes are still committed to the database
+- Will return an instance of `SalesforceResults` which contains information on each affected record and whether DML errors were encountered 
 
 ### InsertCollection
 
-`func (sf *Salesforce) InsertCollection(sObjectName string, records any, batchSize int) error`
+`func (sf *Salesforce) InsertCollection(sObjectName string, records any, batchSize int) (SalesforceResults, error)`
 
 Inserts a list of salesforce records of the given type
 
@@ -356,7 +389,7 @@ contacts := []Contact{
         LastName: "Romanoff",
     },
 }
-err := sf.InsertCollection("Contact", contacts, 200)
+results, err := sf.InsertCollection("Contact", contacts, 200)
 if err != nil {
     panic(err)
 }
@@ -364,7 +397,7 @@ if err != nil {
 
 ### UpdateCollection
 
-`func (sf *Salesforce) UpdateCollection(sObjectName string, records any, batchSize int) error`
+`func (sf *Salesforce) UpdateCollection(sObjectName string, records any, batchSize int) (SalesforceResults, error)`
 
 Updates a list of salesforce records of the given type
 
@@ -391,7 +424,7 @@ contacts := []Contact{
         LastName: "Odinson",
     },
 }
-err := sf.UpdateCollection("Contact", contacts, 200)
+results, err := sf.UpdateCollection("Contact", contacts, 200)
 if err != nil {
     panic(err)
 }
@@ -399,7 +432,7 @@ if err != nil {
 
 ### UpsertCollection
 
-`func (sf *Salesforce) UpsertCollection(sObjectName string, externalIdFieldName string, records any, batchSize int) error`
+`func (sf *Salesforce) UpsertCollection(sObjectName string, externalIdFieldName string, records any, batchSize int) (SalesforceResults, error)`
 
 Updates (or inserts) a list of salesforce records using the given ExternalId
 
@@ -427,7 +460,7 @@ contacts := []ContactWithExternalId{
         LastName:             "Pym",
     },
 }
-err := sf.UpsertCollection("Contact", "ContactExternalId__c", contacts, 200)
+results, err := sf.UpsertCollection("Contact", "ContactExternalId__c", contacts, 200)
 if err != nil {
     panic(err)
 }
@@ -435,7 +468,7 @@ if err != nil {
 
 ### DeleteCollection
 
-`func (sf *Salesforce) DeleteCollection(sObjectName string, records any, batchSize int) error`
+`func (sf *Salesforce) DeleteCollection(sObjectName string, records any, batchSize int) (SalesforceResults, error)`
 
 Deletes a list of salesforce records
 
@@ -459,7 +492,7 @@ contacts := []Contact{
         Id: "003Dn00000pEfy9IAC",
     },
 }
-err := sf.DeleteCollection("Contact", contacts, 200)
+results, err := sf.DeleteCollection("Contact", contacts, 200)
 if err != nil {
     panic(err)
 }
@@ -474,10 +507,12 @@ Make numerous 'subrequests' contained within a single 'composite request', reduc
   - For DML operations, max number of records to be processed is determined by batch size (`25 * (batch size)`)
   - So if batch size is 1, then max number of records to be included in request is 25
   - If batch size is 200, then max is 5000
+- Can optionally allow partial successes by setting allOrNone parameter
+    - If true, then successes are still committed to the database even if a record fails
 
 ### InsertComposite
 
-`func (sf *Salesforce) InsertComposite(sObjectName string, records any, batchSize int, allOrNone bool) error`
+`func (sf *Salesforce) InsertComposite(sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error)`
 
 Inserts a list of salesforce records in a single request
 
@@ -501,7 +536,7 @@ contacts := []Contact{
         LastName: "Murdock",
     },
 }
-err := sf.InsertComposite("Contact", contacts, 200, true)
+results, err := sf.InsertComposite("Contact", contacts, 200, true)
 if err != nil {
     panic(err)
 }
@@ -509,7 +544,7 @@ if err != nil {
 
 ### UpdateComposite
 
-`func (sf *Salesforce) UpdateComposite(sObjectName string, records any, batchSize int, allOrNone bool) error`
+`func (sf *Salesforce) UpdateComposite(sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error)`
 
 Updates a list of salesforce records in a single request
 
@@ -537,7 +572,7 @@ contacts := []Contact{
         LastName: "Storm",
     },
 }
-err := sf.UpdateComposite("Contact", contacts, 200, true)
+results, err := sf.UpdateComposite("Contact", contacts, 200, true)
 if err != nil {
     panic(err)
 }
@@ -545,7 +580,7 @@ if err != nil {
 
 ### UpsertComposite
 
-`func (sf *Salesforce) UpsertComposite(sObjectName string, externalIdFieldName string, records any, batchSize int, allOrNone bool) error`
+`func (sf *Salesforce) UpsertComposite(sObjectName string, externalIdFieldName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error)`
 
 Updates (or inserts) a list of salesforce records using the given ExternalId in a single request
 
@@ -574,15 +609,15 @@ contacts := []ContactWithExternalId{
         LastName:             "Wilson",
     },
 }
-updateErr := sf.UpsertComposite("Contact", "ContactExternalId__c", contacts, 200, true)
-if updateErr != nil {
-    panic(updateErr)
+results, err := sf.UpsertComposite("Contact", "ContactExternalId__c", contacts, 200, true)
+if err != nil {
+    panic(err)
 }
 ```
 
 ### DeleteComposite
 
-`func (sf *Salesforce) DeleteComposite(sObjectName string, records any, batchSize int, allOrNone bool) error`
+`func (sf *Salesforce) DeleteComposite(sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error)`
 
 Deletes a list of salesforce records in a single request
 
@@ -607,7 +642,7 @@ contacts := []Contact{
         Id: "003Dn00000pEi0NIAS",
     },
 }
-err := sf.DeleteComposite("Contact", contacts, 200, true)
+results, err := sf.DeleteComposite("Contact", contacts, 200, true)
 if err != nil {
     panic(err)
 }
@@ -620,17 +655,6 @@ Create Bulk API Jobs to query, insert, update, upsert, and delete large collecti
 - [Review Salesforce REST API resources for Bulk v2](https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/bulk_api_2_0.htm)
 - Work with large lists of records by passing either a slice or records or the path to a csv file
 - Jobs can run asynchronously and optionally wait for them to finish so errors are available
-
-### Types
-
-```go
-type BulkJobResults struct {
-    Id                  string
-    State               string
-    NumberRecordsFailed int
-    ErrorMessage        string
-}
-```
 
 ### QueryBulkExport
 
@@ -946,7 +970,7 @@ if err != nil {
 Returns an instance of BulkJobResults given a Job Id
 
 - `bulkJobId`: the Id for a bulk API job
-- Can be used when you want to check the results of a job, but at a later time
+- Use to check results of Bulk Job, including successful and failed records
 
 ```go
 type Contact struct {
@@ -960,11 +984,10 @@ contacts := []Contact{
         LastName: "Grimm",
     },
 }
-jobIds, err := sf.InsertBulk("Contact", contacts, 1000, false)
+jobIds, err := sf.InsertBulk("Contact", contacts, 1000, true)
 if err != nil {
     panic(err)
 }
-time.Sleep(time.Second)
 for _, id := range jobIds {
     results, err := sf.GetJobResults(id) // returns an instance of BulkJobResults
     if err != nil {
