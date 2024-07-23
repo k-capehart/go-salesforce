@@ -970,7 +970,7 @@ if err != nil {
 Returns an instance of BulkJobResults given a Job Id
 
 - `bulkJobId`: the Id for a bulk API job
-- Can be used when you want to check the results of a job, but at a later time
+- Use to check results of Bulk Job, including successful and failed records
 
 ```go
 type Contact struct {
@@ -984,11 +984,10 @@ contacts := []Contact{
         LastName: "Grimm",
     },
 }
-jobIds, err := sf.InsertBulk("Contact", contacts, 1000, false)
+jobIds, err := sf.InsertBulk("Contact", contacts, 1000, true)
 if err != nil {
     panic(err)
 }
-time.Sleep(time.Second)
 for _, id := range jobIds {
     results, err := sf.GetJobResults(id) // returns an instance of BulkJobResults
     if err != nil {
