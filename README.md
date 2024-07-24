@@ -733,7 +733,7 @@ contacts := []Contact{
         LastName: "Van Dyne",
     },
 }
-_, err := sf.InsertBulk("Contact", contacts, 1000, true)
+jobIds, err := sf.InsertBulk("Contact", contacts, 1000, false)
 if err != nil {
     panic(err)
 }
@@ -760,7 +760,7 @@ Bruce,Banner
 ```
 
 ```go
-_, err := sf.InsertBulkFile("Contact", "data/avengers.csv", 1000, true)
+jobIds, err := sf.InsertBulkFile("Contact", "data/avengers.csv", 1000, false)
 if err != nil {
     panic(err)
 }
@@ -796,7 +796,7 @@ contacts := []Contact{
         LastName: "T'Challa",
     },
 }
-_, err := sf.UpdateBulk("Contact", contacts, 1000, true)
+jobIds, err := sf.UpdateBulk("Contact", contacts, 1000, false)
 if err != nil {
     panic(err)
 }
@@ -827,7 +827,7 @@ Id,FirstName,LastName
 ```
 
 ```go
-_, err := sf.UpdateBulkFile("Contact", "data/update_avengers.csv", 1000, true)
+jobIds, err := sf.UpdateBulkFile("Contact", "data/update_avengers.csv", 1000, false)
 if err != nil {
     panic(err)
 }
@@ -864,7 +864,7 @@ contacts := []ContactWithExternalId{
         LastName:             "Quill",
     },
 }
-_, err := sf.UpsertBulk("Contact", "ContactExternalId__c", contacts, 1000, true)
+jobIds, err := sf.UpsertBulk("Contact", "ContactExternalId__c", contacts, 1000, false)
 if err != nil {
     panic(err)
 }
@@ -894,7 +894,7 @@ Avng10,Danny,Rand
 ```
 
 ```go
-_, err := sf.UpsertBulkFile("Contact", "ContactExternalId__c", "data/upsert_avengers.csv", 1000, true)
+jobIds, err := sf.UpsertBulkFile("Contact", "ContactExternalId__c", "data/upsert_avengers.csv", 1000, false)
 if err != nil {
     panic(err)
 }
@@ -927,7 +927,7 @@ contacts := []ContactIds{
         Id: "003Dn00000pEsoSIAS",
     },
 }
-_, err := sf.DeleteBulk("Contact", contacts, 1000, true)
+jobIds, err := sf.DeleteBulk("Contact", contacts, 1000, false)
 if err != nil {
     panic(err)
 }
@@ -958,7 +958,7 @@ Id
 ```
 
 ```go
-_, err := sf.DeleteBulkFile("Contact", "data/delete_avengers.csv", 1000, true)
+jobIds, err := sf.DeleteBulkFile("Contact", "data/delete_avengers.csv", 1000, false)
 if err != nil {
     panic(err)
 }
