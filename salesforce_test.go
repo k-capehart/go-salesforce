@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -41,11 +42,8 @@ func Test_doRequest(t *testing.T) {
 	defer badServer.Close()
 
 	type args struct {
-		method  string
-		uri     string
-		content string
-		auth    authentication
-		body    string
+		auth    *authentication
+		payload requestPayload
 	}
 	tests := []struct {
 		name    string
@@ -56,11 +54,13 @@ func Test_doRequest(t *testing.T) {
 		{
 			name: "make_generic_http_call_ok",
 			args: args{
-				method:  http.MethodGet,
-				uri:     "",
-				content: jsonType,
-				auth:    sfAuth,
-				body:    "",
+				auth: &sfAuth,
+				payload: requestPayload{
+					method:  http.MethodGet,
+					uri:     "",
+					content: jsonType,
+					body:    "",
+				},
 			},
 			want:    http.StatusOK,
 			wantErr: false,
@@ -68,11 +68,13 @@ func Test_doRequest(t *testing.T) {
 		{
 			name: "make_generic_http_call_bad_request",
 			args: args{
-				method:  http.MethodGet,
-				uri:     "",
-				content: jsonType,
-				auth:    badSfAuth,
-				body:    "",
+				auth: &badSfAuth,
+				payload: requestPayload{
+					method:  http.MethodGet,
+					uri:     "",
+					content: jsonType,
+					body:    "",
+				},
 			},
 			want:    http.StatusBadRequest,
 			wantErr: true,
@@ -80,7 +82,7 @@ func Test_doRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doRequest(tt.args.method, tt.args.uri, tt.args.content, tt.args.auth, tt.args.body)
+			got, err := doRequest(tt.args.auth, tt.args.payload)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doRequest() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -253,8 +255,19 @@ func Test_validateBatchSizeWithinRange(t *testing.T) {
 }
 
 func Test_processSalesforceError(t *testing.T) {
+	body, _ := json.Marshal([]SalesforceErrorMessage{{
+		Message:    "error message",
+		StatusCode: strconv.Itoa(http.StatusInternalServerError),
+		Fields:     []string{},
+		ErrorCode:  strconv.Itoa(http.StatusInternalServerError),
+	}})
+	badServer, badSfAuth := setupTestServer(body, http.StatusInternalServerError)
+	defer badServer.Close()
+
 	type args struct {
-		resp http.Response
+		resp    http.Response
+		auth    *authentication
+		payload requestPayload
 	}
 	tests := []struct {
 		name    string
@@ -268,36 +281,86 @@ func Test_processSalesforceError(t *testing.T) {
 				resp: http.Response{
 					Status:     "500",
 					StatusCode: 500,
-					Body:       io.NopCloser(strings.NewReader("error message")),
+					Body:       io.NopCloser(strings.NewReader(string(body))),
+				},
+				auth: &badSfAuth,
+				payload: requestPayload{
+					method:  http.MethodGet,
+					uri:     "",
+					content: jsonType,
+					body:    "",
 				},
 			},
-			want:    "500: error message",
+			want:    string(body),
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := processSalesforceError(tt.args.resp)
+			_, err := processSalesforceError(tt.args.resp, tt.args.auth, tt.args.payload)
 			if err != nil != tt.wantErr {
 				t.Errorf("processSalesforceError() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if !reflect.DeepEqual(err.Error(), tt.want) {
-				t.Errorf("processSalesforceError() = %v, want %v", err.Error(), tt.want)
+			if err.Error() != tt.want {
+				t.Errorf("processSalesforceError() = %v, want %v", err, tt.want)
 			}
 		})
 	}
 }
 
 func TestInit(t *testing.T) {
-	sfAuth := authentication{
+	sfAuthUsernamePassword := authentication{
 		AccessToken: "1234",
 		InstanceUrl: "example.com",
 		Id:          "123abc",
 		IssuedAt:    "01/01/1970",
 		Signature:   "signed",
+		grantType:   grantTypeUsernamePassword,
 	}
-	server, _ := setupTestServer(sfAuth, http.StatusOK)
-	defer server.Close()
+	serverUsernamePassword, _ := setupTestServer(sfAuthUsernamePassword, http.StatusOK)
+	defer serverUsernamePassword.Close()
+	credsUsernamePassword := Creds{
+		Domain:         serverUsernamePassword.URL,
+		Username:       "u",
+		Password:       "p",
+		SecurityToken:  "t",
+		ConsumerKey:    "key",
+		ConsumerSecret: "secret",
+	}
+	sfAuthUsernamePassword.creds = credsUsernamePassword
+
+	sfAuthClientCredentials := authentication{
+		AccessToken: "1234",
+		InstanceUrl: "example.com",
+		Id:          "123abc",
+		IssuedAt:    "01/01/1970",
+		Signature:   "signed",
+		grantType:   grantTypeClientCredentials,
+	}
+	serverClientCredentials, _ := setupTestServer(sfAuthClientCredentials, http.StatusOK)
+	defer serverClientCredentials.Close()
+	credsClientCredentials := Creds{
+		Domain:         serverClientCredentials.URL,
+		ConsumerKey:    "key",
+		ConsumerSecret: "secret",
+	}
+	sfAuthClientCredentials.creds = credsClientCredentials
+
+	sfAuthAccessToken := authentication{
+		AccessToken: "1234",
+		InstanceUrl: "example.com",
+		Id:          "123abc",
+		IssuedAt:    "01/01/1970",
+		Signature:   "signed",
+		grantType:   grantTypeAccessToken,
+	}
+	serverAccessToken, _ := setupTestServer(sfAuthAccessToken, http.StatusOK)
+	defer serverAccessToken.Close()
+	credsAccessToken := Creds{
+		Domain:      serverAccessToken.URL,
+		AccessToken: "1234",
+	}
+	sfAuthAccessToken.creds = credsAccessToken
 
 	type args struct {
 		creds Creds
@@ -315,34 +378,20 @@ func TestInit(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "authentication_username_password",
-			args: args{creds: Creds{
-				Domain:         server.URL,
-				Username:       "u",
-				Password:       "p",
-				SecurityToken:  "t",
-				ConsumerKey:    "key",
-				ConsumerSecret: "secret",
-			}},
-			want:    &Salesforce{auth: &sfAuth},
+			name:    "authentication_username_password",
+			args:    args{creds: sfAuthUsernamePassword.creds},
+			want:    &Salesforce{auth: &sfAuthUsernamePassword},
 			wantErr: false,
 		},
 		{
-			name: "authentication_client_credentials",
-			args: args{creds: Creds{
-				Domain:         server.URL,
-				ConsumerKey:    "key",
-				ConsumerSecret: "secret",
-			}},
-			want:    &Salesforce{auth: &sfAuth},
+			name:    "authentication_client_credentials",
+			args:    args{creds: credsClientCredentials},
+			want:    &Salesforce{auth: &sfAuthClientCredentials},
 			wantErr: false,
 		},
 		{
-			name: "authentication_access_token",
-			args: args{creds: Creds{
-				Domain:      server.URL,
-				AccessToken: "1234",
-			}},
+			name:    "authentication_access_token",
+			args:    args{creds: credsAccessToken},
 			wantErr: false,
 		},
 	}

@@ -306,7 +306,7 @@ func Test_doCompositeRequest(t *testing.T) {
 	}
 
 	type args struct {
-		auth    authentication
+		auth    *authentication
 		compReq compositeRequest
 	}
 	tests := []struct {
@@ -318,7 +318,7 @@ func Test_doCompositeRequest(t *testing.T) {
 		{
 			name: "successful_request",
 			args: args{
-				auth:    sfAuth,
+				auth:    &sfAuth,
 				compReq: compReq,
 			},
 			want: SalesforceResults{
@@ -330,7 +330,7 @@ func Test_doCompositeRequest(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:    badReqSfAuth,
+				auth:    &badReqSfAuth,
 				compReq: compReq,
 			},
 			want:    SalesforceResults{},
@@ -339,7 +339,7 @@ func Test_doCompositeRequest(t *testing.T) {
 		{
 			name: "salesforce_errors",
 			args: args{
-				auth:    sfErrorSfAuth,
+				auth:    &sfErrorSfAuth,
 				compReq: compReq,
 			},
 			want:    sfResultsFail,
@@ -378,7 +378,7 @@ func Test_doInsertComposite(t *testing.T) {
 	defer server.Close()
 
 	type args struct {
-		auth        authentication
+		auth        *authentication
 		sObjectName string
 		records     any
 		allOrNone   bool
@@ -393,7 +393,7 @@ func Test_doInsertComposite(t *testing.T) {
 		{
 			name: "successful_insert_composite",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				records: []account{
 					{
@@ -415,7 +415,7 @@ func Test_doInsertComposite(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				records:     "1",
 				batchSize:   200,
@@ -458,7 +458,7 @@ func Test_doUpdateComposite(t *testing.T) {
 	defer server.Close()
 
 	type args struct {
-		auth        authentication
+		auth        *authentication
 		sObjectName string
 		records     any
 		allOrNone   bool
@@ -473,7 +473,7 @@ func Test_doUpdateComposite(t *testing.T) {
 		{
 			name: "successful_update_composite",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				records: []account{
 					{
@@ -497,7 +497,7 @@ func Test_doUpdateComposite(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				records:     "1",
 				batchSize:   200,
@@ -509,7 +509,7 @@ func Test_doUpdateComposite(t *testing.T) {
 		{
 			name: "fail_no_id",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				records: []account{
 					{
@@ -556,7 +556,7 @@ func Test_doUpsertComposite(t *testing.T) {
 	defer server.Close()
 
 	type args struct {
-		auth        authentication
+		auth        *authentication
 		sObjectName string
 		fieldName   string
 		records     any
@@ -572,7 +572,7 @@ func Test_doUpsertComposite(t *testing.T) {
 		{
 			name: "successful_upsert_composite",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				fieldName:   "ExternalId__c",
 				records: []account{
@@ -597,7 +597,7 @@ func Test_doUpsertComposite(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				fieldName:   "ExternalId__c",
 				records:     "1",
@@ -610,7 +610,7 @@ func Test_doUpsertComposite(t *testing.T) {
 		{
 			name: "fail_no_external_id",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				fieldName:   "ExternalId__c",
 				records: []account{
@@ -657,7 +657,7 @@ func Test_doDeleteComposite(t *testing.T) {
 	defer server.Close()
 
 	type args struct {
-		auth        authentication
+		auth        *authentication
 		sObjectName string
 		records     any
 		allOrNone   bool
@@ -672,7 +672,7 @@ func Test_doDeleteComposite(t *testing.T) {
 		{
 			name: "successful_delete_composite_single_batch",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				records: []account{
 					{
@@ -694,7 +694,7 @@ func Test_doDeleteComposite(t *testing.T) {
 		{
 			name: "successful_delete_composite_multi_batch",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				records: []account{
 					{
@@ -716,7 +716,7 @@ func Test_doDeleteComposite(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				records:     "1",
 				batchSize:   200,
@@ -728,7 +728,7 @@ func Test_doDeleteComposite(t *testing.T) {
 		{
 			name: "fail_no_id",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				records:     []account{{}},
 				batchSize:   200,

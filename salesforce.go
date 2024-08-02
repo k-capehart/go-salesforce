@@ -175,28 +175,28 @@ func validateBulk(sf Salesforce, records any, batchSize int, isFile bool) error 
 func processSalesforceError(resp http.Response, auth *authentication, payload requestPayload) (*http.Response, error) {
 	responseData, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return &resp, err
 	}
 	var sfErrors []SalesforceErrorMessage
 	err = json.Unmarshal(responseData, &sfErrors)
 	if err != nil {
-		return nil, err
+		return &resp, err
 	}
 	for _, sfError := range sfErrors {
 		if sfError.ErrorCode == invalidSessionIdError && !payload.retry { // only attempt to refresh the session once
 			err = refreshSession(auth)
 			if err != nil {
-				return nil, err
+				return &resp, err
 			}
 			newResp, err := doRequest(auth, requestPayload{payload.method, payload.uri, payload.content, payload.body, true})
 			if err != nil {
-				return nil, err
+				return &resp, err
 			}
 			return newResp, nil
 		}
 	}
 
-	return nil, errors.New(string(responseData))
+	return &resp, errors.New(string(responseData))
 }
 
 func Init(creds Creds) (*Salesforce, error) {

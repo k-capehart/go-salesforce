@@ -200,7 +200,7 @@ func Test_doBatchedRequestsForCollection(t *testing.T) {
 	defer sfErrorServer.Close()
 
 	type args struct {
-		auth      authentication
+		auth      *authentication
 		method    string
 		url       string
 		batchSize int
@@ -215,7 +215,7 @@ func Test_doBatchedRequestsForCollection(t *testing.T) {
 		{
 			name: "single_record",
 			args: args{
-				auth:      sfAuth,
+				auth:      &sfAuth,
 				method:    http.MethodPost,
 				url:       "",
 				batchSize: 200,
@@ -234,7 +234,7 @@ func Test_doBatchedRequestsForCollection(t *testing.T) {
 		{
 			name: "multiple_batches",
 			args: args{
-				auth:      sfAuth,
+				auth:      &sfAuth,
 				method:    http.MethodPost,
 				url:       "",
 				batchSize: 1,
@@ -256,7 +256,7 @@ func Test_doBatchedRequestsForCollection(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:      badReqSfAuth,
+				auth:      &badReqSfAuth,
 				method:    http.MethodPost,
 				url:       "",
 				batchSize: 1,
@@ -272,7 +272,7 @@ func Test_doBatchedRequestsForCollection(t *testing.T) {
 		{
 			name: "salesforce_error",
 			args: args{
-				auth:      sfErrorSfAuth,
+				auth:      &sfErrorSfAuth,
 				method:    http.MethodPost,
 				url:       "",
 				batchSize: 1,
@@ -320,7 +320,7 @@ func Test_doInsertOne(t *testing.T) {
 	defer badReqServer.Close()
 
 	type args struct {
-		auth        authentication
+		auth        *authentication
 		sObjectName string
 		record      any
 	}
@@ -333,7 +333,7 @@ func Test_doInsertOne(t *testing.T) {
 		{
 			name: "successful_insert",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				record: account{
 					Name: "test account",
@@ -345,7 +345,7 @@ func Test_doInsertOne(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:        badReqSfAuth,
+				auth:        &badReqSfAuth,
 				sObjectName: "Account",
 				record: account{
 					Name: "test account",
@@ -357,7 +357,7 @@ func Test_doInsertOne(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				record:      "1",
 			},
@@ -391,7 +391,7 @@ func Test_doUpdateOne(t *testing.T) {
 	defer badReqServer.Close()
 
 	type args struct {
-		auth        authentication
+		auth        *authentication
 		sObjectName string
 		record      any
 	}
@@ -403,7 +403,7 @@ func Test_doUpdateOne(t *testing.T) {
 		{
 			name: "successful_update",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				record: account{
 					Id:   "1234",
@@ -415,7 +415,7 @@ func Test_doUpdateOne(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:        badReqSfAuth,
+				auth:        &badReqSfAuth,
 				sObjectName: "Account",
 				record: account{
 					Id:   "1234",
@@ -427,7 +427,7 @@ func Test_doUpdateOne(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				record:      "1",
 			},
@@ -462,7 +462,7 @@ func Test_doUpsertOne(t *testing.T) {
 	defer badReqServer.Close()
 
 	type args struct {
-		auth        authentication
+		auth        *authentication
 		sObjectName string
 		fieldName   string
 		record      any
@@ -476,7 +476,7 @@ func Test_doUpsertOne(t *testing.T) {
 		{
 			name: "successful_upsert",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				fieldName:   "ExternalId__c",
 				record: account{
@@ -490,7 +490,7 @@ func Test_doUpsertOne(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:        badReqSfAuth,
+				auth:        &badReqSfAuth,
 				sObjectName: "Account",
 				fieldName:   "ExternalId__c",
 				record: account{
@@ -504,7 +504,7 @@ func Test_doUpsertOne(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				fieldName:   "ExternalId__c",
 				record:      "1",
@@ -538,7 +538,7 @@ func Test_doDeleteOne(t *testing.T) {
 	defer badReqServer.Close()
 
 	type args struct {
-		auth        authentication
+		auth        *authentication
 		sObjectName string
 		record      any
 	}
@@ -550,7 +550,7 @@ func Test_doDeleteOne(t *testing.T) {
 		{
 			name: "successful_delete",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				record: account{
 					Id: "1234",
@@ -561,7 +561,7 @@ func Test_doDeleteOne(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:        badReqSfAuth,
+				auth:        &badReqSfAuth,
 				sObjectName: "Account",
 				record: account{
 					Id: "1234",
@@ -572,7 +572,7 @@ func Test_doDeleteOne(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				record:      "1",
 			},
@@ -606,7 +606,7 @@ func Test_doInsertCollection(t *testing.T) {
 	defer server.Close()
 
 	type args struct {
-		auth        authentication
+		auth        *authentication
 		sObjectName string
 		records     any
 		batchSize   int
@@ -620,7 +620,7 @@ func Test_doInsertCollection(t *testing.T) {
 		{
 			name: "successful_insert_collection",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				records: []account{
 					{
@@ -638,7 +638,7 @@ func Test_doInsertCollection(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				records:     "1",
 				batchSize:   200,
@@ -675,7 +675,7 @@ func Test_doUpdateCollection(t *testing.T) {
 	defer server.Close()
 
 	type args struct {
-		auth        authentication
+		auth        *authentication
 		sObjectName string
 		records     any
 		batchSize   int
@@ -689,7 +689,7 @@ func Test_doUpdateCollection(t *testing.T) {
 		{
 			name: "successful_update_collection",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				records: []account{
 					{
@@ -709,7 +709,7 @@ func Test_doUpdateCollection(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				records:     "1",
 				batchSize:   200,
@@ -750,7 +750,7 @@ func Test_doUpsertCollection(t *testing.T) {
 	defer server.Close()
 
 	type args struct {
-		auth        authentication
+		auth        *authentication
 		sObjectName string
 		fieldName   string
 		records     any
@@ -765,7 +765,7 @@ func Test_doUpsertCollection(t *testing.T) {
 		{
 			name: "successful_upsert_collection",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				fieldName:   "ExternalId__c",
 				records: []account{
@@ -786,7 +786,7 @@ func Test_doUpsertCollection(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				fieldName:   "ExternalId__c",
 				records:     "1",
@@ -862,7 +862,7 @@ func Test_doDeleteCollection(t *testing.T) {
 	defer sfErrorServer.Close()
 
 	type args struct {
-		auth        authentication
+		auth        *authentication
 		sObjectName string
 		records     any
 		batchSize   int
@@ -876,7 +876,7 @@ func Test_doDeleteCollection(t *testing.T) {
 		{
 			name: "successful_delete_collection_single_batch",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				records: []account{
 					{
@@ -894,7 +894,7 @@ func Test_doDeleteCollection(t *testing.T) {
 		{
 			name: "successful_delete_collection_multi_batch",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				records: []account{
 					{
@@ -912,7 +912,7 @@ func Test_doDeleteCollection(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        sfAuth,
+				auth:        &sfAuth,
 				sObjectName: "Account",
 				records:     "1",
 				batchSize:   200,
@@ -923,7 +923,7 @@ func Test_doDeleteCollection(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:        badReqSfAuth,
+				auth:        &badReqSfAuth,
 				sObjectName: "Account",
 				records: []account{
 					{
@@ -938,7 +938,7 @@ func Test_doDeleteCollection(t *testing.T) {
 		{
 			name: "salesforce_errors",
 			args: args{
-				auth:        sfErrorSfAuth,
+				auth:        &sfErrorSfAuth,
 				sObjectName: "Account",
 				records: []account{
 					{

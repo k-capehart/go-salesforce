@@ -61,7 +61,7 @@ func Test_performQuery(t *testing.T) {
 	defer badRespServer.Close()
 
 	type args struct {
-		auth    authentication
+		auth    *authentication
 		query   string
 		sObject []account
 	}
@@ -74,7 +74,7 @@ func Test_performQuery(t *testing.T) {
 		{
 			name: "query_account",
 			args: args{
-				auth:    sfAuth,
+				auth:    &sfAuth,
 				query:   "SELECT Id, Name FROM Account",
 				sObject: []account{},
 			},
@@ -93,7 +93,7 @@ func Test_performQuery(t *testing.T) {
 		{
 			name: "http_error",
 			args: args{
-				auth:    badSfAuth,
+				auth:    &badSfAuth,
 				query:   "SELECT Id, Name FROM Account",
 				sObject: []account{},
 			},
@@ -103,7 +103,7 @@ func Test_performQuery(t *testing.T) {
 		{
 			name: "bad_response",
 			args: args{
-				auth:    badRespSfAuth,
+				auth:    &badRespSfAuth,
 				query:   "SELECT Id FROM Account",
 				sObject: []account{},
 			},

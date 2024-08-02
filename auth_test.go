@@ -48,6 +48,7 @@ func Test_usernamePasswordFlow(t *testing.T) {
 		Id:          "123abc",
 		IssuedAt:    "01/01/1970",
 		Signature:   "signed",
+		grantType:   grantTypeUsernamePassword,
 	}
 	server, _ := setupTestServer(auth, http.StatusOK)
 	defer server.Close()
@@ -117,6 +118,7 @@ func Test_clientCredentialsFlow(t *testing.T) {
 		Id:          "123abc",
 		IssuedAt:    "01/01/1970",
 		Signature:   "signed",
+		grantType:   grantTypeClientCredentials,
 	}
 	server, _ := setupTestServer(auth, http.StatusOK)
 	defer server.Close()
