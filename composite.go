@@ -33,12 +33,17 @@ type compositeSubRequestResult struct {
 	ReferenceId    string             `json:"referenceId"`
 }
 
-func doCompositeRequest(auth authentication, compReq compositeRequest) (SalesforceResults, error) {
+func doCompositeRequest(auth *authentication, compReq compositeRequest) (SalesforceResults, error) {
 	body, jsonErr := json.Marshal(compReq)
 	if jsonErr != nil {
 		return SalesforceResults{}, jsonErr
 	}
-	resp, httpErr := doRequest(http.MethodPost, "/composite", jsonType, auth, string(body))
+	resp, httpErr := doRequest(auth, requestPayload{
+		method:  http.MethodPost,
+		uri:     "/composite",
+		content: jsonType,
+		body:    string(body),
+	})
 	if httpErr != nil {
 		return SalesforceResults{}, httpErr
 	}
@@ -122,7 +127,7 @@ func processCompositeResponse(resp http.Response, allOrNone bool) (SalesforceRes
 	return results, nil
 }
 
-func doInsertComposite(auth authentication, sObjectName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
+func doInsertComposite(auth *authentication, sObjectName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return SalesforceResults{}, err
@@ -146,7 +151,7 @@ func doInsertComposite(auth authentication, sObjectName string, records any, all
 	return results, nil
 }
 
-func doUpdateComposite(auth authentication, sObjectName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
+func doUpdateComposite(auth *authentication, sObjectName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return SalesforceResults{}, err
@@ -173,7 +178,7 @@ func doUpdateComposite(auth authentication, sObjectName string, records any, all
 	return results, nil
 }
 
-func doUpsertComposite(auth authentication, sObjectName string, fieldName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
+func doUpsertComposite(auth *authentication, sObjectName string, fieldName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return SalesforceResults{}, err
@@ -200,7 +205,7 @@ func doUpsertComposite(auth authentication, sObjectName string, fieldName string
 	return results, nil
 }
 
-func doDeleteComposite(auth authentication, sObjectName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
+func doDeleteComposite(auth *authentication, sObjectName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return SalesforceResults{}, err
