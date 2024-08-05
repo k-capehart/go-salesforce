@@ -299,7 +299,9 @@ func Test_processSalesforceError(t *testing.T) {
 			if err != nil {
 				panic(err)
 			}
-			w.Write(body)
+			if _, err := w.Write(body); err != nil {
+				panic(err)
+			}
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
 		}
