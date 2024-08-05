@@ -84,14 +84,21 @@ func refreshSession(auth *authentication) error {
 		return errors.New("invalid session, unable to refresh session")
 	}
 
-	if refreshedAuth != nil {
-		auth.AccessToken = refreshedAuth.AccessToken
-		auth.IssuedAt = refreshedAuth.IssuedAt
-		auth.Signature = refreshedAuth.Signature
-		auth.Id = refreshedAuth.Id
+	if err != nil {
+		return err
 	}
 
-	return err
+	if refreshedAuth == nil {
+			// just a suggestion here
+			return errors.New("missing refresh auth")
+	}
+
+	auth.AccessToken = refreshedAuth.AccessToken
+	auth.IssuedAt = refreshedAuth.IssuedAt
+	auth.Signature = refreshedAuth.Signature
+	auth.Id = refreshedAuth.Id
+
+	return nil
 }
 
 func doAuth(url string, body *strings.Reader) (*authentication, error) {
