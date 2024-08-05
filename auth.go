@@ -67,13 +67,13 @@ func refreshSession(auth *authentication) error {
 	switch grantType := auth.grantType; grantType {
 	case grantTypeClientCredentials:
 		refreshedAuth, err = clientCredentialsFlow(
-			auth.creds.Domain,
+			auth.InstanceUrl,
 			auth.creds.ConsumerKey,
 			auth.creds.ConsumerSecret,
 		)
 	case grantTypeUsernamePassword:
 		refreshedAuth, err = usernamePasswordFlow(
-			auth.creds.Domain,
+			auth.InstanceUrl,
 			auth.creds.Username,
 			auth.creds.Password,
 			auth.creds.SecurityToken,
@@ -89,8 +89,7 @@ func refreshSession(auth *authentication) error {
 	}
 
 	if refreshedAuth == nil {
-			// just a suggestion here
-			return errors.New("missing refresh auth")
+		return errors.New("missing refresh auth")
 	}
 
 	auth.AccessToken = refreshedAuth.AccessToken
