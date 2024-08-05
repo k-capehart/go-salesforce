@@ -65,10 +65,15 @@ const (
 
 var appFs = afero.NewOsFs() // afero.Fs type is a wrapper around os functions, allowing us to mock it in tests
 
-func updateJobState(job bulkJob, state string, auth authentication) error {
+func updateJobState(job bulkJob, state string, auth *authentication) error {
 	job.State = state
 	body, _ := json.Marshal(job)
-	_, err := doRequest(http.MethodPatch, "/jobs/ingest/"+job.Id, jsonType, auth, string(body))
+	_, err := doRequest(auth, requestPayload{
+		method:  http.MethodPatch,
+		uri:     "/jobs/ingest/" + job.Id,
+		content: jsonType,
+		body:    string(body),
+	})
 	if err != nil {
 		return err
 	}
@@ -76,8 +81,13 @@ func updateJobState(job bulkJob, state string, auth authentication) error {
 	return nil
 }
 
-func createBulkJob(auth authentication, jobType string, body []byte) (bulkJob, error) {
-	resp, err := doRequest(http.MethodPost, "/jobs/"+jobType, jsonType, auth, string(body))
+func createBulkJob(auth *authentication, jobType string, body []byte) (bulkJob, error) {
+	resp, err := doRequest(auth, requestPayload{
+		method:  http.MethodPost,
+		uri:     "/jobs/" + jobType,
+		content: jsonType,
+		body:    string(body),
+	})
 	if err != nil {
 		return bulkJob{}, err
 	}
@@ -96,8 +106,13 @@ func createBulkJob(auth authentication, jobType string, body []byte) (bulkJob, e
 	return *newJob, nil
 }
 
-func uploadJobData(auth authentication, data string, bulkJob bulkJob) error {
-	_, uploadDataErr := doRequest("PUT", "/jobs/ingest/"+bulkJob.Id+"/batches", csvType, auth, data)
+func uploadJobData(auth *authentication, data string, bulkJob bulkJob) error {
+	_, uploadDataErr := doRequest(auth, requestPayload{
+		method:  http.MethodPut,
+		uri:     "/jobs/ingest/" + bulkJob.Id + "/batches",
+		content: csvType,
+		body:    data,
+	})
 	if uploadDataErr != nil {
 		if err := updateJobState(bulkJob, jobStateAborted, auth); err != nil {
 			return err
@@ -112,8 +127,12 @@ func uploadJobData(auth authentication, data string, bulkJob bulkJob) error {
 	return nil
 }
 
-func getJobResults(auth authentication, jobType string, bulkJobId string) (BulkJobResults, error) {
-	resp, err := doRequest(http.MethodGet, "/jobs/"+jobType+"/"+bulkJobId, jsonType, auth, "")
+func getJobResults(auth *authentication, jobType string, bulkJobId string) (BulkJobResults, error) {
+	resp, err := doRequest(auth, requestPayload{
+		method:  http.MethodGet,
+		uri:     "/jobs/" + jobType + "/" + bulkJobId,
+		content: jsonType,
+	})
 	if err != nil {
 		return BulkJobResults{}, err
 	}
@@ -132,7 +151,7 @@ func getJobResults(auth authentication, jobType string, bulkJobId string) (BulkJ
 	return *bulkJobResults, nil
 }
 
-func getJobRecordResults(auth authentication, bulkJobResults BulkJobResults) (BulkJobResults, error) {
+func getJobRecordResults(auth *authentication, bulkJobResults BulkJobResults) (BulkJobResults, error) {
 	successfulRecords, err := getBulkJobRecords(auth, bulkJobResults.Id, successfulResults)
 	if err != nil {
 		return bulkJobResults, fmt.Errorf("failed to get SuccessfulRecords: %w", err)
@@ -146,8 +165,12 @@ func getJobRecordResults(auth authentication, bulkJobResults BulkJobResults) (Bu
 	return bulkJobResults, err
 }
 
-func getBulkJobRecords(auth authentication, bulkJobId string, resultType string) ([]map[string]any, error) {
-	resp, err := doRequest(http.MethodGet, "/jobs/ingest/"+bulkJobId+"/"+resultType, jsonType, auth, "")
+func getBulkJobRecords(auth *authentication, bulkJobId string, resultType string) ([]map[string]any, error) {
+	resp, err := doRequest(auth, requestPayload{
+		method:  http.MethodGet,
+		uri:     "/jobs/ingest/" + bulkJobId + "/" + resultType,
+		content: jsonType,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +183,7 @@ func getBulkJobRecords(auth authentication, bulkJobId string, resultType string)
 	return results, nil
 }
 
-func waitForJobResultsAsync(auth authentication, bulkJobId string, jobType string, interval time.Duration, c chan error) {
+func waitForJobResultsAsync(auth *authentication, bulkJobId string, jobType string, interval time.Duration, c chan error) {
 	err := wait.PollUntilContextTimeout(context.Background(), interval, time.Minute, false, func(context.Context) (bool, error) {
 		bulkJob, reqErr := getJobResults(auth, jobType, bulkJobId)
 		if reqErr != nil {
@@ -171,7 +194,7 @@ func waitForJobResultsAsync(auth authentication, bulkJobId string, jobType strin
 	c <- err
 }
 
-func waitForJobResults(auth authentication, bulkJobId string, jobType string, interval time.Duration) error {
+func waitForJobResults(auth *authentication, bulkJobId string, jobType string, interval time.Duration) error {
 	err := wait.PollUntilContextTimeout(context.Background(), interval, time.Minute, false, func(context.Context) (bool, error) {
 		bulkJob, reqErr := getJobResults(auth, jobType, bulkJobId)
 		if reqErr != nil {
@@ -195,12 +218,12 @@ func isBulkJobDone(bulkJob BulkJobResults) (bool, error) {
 	return false, nil
 }
 
-func getQueryJobResults(auth authentication, bulkJobId string, locator string) (bulkJobQueryResults, error) {
+func getQueryJobResults(auth *authentication, bulkJobId string, locator string) (bulkJobQueryResults, error) {
 	uri := "/jobs/query/" + bulkJobId + "/results"
 	if locator != "" {
 		uri = uri + "/?locator=" + locator
 	}
-	resp, err := doRequest(http.MethodGet, uri, jsonType, auth, "")
+	resp, err := doRequest(auth, requestPayload{method: http.MethodGet, uri: uri, content: jsonType})
 	if err != nil {
 		return bulkJobQueryResults{}, err
 	}
@@ -225,7 +248,7 @@ func getQueryJobResults(auth authentication, bulkJobId string, locator string) (
 	return queryResults, nil
 }
 
-func collectQueryResults(auth authentication, bulkJobId string) ([][]string, error) {
+func collectQueryResults(auth *authentication, bulkJobId string) ([][]string, error) {
 	queryResults, resultsErr := getQueryJobResults(auth, bulkJobId, "")
 	if resultsErr != nil {
 		return nil, resultsErr
@@ -336,7 +359,7 @@ func writeCSVFile(filePath string, data [][]string) error {
 	return nil
 }
 
-func constructBulkJobRequest(auth authentication, sObjectName string, operation string, fieldName string) (bulkJob, error) {
+func constructBulkJobRequest(auth *authentication, sObjectName string, operation string, fieldName string) (bulkJob, error) {
 	jobReq := bulkJobCreationRequest{
 		Object:              sObjectName,
 		Operation:           operation,
@@ -356,7 +379,7 @@ func constructBulkJobRequest(auth authentication, sObjectName string, operation 
 	return job, nil
 }
 
-func doBulkJob(auth authentication, sObjectName string, fieldName string, operation string, records any, batchSize int, waitForResults bool) ([]string, error) {
+func doBulkJob(auth *authentication, sObjectName string, fieldName string, operation string, records any, batchSize int, waitForResults bool) ([]string, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return []string{}, err
@@ -402,7 +425,7 @@ func doBulkJob(auth authentication, sObjectName string, fieldName string, operat
 	return jobIds, jobErrors
 }
 
-func doBulkJobWithFile(auth authentication, sObjectName string, fieldName string, operation string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
+func doBulkJobWithFile(auth *authentication, sObjectName string, fieldName string, operation string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
 	var jobErrors error
 	var jobIds []string
 
@@ -461,7 +484,7 @@ func doBulkJobWithFile(auth authentication, sObjectName string, fieldName string
 	return jobIds, jobErrors
 }
 
-func doQueryBulk(auth authentication, filePath string, query string) error {
+func doQueryBulk(auth *authentication, filePath string, query string) error {
 	queryJobReq := bulkQueryJobCreationRequest{
 		Operation: queryJobType,
 		Query:     query,

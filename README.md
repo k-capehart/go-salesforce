@@ -87,6 +87,7 @@ Returns a new Salesforce instance given a user's credentials.
 - `creds`: a struct containing the necessary credentials to authenticate into a Salesforce org
 - [Creating a Connected App in Salesforce](https://help.salesforce.com/s/articleView?id=sf.connected_app_create.htm&type=5)
 - [Review Salesforce oauth flows](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_flows.htm&type=5)
+- If an operation fails with the Error Code `INVALID_SESSION_ID`, go-salesforce will attempt to refresh the session by resubmitting the same credentials used during initialization
 
 [Client Credentials Flow](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_client_credentials_flow.htm&type=5)
 
@@ -655,7 +656,7 @@ Create Bulk API Jobs to query, insert, update, upsert, and delete large collecti
 
 - [Review Salesforce REST API resources for Bulk v2](https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/bulk_api_2_0.htm)
 - Work with large lists of records by passing either a slice or records or the path to a csv file
-- Jobs can run asynchronously and optionally wait for them to finish so errors are available
+- Jobs can run asynchronously or synchronously
 
 ### QueryBulkExport
 
@@ -716,7 +717,7 @@ Inserts a list of salesforce records using Bulk API v2, returning a list of Job 
 - `sObjectName`: API name of Salesforce object
 - `records`: a slice of salesforce records
 - `batchSize`: `1 <= batchSize <= 10000`
-- `waitForResults`: denotes whether to wait for jobs to finish and return any errors if they are encountered during the operation
+- `waitForResults`: denotes whether to wait for jobs to finish
 
 ```go
 type Contact struct {
@@ -748,7 +749,7 @@ Inserts a collection of salesforce records from a csv file using Bulk API v2, re
 - `sObjectName`: API name of Salesforce object
 - `filePath`: path to a csv file containing salesforce data
 - `batchSize`: `1 <= batchSize <= 10000`
-- `waitForResults`: denotes whether to wait for jobs to finish and return any errors if they are encountered during the operation
+- `waitForResults`: denotes whether to wait for jobs to finish
 
 `data/avengers.csv`
 
@@ -776,7 +777,7 @@ Updates a list of salesforce records using Bulk API v2, returning a list of Job 
 - `records`: a slice of salesforce records
   - An Id is required
 - `batchSize`: `1 <= batchSize <= 10000`
-- `waitForResults`: denotes whether to wait for jobs to finish and return any errors if they are encountered during the operation
+- `waitForResults`: denotes whether to wait for jobs to finish
 
 ```go
 type Contact struct {
@@ -812,7 +813,7 @@ Updates a collection of salesforce records from a csv file using Bulk API v2, re
 - `filePath`: path to a csv file containing salesforce data
   - An Id is required within csv data
 - `batchSize`: `1 <= batchSize <= 10000`
-- `waitForResults`: denotes whether to wait for jobs to finish and return any errors if they are encountered during the operation
+- `waitForResults`: denotes whether to wait for jobs to finish
 
 `data/update_avengers.csv`
 
@@ -844,7 +845,7 @@ Updates (or inserts) a list of salesforce records using Bulk API v2, returning a
 - `records`: a slice of salesforce records
   - A value for the External Id is required
 - `batchSize`: `1 <= batchSize <= 10000`
-- `waitForResults`: denotes whether to wait for jobs to finish and return any errors if they are encountered during the operation
+- `waitForResults`: denotes whether to wait for jobs to finish
 
 ```go
 type ContactWithExternalId struct {
@@ -881,7 +882,7 @@ Updates (or inserts) a collection of salesforce records from a csv file using Bu
 - `filePath`: path to a csv file containing salesforce data
   - A value for the External Id is required within csv data
 - `batchSize`: `1 <= batchSize <= 10000`
-- `waitForResults`: denotes whether to wait for jobs to finish and return any errors if they are encountered during the operation
+- `waitForResults`: denotes whether to wait for jobs to finish
 
 `data/upsert_avengers.csv`
 
@@ -910,7 +911,7 @@ Deletes a list of salesforce records using Bulk API v2, returning a list of Job 
 - `records`: a slice of salesforce records
   - should only contain Ids
 - `batchSize`: `1 <= batchSize <= 10000`
-- `waitForResults`: denotes whether to wait for jobs to finish and return any errors if they are encountered during the operation
+- `waitForResults`: denotes whether to wait for jobs to finish
 
 ```go
 type Contact struct {
@@ -943,7 +944,7 @@ Deletes a collection of salesforce records from a csv file using Bulk API v2, re
 - `filePath`: path to a csv file containing salesforce data
   - should only contain Ids
 - `batchSize`: `1 <= batchSize <= 10000`
-- `waitForResults`: denotes whether to wait for jobs to finish and return any errors if they are encountered during the operation
+- `waitForResults`: denotes whether to wait for jobs to finish
 
 `data/delete_avengers.csv`
 

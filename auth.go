@@ -17,6 +17,8 @@ type authentication struct {
 	Scope       string `json:"scope"`
 	IssuedAt    string `json:"issued_at"`
 	Signature   string `json:"signature"`
+	grantType   string
+	creds       Creds
 }
 
 type Creds struct {
@@ -30,8 +32,9 @@ type Creds struct {
 }
 
 const (
-	grantTypePassword          = "password"
+	grantTypeUsernamePassword  = "password"
 	grantTypeClientCredentials = "client_credentials"
+	grantTypeAccessToken       = "access_token"
 )
 
 func validateAuth(sf Salesforce) error {
@@ -45,10 +48,54 @@ func validateSession(auth authentication) error {
 	if err := validateAuth(Salesforce{auth: &auth}); err != nil {
 		return err
 	}
-	_, err := doRequest(http.MethodGet, "/limits", jsonType, auth, "")
+	_, err := doRequest(&auth, requestPayload{
+		method:  http.MethodGet,
+		uri:     "/limits",
+		content: jsonType,
+	})
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func refreshSession(auth *authentication) error {
+	var refreshedAuth *authentication
+	var err error
+
+	switch grantType := auth.grantType; grantType {
+	case grantTypeClientCredentials:
+		refreshedAuth, err = clientCredentialsFlow(
+			auth.InstanceUrl,
+			auth.creds.ConsumerKey,
+			auth.creds.ConsumerSecret,
+		)
+	case grantTypeUsernamePassword:
+		refreshedAuth, err = usernamePasswordFlow(
+			auth.InstanceUrl,
+			auth.creds.Username,
+			auth.creds.Password,
+			auth.creds.SecurityToken,
+			auth.creds.ConsumerKey,
+			auth.creds.ConsumerSecret,
+		)
+	default:
+		return errors.New("invalid session, unable to refresh session")
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if refreshedAuth == nil {
+		return errors.New("missing refresh auth")
+	}
+
+	auth.AccessToken = refreshedAuth.AccessToken
+	auth.IssuedAt = refreshedAuth.IssuedAt
+	auth.Signature = refreshedAuth.Signature
+	auth.Id = refreshedAuth.Id
 
 	return nil
 }
@@ -79,7 +126,7 @@ func doAuth(url string, body *strings.Reader) (*authentication, error) {
 
 func usernamePasswordFlow(domain string, username string, password string, securityToken string, consumerKey string, consumerSecret string) (*authentication, error) {
 	payload := url.Values{
-		"grant_type":    {grantTypePassword},
+		"grant_type":    {grantTypeUsernamePassword},
 		"client_id":     {consumerKey},
 		"client_secret": {consumerSecret},
 		"username":      {username},
@@ -91,6 +138,7 @@ func usernamePasswordFlow(domain string, username string, password string, secur
 	if err != nil {
 		return nil, err
 	}
+	auth.grantType = grantTypeUsernamePassword
 	return auth, nil
 }
 
@@ -106,6 +154,7 @@ func clientCredentialsFlow(domain string, consumerKey string, consumerSecret str
 	if err != nil {
 		return nil, err
 	}
+	auth.grantType = grantTypeClientCredentials
 	return auth, nil
 }
 
@@ -114,5 +163,6 @@ func setAccessToken(domain string, accessToken string) (*authentication, error) 
 	if err := validateSession(*auth); err != nil {
 		return nil, err
 	}
+	auth.grantType = grantTypeAccessToken
 	return auth, nil
 }

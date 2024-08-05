@@ -48,6 +48,7 @@ func Test_usernamePasswordFlow(t *testing.T) {
 		Id:          "123abc",
 		IssuedAt:    "01/01/1970",
 		Signature:   "signed",
+		grantType:   grantTypeUsernamePassword,
 	}
 	server, _ := setupTestServer(auth, http.StatusOK)
 	defer server.Close()
@@ -117,6 +118,7 @@ func Test_clientCredentialsFlow(t *testing.T) {
 		Id:          "123abc",
 		IssuedAt:    "01/01/1970",
 		Signature:   "signed",
+		grantType:   grantTypeClientCredentials,
 	}
 	server, _ := setupTestServer(auth, http.StatusOK)
 	defer server.Close()
@@ -229,6 +231,76 @@ func Test_setAccessToken(t *testing.T) {
 			if (tt.want == nil && !reflect.DeepEqual(got, tt.want)) ||
 				(tt.want != nil && !reflect.DeepEqual(got.AccessToken, tt.want.AccessToken)) {
 				t.Errorf("setAccessToken() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_refreshSession(t *testing.T) {
+	refreshedAuth := authentication{
+		AccessToken: "1234",
+		InstanceUrl: "example.com",
+		Id:          "123abc",
+		IssuedAt:    "01/01/1970",
+		Signature:   "signed",
+	}
+	serverClientCredentials, sfAuthClientCredentials := setupTestServer(refreshedAuth, http.StatusOK)
+	defer serverClientCredentials.Close()
+	sfAuthClientCredentials.grantType = grantTypeClientCredentials
+
+	serverUserNamePassword, sfAuthUserNamePassword := setupTestServer(refreshedAuth, http.StatusOK)
+	defer serverUserNamePassword.Close()
+	sfAuthUserNamePassword.grantType = grantTypeUsernamePassword
+
+	serverNoGrantType, sfAuthNoGrantType := setupTestServer(refreshedAuth, http.StatusOK)
+	defer serverNoGrantType.Close()
+
+	serverBadRequest, sfAuthBadRequest := setupTestServer("", http.StatusBadGateway)
+	defer serverBadRequest.Close()
+	sfAuthBadRequest.grantType = grantTypeClientCredentials
+
+	serverNoRefresh, sfAuthNoRefresh := setupTestServer("", http.StatusOK)
+	defer serverNoRefresh.Close()
+	sfAuthNoRefresh.grantType = grantTypeClientCredentials
+
+	type args struct {
+		auth *authentication
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name:    "refresh_client_credentials",
+			args:    args{auth: &sfAuthClientCredentials},
+			wantErr: false,
+		},
+		{
+			name:    "refresh_username_password",
+			args:    args{auth: &sfAuthUserNamePassword},
+			wantErr: false,
+		},
+		{
+			name:    "error_no_grant_type",
+			args:    args{auth: &sfAuthNoGrantType},
+			wantErr: true,
+		},
+		{
+			name:    "error_bad_request",
+			args:    args{auth: &sfAuthBadRequest},
+			wantErr: true,
+		},
+		{
+			name:    "no_refresh",
+			args:    args{auth: &sfAuthNoRefresh},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := refreshSession(tt.args.auth); (err != nil) != tt.wantErr {
+				t.Errorf("refreshSession() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

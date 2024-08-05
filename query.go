@@ -17,7 +17,7 @@ type queryResponse struct {
 	Records        []map[string]any `json:"records"`
 }
 
-func performQuery(auth authentication, query string, sObject any) error {
+func performQuery(auth *authentication, query string, sObject any) error {
 	query = url.QueryEscape(query)
 	queryResp := &queryResponse{
 		Done:           false,
@@ -25,7 +25,11 @@ func performQuery(auth authentication, query string, sObject any) error {
 	}
 
 	for !queryResp.Done {
-		resp, err := doRequest(http.MethodGet, queryResp.NextRecordsUrl, jsonType, auth, "")
+		resp, err := doRequest(auth, requestPayload{
+			method:  http.MethodGet,
+			uri:     queryResp.NextRecordsUrl,
+			content: jsonType,
+		})
 		if err != nil {
 			return err
 		}
