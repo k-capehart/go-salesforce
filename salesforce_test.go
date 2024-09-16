@@ -2788,17 +2788,17 @@ func TestSalesforce_QueryBulkExport(t *testing.T) {
 		if r.RequestURI[len(r.RequestURI)-6:] == "/query" {
 			w.WriteHeader(http.StatusOK)
 			if _, err := w.Write(jobCreationRespBody); err != nil {
-				t.Fatalf(err.Error())
+				t.Fatal(err.Error())
 			}
 		} else if r.RequestURI[len(r.RequestURI)-5:] == "/1234" {
 			if _, err := w.Write(jobResultsRespBody); err != nil {
-				t.Fatalf(err.Error())
+				t.Fatal(err.Error())
 			}
 		} else if r.RequestURI[len(r.RequestURI)-8:] == "/results" {
 			w.Header().Add("Sforce-Locator", "")
 			w.Header().Add("Sforce-Numberofrecords", "1")
 			if _, err := w.Write([]byte(csvData)); err != nil {
-				t.Fatalf(err.Error())
+				t.Fatal(err.Error())
 			}
 		}
 	}))
@@ -2881,17 +2881,17 @@ func TestSalesforce_QueryStructBulkExport(t *testing.T) {
 		if r.RequestURI[len(r.RequestURI)-6:] == "/query" {
 			w.WriteHeader(http.StatusOK)
 			if _, err := w.Write(jobCreationRespBody); err != nil {
-				t.Fatalf(err.Error())
+				t.Fatal(err.Error())
 			}
 		} else if r.RequestURI[len(r.RequestURI)-5:] == "/1234" {
 			if _, err := w.Write(jobResultsRespBody); err != nil {
-				t.Fatalf(err.Error())
+				t.Fatal(err.Error())
 			}
 		} else if r.RequestURI[len(r.RequestURI)-8:] == "/results" {
 			w.Header().Add("Sforce-Locator", "")
 			w.Header().Add("Sforce-Numberofrecords", "1")
 			if _, err := w.Write([]byte(csvData)); err != nil {
-				t.Fatalf(err.Error())
+				t.Fatal(err.Error())
 			}
 		}
 	}))

@@ -254,7 +254,7 @@ func Test_getQueryJobResults(t *testing.T) {
 		w.Header().Add("Sforce-Numberofrecords", "1")
 		w.Header().Add("Sforce-Locator", "")
 		if _, err := w.Write([]byte(csvData)); err != nil {
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 	}))
 	sfAuth := authentication{
@@ -382,7 +382,7 @@ func Test_constructBulkJobRequest(t *testing.T) {
 	badJobByte, _ := json.Marshal(badJob)
 	badJobServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write(badJobByte); err != nil {
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 	}))
 	badJobSfAuth := authentication{
@@ -807,7 +807,7 @@ func Test_collectQueryResults(t *testing.T) {
 		}
 		w.Header().Add("Sforce-Numberofrecords", "1")
 		if _, err := w.Write([]byte(csvData)); err != nil {
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 	}))
 	sfAuth := authentication{
@@ -1025,7 +1025,7 @@ func Test_writeCSVFile(t *testing.T) {
 			}
 			got, err := readCSVFile("data/export.csv")
 			if err != nil {
-				t.Errorf(err.Error())
+				t.Error(err.Error())
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
@@ -1245,7 +1245,7 @@ func Test_doQueryBulk(t *testing.T) {
 		if r.RequestURI[len(r.RequestURI)-6:] == "/query" {
 			w.WriteHeader(http.StatusOK)
 			if _, err := w.Write(badJobCreationRespBody); err != nil {
-				t.Fatalf(err.Error())
+				t.Fatal(err.Error())
 			}
 		}
 	}))
@@ -1259,7 +1259,7 @@ func Test_doQueryBulk(t *testing.T) {
 		if r.RequestURI[len(r.RequestURI)-6:] == "/query" {
 			w.WriteHeader(http.StatusOK)
 			if _, err := w.Write(jobCreationRespBody); err != nil {
-				t.Fatalf(err.Error())
+				t.Fatal(err.Error())
 			}
 		} else if r.RequestURI[len(r.RequestURI)-8:] == "/results" {
 			w.WriteHeader(http.StatusBadRequest)
@@ -1313,7 +1313,7 @@ func Test_getJobRecordResults(t *testing.T) {
 	csvData := `"name"` + "\n" + `"test account"`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte(csvData)); err != nil {
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 	}))
 	sfAuth := authentication{
@@ -1328,7 +1328,7 @@ func Test_getJobRecordResults(t *testing.T) {
 	successThenFailServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.RequestURI, successfulResults) {
 			if _, err := w.Write([]byte(csvData)); err != nil {
-				t.Fatalf(err.Error())
+				t.Fatal(err.Error())
 			}
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
@@ -1409,7 +1409,7 @@ func Test_getBulkJobRecords(t *testing.T) {
 	csvData := `"name"` + "\n" + `"test account"`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte(csvData)); err != nil {
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 	}))
 	sfAuth := authentication{
@@ -1423,7 +1423,7 @@ func Test_getBulkJobRecords(t *testing.T) {
 
 	badDataServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte("name,type\ntest")); err != nil {
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 	}))
 	badDataAuth := authentication{
