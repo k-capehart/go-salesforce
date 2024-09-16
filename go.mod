@@ -8,7 +8,7 @@ require github.com/forcedotcom/go-soql v0.0.0-20220705175410-00f698360bee
 
 require (
 	github.com/spf13/afero v1.11.0
-	k8s.io/apimachinery v0.31.0
+	k8s.io/apimachinery v0.31.1
 )
 
 require (
