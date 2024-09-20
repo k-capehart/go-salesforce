@@ -38,8 +38,13 @@ func setupTestServer(body any, status int) (*httptest.Server, authentication) {
 func Test_doRequest(t *testing.T) {
 	server, sfAuth := setupTestServer("", http.StatusOK)
 	defer server.Close()
+
 	badServer, badSfAuth := setupTestServer("", http.StatusBadRequest)
 	defer badServer.Close()
+
+	recordArrayResp := [2]string{"testRecord1", "testRecord2"}
+	serverWith300Resp, authWith300Resp := setupTestServer(recordArrayResp, http.StatusMultipleChoices)
+	defer serverWith300Resp.Close()
 
 	type args struct {
 		auth    *authentication
@@ -78,6 +83,20 @@ func Test_doRequest(t *testing.T) {
 			},
 			want:    http.StatusBadRequest,
 			wantErr: true,
+		},
+		{
+			name: "handle_multiple_records_with_same_externalId_statusCode_300",
+			args: args{
+				auth: &authWith300Resp,
+				payload: requestPayload{
+					method:  http.MethodGet,
+					uri:     "/sobjects/Contact/ContactExternalId__c/Avng1",
+					content: jsonType,
+					body:    "",
+				},
+			},
+			want:    http.StatusMultipleChoices,
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {

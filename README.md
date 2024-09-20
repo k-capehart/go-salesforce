@@ -1032,7 +1032,7 @@ Anyone is welcome to contribute.
 - Open an issue or discussion post to track the effort
 - Fork this repository, then clone it
 - Place this in your own module's `go.mod` to enable testing local changes
-  - `replace github.com/k-capehart/go-salesforce => /path_to_local_fork/`
+  - `replace github.com/k-capehart/go-salesforce/v2 => /path_to_local_fork/`
 - Run tests
   - `go test -cover`
 - Generate code coverage output
