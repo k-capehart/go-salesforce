@@ -3,14 +3,10 @@ package salesforce
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
-
-	"github.com/golang-jwt/jwt/v5"
 )
 
 type authentication struct {
@@ -32,17 +28,13 @@ type Creds struct {
 	SecurityToken  string
 	ConsumerKey    string
 	ConsumerSecret string
-	ConsumerRSAPem string
 	AccessToken    string
 }
-
-const JwtExpirationTime = 5 * time.Minute
 
 const (
 	grantTypeUsernamePassword  = "password"
 	grantTypeClientCredentials = "client_credentials"
 	grantTypeAccessToken       = "access_token"
-	grantTypeJWT               = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 )
 
 func validateAuth(sf Salesforce) error {
@@ -87,14 +79,6 @@ func refreshSession(auth *authentication) error {
 			auth.creds.SecurityToken,
 			auth.creds.ConsumerKey,
 			auth.creds.ConsumerSecret,
-		)
-	case grantTypeJWT:
-		refreshedAuth, err = jwtFlow(
-			auth.InstanceUrl,
-			auth.creds.Username,
-			auth.creds.ConsumerKey,
-			auth.creds.ConsumerRSAPem,
-			JwtExpirationTime,
 		)
 	default:
 		return errors.New("invalid session, unable to refresh session")
@@ -180,36 +164,5 @@ func setAccessToken(domain string, accessToken string) (*authentication, error) 
 		return nil, err
 	}
 	auth.grantType = grantTypeAccessToken
-	return auth, nil
-}
-
-func jwtFlow(domain string, username string, consumerKey string, consumerRSAPem string, expirationTime time.Duration) (*authentication, error) {
-	claims := &jwt.MapClaims{
-		"exp": jwt.NewNumericDate(time.Unix(int64(expirationTime.Seconds()), 0)),
-		"aud": domain,
-		"iss": consumerKey,
-		"sub": username,
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	signKey, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(consumerRSAPem))
-	if err != nil {
-		return nil, fmt.Errorf("ParseRSAPrivateKeyFromPEM: %w", err)
-	}
-	tokenString, err := token.SignedString(signKey)
-	if err != nil {
-		return nil, fmt.Errorf("jwt.SignedString: %w", err)
-	}
-
-	payload := url.Values{
-		"grant_type": {grantTypeJWT},
-		"assertion":  {tokenString},
-	}
-	endpoint := "/services/oauth2/token"
-	body := strings.NewReader(payload.Encode())
-	auth, err := doAuth(domain+endpoint, body)
-	if err != nil {
-		return nil, err
-	}
-	auth.grantType = grantTypeJWT
 	return auth, nil
 }
