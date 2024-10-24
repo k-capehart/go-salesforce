@@ -435,6 +435,27 @@ func (sf *Salesforce) QueryStructBulkExport(soqlStruct any, filePath string) err
 	return nil
 }
 
+func (sf *Salesforce) CreateQueryBulkJob(query string) (IteratorJob, error) {
+	queryJobReq := bulkQueryJobCreationRequest{
+		Operation: queryJobType,
+		Query:     query,
+	}
+	body, jsonErr := json.Marshal(queryJobReq)
+	if jsonErr != nil {
+		return nil, jsonErr
+	}
+
+	job, jobCreationErr := createBulkJob(sf.auth, queryJobType, body)
+	if jobCreationErr != nil {
+		return nil, jobCreationErr
+	}
+	if job.Id == "" {
+		newErr := errors.New("error creating bulk query job")
+		return nil, newErr
+	}
+	return newBulkJobQueryIterator(sf.auth, job.Id)
+}
+
 func (sf *Salesforce) InsertBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
 	validationErr := validateBulk(*sf, records, batchSize, false)
 	if validationErr != nil {
