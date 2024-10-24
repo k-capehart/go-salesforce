@@ -202,9 +202,11 @@ func processSalesforceError(resp http.Response, auth *authentication, payload re
 func Init(creds Creds) (*Salesforce, error) {
 	var auth *authentication
 	var err error
-	if creds != (Creds{}) && creds.Domain != "" && creds.ConsumerKey != "" && creds.ConsumerSecret != "" &&
+	if creds != (Creds{}) {
+		return nil, errors.New("creds is empty")
+	}
+	if creds.Domain != "" && creds.ConsumerKey != "" && creds.ConsumerSecret != "" &&
 		creds.Username != "" && creds.Password != "" && creds.SecurityToken != "" {
-
 		auth, err = usernamePasswordFlow(
 			creds.Domain,
 			creds.Username,
@@ -213,16 +215,24 @@ func Init(creds Creds) (*Salesforce, error) {
 			creds.ConsumerKey,
 			creds.ConsumerSecret,
 		)
-	} else if creds != (Creds{}) && creds.Domain != "" && creds.ConsumerKey != "" && creds.ConsumerSecret != "" {
+	} else if creds.Domain != "" && creds.ConsumerKey != "" && creds.ConsumerSecret != "" {
 		auth, err = clientCredentialsFlow(
 			creds.Domain,
 			creds.ConsumerKey,
 			creds.ConsumerSecret,
 		)
-	} else if creds != (Creds{}) && creds.AccessToken != "" {
+	} else if creds.AccessToken != "" {
 		auth, err = setAccessToken(
 			creds.Domain,
 			creds.AccessToken,
+		)
+	} else if creds.Domain != "" && creds.Username != "" && creds.ConsumerKey != "" && creds.ConsumerRSAPem != "" {
+		auth, err = jwtFlow(
+			creds.Domain,
+			creds.Username,
+			creds.ConsumerKey,
+			creds.ConsumerRSAPem,
+			JwtExpirationTime,
 		)
 	}
 
