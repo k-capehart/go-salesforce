@@ -2996,6 +2996,114 @@ func TestSalesforce_QueryStructBulkExport(t *testing.T) {
 	}
 }
 
+func TestSalesforce_CreateQueryBulkJob(t *testing.T) {
+	job := bulkJob{
+		Id:    "1234",
+		State: jobStateJobComplete,
+	}
+	jobResults := BulkJobResults{
+		Id:                  "1234",
+		State:               jobStateJobComplete,
+		NumberRecordsFailed: 0,
+		ErrorMessage:        "",
+	}
+	jobCreationRespBody, _ := json.Marshal(job)
+	jobResultsRespBody, _ := json.Marshal(jobResults)
+	csvData := `"col"` + "\n" + `"row"`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.RequestURI[len(r.RequestURI)-6:] == "/query" {
+			w.WriteHeader(http.StatusOK)
+			if _, err := w.Write(jobCreationRespBody); err != nil {
+				t.Fatal(err.Error())
+			}
+		} else if r.RequestURI[len(r.RequestURI)-5:] == "/1234" {
+			if _, err := w.Write(jobResultsRespBody); err != nil {
+				t.Fatal(err.Error())
+			}
+		} else if r.RequestURI[len(r.RequestURI)-8:] == "/results" {
+			w.Header().Add("Sforce-Locator", "")
+			w.Header().Add("Sforce-Numberofrecords", "1")
+			if _, err := w.Write([]byte(csvData)); err != nil {
+				t.Fatal(err.Error())
+			}
+		}
+	}))
+	sfAuth := authentication{
+		InstanceUrl: server.URL,
+		AccessToken: "accesstokenvalue",
+	}
+	defer server.Close()
+
+	badServer, badAuth := setupTestServer(job, http.StatusBadRequest)
+	defer badServer.Close()
+
+	type fields struct {
+		auth *authentication
+	}
+
+	type data struct {
+		Col string `csv:"col"`
+	}
+
+	type args struct {
+		query string
+		val   []data
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "export data successfully",
+			fields: fields{
+				&sfAuth,
+			},
+			args: args{
+				query: "SELECT Id FROM Account",
+				val:   []data{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "validation error",
+			fields: fields{
+				&badAuth,
+			},
+			args: args{
+				query: "SELECT Id FROM Account",
+				val:   []data{},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sf := &Salesforce{
+				auth: tt.fields.auth,
+			}
+			it, err := sf.CreateQueryBulkJob(tt.args.query)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Salesforce.CreateQueryBulkJob() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if it != nil {
+				for it.Next() {
+					if err := it.Decode(&tt.args.val); (err != nil) != tt.wantErr {
+						t.Fatalf("Salesforce.IteratorJob.Decode() error = %v, wantErr %v", err, tt.wantErr)
+					}
+					if len(tt.args.val) == 0 || tt.args.val[0].Col != "row" {
+						t.Fatalf("Salesforce.IteratorJob.Val() val don't match")
+					}
+				}
+				if err := it.Error(); (err != nil) != tt.wantErr {
+					t.Fatalf("Salesforce.IteratorJob.Error() error = %v, wantErr %v", err, tt.wantErr)
+				}
+			}
+		})
+	}
+}
+
 func TestGetAccessToken(t *testing.T) {
 	sfAuth := authentication{
 		AccessToken: "1234",
