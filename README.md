@@ -726,9 +726,9 @@ if err != nil {
 }
 ```
 
-### IteratorQueryBulk
+### QueryBulkIterator
 
-`func (sf *Salesforce) CreateQueryBulkJob(query string) (IteratorJob, error)`
+`func (sf *Salesforce) QueryBulkIterator(query string) (IteratorJob, error)`
 
 Performs a query and return a IteratorJob to decode data
 
@@ -741,7 +741,7 @@ type Contact struct {
     LastName  string `json:"LastName" csv:"LastName"`
 }
 
-it, err := sf.CreateQueryBulkJob("SELECT Id, FirstName, LastName FROM Contact")
+it, err := sf.QueryBulkIterator("SELECT Id, FirstName, LastName FROM Contact")
 if err != nil {
     panic(err)
 }

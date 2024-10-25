@@ -3083,7 +3083,7 @@ func TestSalesforce_CreateQueryBulkJob(t *testing.T) {
 			sf := &Salesforce{
 				auth: tt.fields.auth,
 			}
-			it, err := sf.CreateQueryBulkJob(tt.args.query)
+			it, err := sf.QueryBulkIterator(tt.args.query)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("Salesforce.CreateQueryBulkJob() error = %v, wantErr %v", err, tt.wantErr)
 			}
