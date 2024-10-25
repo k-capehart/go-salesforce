@@ -425,7 +425,7 @@ func (sf *Salesforce) QueryStructBulkExport(soqlStruct any, filePath string) err
 	return nil
 }
 
-func (sf *Salesforce) CreateQueryBulkJob(query string) (IteratorJob, error) {
+func (sf *Salesforce) QueryBulkIterator(query string) (IteratorJob, error) {
 	queryJobReq := bulkQueryJobCreationRequest{
 		Operation: queryJobType,
 		Query:     query,
