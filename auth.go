@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -185,7 +186,7 @@ func setAccessToken(domain string, accessToken string) (*authentication, error) 
 
 func jwtFlow(domain string, username string, consumerKey string, consumerRSAPem string, expirationTime time.Duration) (*authentication, error) {
 	claims := &jwt.MapClaims{
-		"exp": jwt.NewNumericDate(time.Unix(int64(expirationTime.Seconds()), 0)),
+		"exp": strconv.Itoa(int(time.Now().Unix() + int64(expirationTime.Seconds()))),
 		"aud": domain,
 		"iss": consumerKey,
 		"sub": username,
