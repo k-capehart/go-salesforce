@@ -128,12 +128,12 @@ sf, err := salesforce.Init(salesforce.Creds{
     Domain:         DOMAIN,
     Username:       USERNAME,
     ConsumerKey:    CONSUMER_KEY,
-    ConsumerKey:    CONSUMER_KEY,
     ConsumerRSAPem: CONSUMER_RSA_PEM,
 })
 if err != nil {
     panic(err)
 }
+```
 
 Authenticate with an Access Token
 

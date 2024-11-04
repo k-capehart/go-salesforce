@@ -185,9 +185,15 @@ func setAccessToken(domain string, accessToken string) (*authentication, error) 
 }
 
 func jwtFlow(domain string, username string, consumerKey string, consumerRSAPem string, expirationTime time.Duration) (*authentication, error) {
+	audience := domain
+	if(strings.Contains(audience, "sandbox")) {
+		audience = "https://test.salesforce.com"
+	} else {
+		audience = "https://login.salesforce.com"
+	}
 	claims := &jwt.MapClaims{
 		"exp": strconv.Itoa(int(time.Now().Unix() + int64(expirationTime.Seconds()))),
-		"aud": domain,
+		"aud": audience,
 		"iss": consumerKey,
 		"sub": username,
 	}
