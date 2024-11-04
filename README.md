@@ -756,6 +756,7 @@ for it.Next() {
 if err := it.Error(); err != nil {
     panic(err)
 }
+```
 
 ### InsertBulk
 
