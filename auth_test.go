@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func Test_validateAuth(t *testing.T) {
@@ -269,7 +270,7 @@ func Test_refreshSession(t *testing.T) {
 	serverJwt, sfAuthJwt := setupTestServer(refreshedAuth, http.StatusOK)
 	sampleKey, _ := os.ReadFile("test/sample_key.pem")
 	sfAuthJwt.creds = Creds{
-		Domain:      serverJwt.URL,
+		Domain:         serverJwt.URL,
 		Username:       "u",
 		ConsumerKey:    "key",
 		ConsumerRSAPem: string(sampleKey),

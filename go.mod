@@ -7,8 +7,8 @@ require github.com/mitchellh/mapstructure v1.5.0
 require github.com/forcedotcom/go-soql v0.0.0-20220705175410-00f698360bee
 
 require (
-	github.com/jszwec/csvutil v1.10.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/jszwec/csvutil v1.10.0
 	github.com/spf13/afero v1.11.0
 	k8s.io/apimachinery v0.31.1
 )

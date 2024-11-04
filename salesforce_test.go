@@ -477,7 +477,7 @@ func TestInit(t *testing.T) {
 	defer serverJwt.Close()
 	sampleKey, _ := os.ReadFile("test/sample_key.pem")
 	credsJwt := Creds{
-		Domain:      serverAccessToken.URL,
+		Domain:         serverAccessToken.URL,
 		Username:       "u",
 		ConsumerKey:    "key",
 		ConsumerRSAPem: string(sampleKey),
