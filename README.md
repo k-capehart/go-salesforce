@@ -726,6 +726,37 @@ if err != nil {
 }
 ```
 
+### QueryBulkIterator
+
+`func (sf *Salesforce) QueryBulkIterator(query string) (IteratorJob, error)`
+
+Performs a query and return a IteratorJob to decode data
+
+- `query`: a SOQL query
+
+```go
+type Contact struct {
+    Id        string `json:"Id" csv:"Id"`
+    FirstName string `json:"FirstName" csv:"FirstName"`
+    LastName  string `json:"LastName" csv:"LastName"`
+}
+
+it, err := sf.QueryBulkIterator("SELECT Id, FirstName, LastName FROM Contact")
+if err != nil {
+    panic(err)
+}
+
+for it.Next() {
+    var data []Contact
+    if err := it.Decode(&data); err != nil {
+        panic(err)
+    }
+}
+
+if err := it.Error(); err != nil {
+    panic(err)
+}
+
 ### InsertBulk
 
 `func (sf *Salesforce) InsertBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error)`
