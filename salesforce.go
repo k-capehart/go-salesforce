@@ -226,7 +226,8 @@ func Init(creds Creds) (*Salesforce, error) {
 			creds.Domain,
 			creds.AccessToken,
 		)
-	} else if creds.Domain != "" && creds.Username != "" && creds.ConsumerKey != "" && creds.ConsumerRSAPem != "" {
+	} else if creds.Domain != "" && creds.Username != "" &&
+		creds.ConsumerKey != "" && creds.ConsumerRSAPem != "" {
 		auth, err = jwtFlow(
 			creds.Domain,
 			creds.Username,
@@ -433,6 +434,31 @@ func (sf *Salesforce) QueryStructBulkExport(soqlStruct any, filePath string) err
 	}
 
 	return nil
+}
+
+func (sf *Salesforce) QueryBulkIterator(query string) (IteratorJob, error) {
+	authErr := validateAuth(*sf)
+	if authErr != nil {
+		return nil, authErr
+	}
+	queryJobReq := bulkQueryJobCreationRequest{
+		Operation: queryJobType,
+		Query:     query,
+	}
+	body, jsonErr := json.Marshal(queryJobReq)
+	if jsonErr != nil {
+		return nil, jsonErr
+	}
+
+	job, jobCreationErr := createBulkJob(sf.auth, queryJobType, body)
+	if jobCreationErr != nil {
+		return nil, jobCreationErr
+	}
+	if job.Id == "" {
+		newErr := errors.New("error creating bulk query job")
+		return nil, newErr
+	}
+	return newBulkJobQueryIterator(sf.auth, job.Id)
 }
 
 func (sf *Salesforce) InsertBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
