@@ -13,6 +13,7 @@ A REST API wrapper for interacting with Salesforce using the Go programming lang
 - Read the [Golang documentation](https://go.dev/doc/)
 
 ## Table of Contents
+
 - [Installation](#installation)
 - [Types](#types)
 - [Authentication](#authentication)
@@ -44,6 +45,8 @@ type Creds struct {
     SecurityToken  string
     ConsumerKey    string
     ConsumerSecret string
+    ConsumerRSAPem string
+    AccessToken    string
 }
 
 type SalesforceResults struct {
@@ -112,6 +115,20 @@ sf, err := salesforce.Init(salesforce.Creds{
     SecurityToken:  SECURITY_TOKEN,
     ConsumerKey:    CONSUMER_KEY,
     ConsumerSecret: CONSUMER_SECRET,
+})
+if err != nil {
+    panic(err)
+}
+```
+
+[JWT Bearer Flow](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_jwt_flow.htm&type=5)
+
+```go
+sf, err := salesforce.Init(salesforce.Creds{
+    Domain:         DOMAIN,
+    Username:       USERNAME,
+    ConsumerKey:    CONSUMER_KEY,
+    ConsumerRSAPem: CONSUMER_RSA_PEM,
 })
 if err != nil {
     panic(err)
@@ -225,6 +242,7 @@ SELECT Id, Account.Name FROM Contact
 ```
 
 #### Corresponding Go Structs
+
 To effectively handle the data returned by this query, define your Go structs as follows:
 
 ```go
@@ -362,8 +380,8 @@ Insert, Update, Upsert, or Delete collections of records
 - Perform operations in batches of up to 200 records at a time
 - Consider making a Bulk request for very large operations
 - Partial successes are enabled
-    - If a record fails then successes are still committed to the database
-- Will return an instance of `SalesforceResults` which contains information on each affected record and whether DML errors were encountered 
+  - If a record fails then successes are still committed to the database
+- Will return an instance of `SalesforceResults` which contains information on each affected record and whether DML errors were encountered
 
 ### InsertCollection
 
@@ -509,7 +527,7 @@ Make numerous 'subrequests' contained within a single 'composite request', reduc
   - So if batch size is 1, then max number of records to be included in request is 25
   - If batch size is 200, then max is 5000
 - Can optionally allow partial successes by setting allOrNone parameter
-    - If true, then successes are still committed to the database even if a record fails
+  - If true, then successes are still committed to the database even if a record fails
 - Will return an instance of SalesforceResults which contains information on each affected record and whether DML errors were encountered
 
 ### InsertComposite

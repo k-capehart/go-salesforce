@@ -2,8 +2,10 @@ package salesforce
 
 import (
 	"net/http"
+	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func Test_validateAuth(t *testing.T) {
@@ -245,12 +247,36 @@ func Test_refreshSession(t *testing.T) {
 		Signature:   "signed",
 	}
 	serverClientCredentials, sfAuthClientCredentials := setupTestServer(refreshedAuth, http.StatusOK)
+	sfAuthClientCredentials.creds = Creds{
+		Domain:         serverClientCredentials.URL,
+		ConsumerKey:    "key",
+		ConsumerSecret: "secret",
+	}
 	defer serverClientCredentials.Close()
 	sfAuthClientCredentials.grantType = grantTypeClientCredentials
 
 	serverUserNamePassword, sfAuthUserNamePassword := setupTestServer(refreshedAuth, http.StatusOK)
+	sfAuthUserNamePassword.creds = Creds{
+		Domain:         serverUserNamePassword.URL,
+		Username:       "u",
+		Password:       "p",
+		SecurityToken:  "t",
+		ConsumerKey:    "key",
+		ConsumerSecret: "secret",
+	}
 	defer serverUserNamePassword.Close()
 	sfAuthUserNamePassword.grantType = grantTypeUsernamePassword
+
+	serverJwt, sfAuthJwt := setupTestServer(refreshedAuth, http.StatusOK)
+	sampleKey, _ := os.ReadFile("test/sample_key.pem")
+	sfAuthJwt.creds = Creds{
+		Domain:      serverJwt.URL,
+		Username:       "u",
+		ConsumerKey:    "key",
+		ConsumerRSAPem: string(sampleKey),
+	}
+	defer serverJwt.Close()
+	sfAuthJwt.grantType = grantTypeJWT
 
 	serverNoGrantType, sfAuthNoGrantType := setupTestServer(refreshedAuth, http.StatusOK)
 	defer serverNoGrantType.Close()
@@ -282,6 +308,11 @@ func Test_refreshSession(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:    "refresh_jwt",
+			args:    args{auth: &sfAuthJwt},
+			wantErr: false,
+		},
+		{
 			name:    "error_no_grant_type",
 			args:    args{auth: &sfAuthNoGrantType},
 			wantErr: true,
@@ -301,6 +332,72 @@ func Test_refreshSession(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := refreshSession(tt.args.auth); (err != nil) != tt.wantErr {
 				t.Errorf("refreshSession() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_jwtFlow(t *testing.T) {
+	auth := authentication{
+		AccessToken: "1234",
+		InstanceUrl: "example.com",
+		Id:          "123abc",
+		IssuedAt:    "01/01/1970",
+		Signature:   "signed",
+		grantType:   grantTypeJWT,
+	}
+	server, _ := setupTestServer(auth, http.StatusOK)
+	defer server.Close()
+
+	badServer, _ := setupTestServer(auth, http.StatusForbidden)
+	defer badServer.Close()
+
+	sampleKey, _ := os.ReadFile("test/sample_key.pem")
+
+	type args struct {
+		domain         string
+		username       string
+		consumerKey    string
+		consumerRSAPem string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *authentication
+		wantErr bool
+	}{
+		{
+			name: "authentication_success",
+			args: args{
+				domain:         server.URL,
+				username:       "user",
+				consumerKey:    "key",
+				consumerRSAPem: string(sampleKey),
+			},
+			want:    &auth,
+			wantErr: false,
+		},
+		{
+			name: "authentication_fail",
+			args: args{
+				domain:         badServer.URL,
+				username:       "user",
+				consumerKey:    "key",
+				consumerRSAPem: string(sampleKey),
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := jwtFlow(tt.args.domain, tt.args.username, tt.args.consumerKey, tt.args.consumerRSAPem, 1*time.Minute)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("jwtFlow() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("jwtFlow() = %v, want %v", got, tt.want)
 			}
 		})
 	}
