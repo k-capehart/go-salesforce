@@ -247,12 +247,36 @@ func Test_refreshSession(t *testing.T) {
 		Signature:   "signed",
 	}
 	serverClientCredentials, sfAuthClientCredentials := setupTestServer(refreshedAuth, http.StatusOK)
+	sfAuthClientCredentials.creds = Creds{
+		Domain:         serverClientCredentials.URL,
+		ConsumerKey:    "key",
+		ConsumerSecret: "secret",
+	}
 	defer serverClientCredentials.Close()
 	sfAuthClientCredentials.grantType = grantTypeClientCredentials
 
 	serverUserNamePassword, sfAuthUserNamePassword := setupTestServer(refreshedAuth, http.StatusOK)
+	sfAuthUserNamePassword.creds = Creds{
+		Domain:         serverUserNamePassword.URL,
+		Username:       "u",
+		Password:       "p",
+		SecurityToken:  "t",
+		ConsumerKey:    "key",
+		ConsumerSecret: "secret",
+	}
 	defer serverUserNamePassword.Close()
 	sfAuthUserNamePassword.grantType = grantTypeUsernamePassword
+
+	serverJwt, sfAuthJwt := setupTestServer(refreshedAuth, http.StatusOK)
+	sampleKey, _ := os.ReadFile("test/sample_key.pem")
+	sfAuthJwt.creds = Creds{
+		Domain:      serverJwt.URL,
+		Username:       "u",
+		ConsumerKey:    "key",
+		ConsumerRSAPem: string(sampleKey),
+	}
+	defer serverJwt.Close()
+	sfAuthJwt.grantType = grantTypeJWT
 
 	serverNoGrantType, sfAuthNoGrantType := setupTestServer(refreshedAuth, http.StatusOK)
 	defer serverNoGrantType.Close()
@@ -281,6 +305,11 @@ func Test_refreshSession(t *testing.T) {
 		{
 			name:    "refresh_username_password",
 			args:    args{auth: &sfAuthUserNamePassword},
+			wantErr: false,
+		},
+		{
+			name:    "refresh_jwt",
+			args:    args{auth: &sfAuthJwt},
 			wantErr: false,
 		},
 		{
