@@ -5,7 +5,6 @@ import (
 	"os"
 	"reflect"
 	"testing"
-	"time"
 )
 
 func Test_validateAuth(t *testing.T) {
