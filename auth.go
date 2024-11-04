@@ -3,15 +3,11 @@ package salesforce
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/golang-jwt/jwt/v5"
 )
 
 type authentication struct {
@@ -33,17 +29,13 @@ type Creds struct {
 	SecurityToken  string
 	ConsumerKey    string
 	ConsumerSecret string
-	ConsumerRSAPem string
 	AccessToken    string
 }
-
-const JwtExpirationTime = 5 * time.Minute
 
 const (
 	grantTypeUsernamePassword  = "password"
 	grantTypeClientCredentials = "client_credentials"
 	grantTypeAccessToken       = "access_token"
-	grantTypeJWT               = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 )
 
 func validateAuth(sf Salesforce) error {
@@ -88,14 +80,6 @@ func refreshSession(auth *authentication) error {
 			auth.creds.SecurityToken,
 			auth.creds.ConsumerKey,
 			auth.creds.ConsumerSecret,
-		)
-	case grantTypeJWT:
-		refreshedAuth, err = jwtFlow(
-			auth.InstanceUrl,
-			auth.creds.Username,
-			auth.creds.ConsumerKey,
-			auth.creds.ConsumerRSAPem,
-			JwtExpirationTime,
 		)
 	default:
 		return errors.New("invalid session, unable to refresh session")
