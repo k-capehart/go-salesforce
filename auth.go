@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -164,5 +165,42 @@ func setAccessToken(domain string, accessToken string) (*authentication, error) 
 		return nil, err
 	}
 	auth.grantType = grantTypeAccessToken
+	return auth, nil
+}
+
+func jwtFlow(domain string, username string, consumerKey string, consumerRSAPem string, expirationTime time.Duration) (*authentication, error) {
+	audience := domain
+	if(strings.Contains(audience, "sandbox")) {
+		audience = "https://test.salesforce.com"
+	} else {
+		audience = "https://login.salesforce.com"
+	}
+	claims := &jwt.MapClaims{
+		"exp": strconv.Itoa(int(time.Now().Unix() + int64(expirationTime.Seconds()))),
+		"aud": audience,
+		"iss": consumerKey,
+		"sub": username,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	signKey, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(consumerRSAPem))
+	if err != nil {
+		return nil, fmt.Errorf("ParseRSAPrivateKeyFromPEM: %w", err)
+	}
+	tokenString, err := token.SignedString(signKey)
+	if err != nil {
+		return nil, fmt.Errorf("jwt.SignedString: %w", err)
+	}
+
+	payload := url.Values{
+		"grant_type": {grantTypeJWT},
+		"assertion":  {tokenString},
+	}
+	endpoint := "/services/oauth2/token"
+	body := strings.NewReader(payload.Encode())
+	auth, err := doAuth(domain+endpoint, body)
+	if err != nil {
+		return nil, err
+	}
+	auth.grantType = grantTypeJWT
 	return auth, nil
 }

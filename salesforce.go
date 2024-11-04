@@ -202,7 +202,10 @@ func processSalesforceError(resp http.Response, auth *authentication, payload re
 func Init(creds Creds) (*Salesforce, error) {
 	var auth *authentication
 	var err error
-	if creds != (Creds{}) && creds.Domain != "" && creds.ConsumerKey != "" && creds.ConsumerSecret != "" &&
+	if creds == (Creds{}) {
+		return nil, errors.New("creds is empty")
+	}
+	if creds.Domain != "" && creds.ConsumerKey != "" && creds.ConsumerSecret != "" &&
 		creds.Username != "" && creds.Password != "" && creds.SecurityToken != "" {
 
 		auth, err = usernamePasswordFlow(

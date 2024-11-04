@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -464,6 +465,25 @@ func TestInit(t *testing.T) {
 	}
 	sfAuthAccessToken.creds = credsAccessToken
 
+	sfAuthJwt := authentication{
+		AccessToken: "1234",
+		InstanceUrl: "example.com",
+		Id:          "123abc",
+		IssuedAt:    "01/01/1970",
+		Signature:   "signed",
+		grantType:   grantTypeJWT,
+	}
+	serverJwt, _ := setupTestServer(sfAuthJwt, http.StatusOK)
+	defer serverJwt.Close()
+	sampleKey, _ := os.ReadFile("test/sample_key.pem")
+	credsJwt := Creds{
+		Domain:      serverAccessToken.URL,
+		Username:       "u",
+		ConsumerKey:    "key",
+		ConsumerRSAPem: string(sampleKey),
+	}
+	sfAuthAccessToken.creds = credsAccessToken
+
 	type args struct {
 		creds Creds
 	}
@@ -494,6 +514,11 @@ func TestInit(t *testing.T) {
 		{
 			name:    "authentication_access_token",
 			args:    args{creds: credsAccessToken},
+			wantErr: false,
+		},
+		{
+			name:    "authentication_jwt",
+			args:    args{creds: credsJwt},
 			wantErr: false,
 		},
 	}
