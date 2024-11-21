@@ -186,7 +186,7 @@ func setAccessToken(domain string, accessToken string) (*authentication, error) 
 
 func jwtFlow(domain string, username string, consumerKey string, consumerRSAPem string, expirationTime time.Duration) (*authentication, error) {
 	audience := domain
-	if strings.Contains(audience, "sandbox") {
+	if strings.Contains(audience, "test.salesforce") || strings.Contains(audience, "sandbox") {
 		audience = "https://test.salesforce.com"
 	} else {
 		audience = "https://login.salesforce.com"
