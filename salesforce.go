@@ -297,6 +297,20 @@ func (sf *Salesforce) QueryStruct(soqlStruct any, sObject any) error {
 	return nil
 }
 
+func (sf *Salesforce) QueryExplain(query string) ([]ExplainPlain, error) {
+	authErr := validateAuth(*sf)
+	if authErr != nil {
+		return nil, authErr
+	}
+
+	explainResp, queryErr := performExplain(sf.auth, query)
+	if queryErr != nil {
+		return nil, queryErr
+	}
+
+	return explainResp, nil
+}
+
 func (sf *Salesforce) InsertOne(sObjectName string, record any) (SalesforceResult, error) {
 	validationErr := validateSingles(*sf, record)
 	if validationErr != nil {

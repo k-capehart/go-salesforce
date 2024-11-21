@@ -231,6 +231,21 @@ if err != nil {
 }
 ```
 
+### QueryExplain
+
+`func (sf *Salesforce) QueryExplain(query string) (*ExplainResponse, error)`
+
+Performs a SOQL query explain given a query string and return the performance feedback analysis report
+
+- `query`: a SOQL query
+
+```go
+explain, err := sf.QueryExplain("SELECT Id, LastName FROM Contact WHERE LastName = 'Lee'")
+if err != nil {
+    panic(err)
+}
+
+
 ### Handling Relationship Queries
 
 When querying Salesforce objects, it's common to access fields that are related through parent-child or lookup relationships. For instance, querying `Account.Name` with related `Contact` might look like this:

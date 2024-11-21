@@ -950,6 +950,74 @@ func TestSalesforce_QueryStruct(t *testing.T) {
 	}
 }
 
+func TestSalesforce_QueryExplain(t *testing.T) {
+	resp := struct {
+		Plans []ExplainPlain `json:"plans"`
+	}{
+		Plans: []ExplainPlain{{
+			Cardinality:          1,
+			Fields:               []string{"id", "name"},
+			LeadingOperationType: "Index",
+			Notes:                []note{},
+			RelativeCost:         1.0,
+			SObjectCardinality:   1,
+			SObjectType:          "account",
+		}}}
+	server, sfAuth := setupTestServer(resp, http.StatusOK)
+	defer server.Close()
+
+	type fields struct {
+		auth *authentication
+	}
+	type args struct {
+		query string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []ExplainPlain
+		wantErr bool
+	}{
+		{
+			name: "validation_fail",
+			fields: fields{
+				auth: nil,
+			},
+			args: args{
+				query: "SELECT Id FROM Account",
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "successful_explain",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				query: "SELECT Id FROM Account",
+			},
+			want:    resp.Plans,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sf := &Salesforce{
+				auth: tt.fields.auth,
+			}
+			res, err := sf.QueryExplain(tt.args.query)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Salesforce.Query() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(res, tt.want) {
+				t.Errorf("Salesforce.QueryExplain() = %v, want %v", &resp, tt.want)
+			}
+		})
+	}
+}
+
 func TestSalesforce_InsertOne(t *testing.T) {
 	type account struct {
 		Name string
