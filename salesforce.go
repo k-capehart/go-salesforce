@@ -43,7 +43,7 @@ type requestPayload struct {
 }
 
 const (
-	apiVersion            = "v60.0"
+	apiVersion            = "v62.0"
 	jsonType              = "application/json"
 	csvType               = "text/csv"
 	batchSizeMax          = 200
