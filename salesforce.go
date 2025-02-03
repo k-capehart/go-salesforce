@@ -1,6 +1,8 @@
 package salesforce
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"io"
@@ -35,11 +37,12 @@ type SalesforceResults struct {
 }
 
 type requestPayload struct {
-	method  string
-	uri     string
-	content string
-	body    string
-	retry   bool
+	method   string
+	uri      string
+	content  string
+	body     string
+	retry    bool
+	compress bool
 }
 
 const (
@@ -71,6 +74,9 @@ func doRequest(auth *authentication, payload requestPayload) (*http.Response, er
 	req.Header.Set("Content-Type", payload.content)
 	req.Header.Set("Accept", payload.content)
 	req.Header.Set("Authorization", "Bearer "+auth.AccessToken)
+	if payload.compress {
+		req.Header.Set("Accept-Encoding", "gzip")
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -79,8 +85,26 @@ func doRequest(auth *authentication, payload requestPayload) (*http.Response, er
 	if resp.StatusCode < 200 || resp.StatusCode > 300 {
 		resp, err = processSalesforceError(*resp, auth, payload)
 	}
+	if payload.compress {
+		resp.Body, err = decompress(resp)
+	}
 
 	return resp, err
+}
+
+func decompress(resp *http.Response) (io.ReadCloser, error) {
+	gzReader, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer gzReader.Close()
+
+	body, err := io.ReadAll(gzReader)
+	if err != nil {
+		return nil, err
+	}
+
+	return io.NopCloser(bytes.NewReader(body)), nil
 }
 
 func validateOfTypeSlice(data any) error {
@@ -188,7 +212,7 @@ func processSalesforceError(resp http.Response, auth *authentication, payload re
 			if err != nil {
 				return &resp, err
 			}
-			newResp, err := doRequest(auth, requestPayload{payload.method, payload.uri, payload.content, payload.body, true})
+			newResp, err := doRequest(auth, requestPayload{payload.method, payload.uri, payload.content, payload.body, true, false})
 			if err != nil {
 				return &resp, err
 			}
