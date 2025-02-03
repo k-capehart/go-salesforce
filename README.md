@@ -159,6 +159,16 @@ Returns the current session's Access Token as a string.
 token := sf.GetAccessToken()
 ```
 
+### GetInstanceUrl()
+
+`func (sf *Salesforce) GetInstanceUrl() string`
+
+Returns the current session's Instance URL as a string.
+
+```go
+url := sf.GetInstanceUrl()
+```
+
 ## SOQL
 
 Query Salesforce records

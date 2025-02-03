@@ -3140,3 +3140,40 @@ func TestGetAccessToken(t *testing.T) {
 		})
 	}
 }
+
+func TestGetInstanceUrl(t *testing.T) {
+	sfAuth := authentication{
+		AccessToken: "1234",
+		InstanceUrl: "example.com",
+		Id:          "123abc",
+		IssuedAt:    "01/01/1970",
+		Signature:   "signed",
+	}
+
+	sf := &Salesforce{auth: &sfAuth}
+
+	tests := []struct {
+		name string
+		sf   *Salesforce
+		want string
+	}{
+		{
+			name: "valid_instance_url",
+			sf:   sf,
+			want: "example.com",
+		},
+		{
+			name: "no_instance_url",
+			sf:   &Salesforce{},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.sf.GetInstanceUrl(); got != tt.want {
+				t.Errorf("GetInstanceUrl() error = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
