@@ -600,3 +600,10 @@ func (sf *Salesforce) GetAccessToken() string {
 	}
 	return sf.auth.AccessToken
 }
+
+func (sf *Salesforce) GetInstanceUrl() string {
+	if sf.auth == nil {
+		return ""
+	}
+	return sf.auth.InstanceUrl
+}
