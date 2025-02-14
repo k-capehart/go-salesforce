@@ -20,16 +20,16 @@ func Test_validateAuth(t *testing.T) {
 		{
 			name: "validation_success",
 			args: args{
-				sf: Salesforce{auth: &authentication{
+				sf: *buildSalesforceStruct(&authentication{
 					AccessToken: "1234",
-				}},
+				}),
 			},
 			wantErr: false,
 		},
 		{
 			name: "validation_fail",
 			args: args{
-				sf: Salesforce{},
+				sf: *buildSalesforceStruct(&authentication{}),
 			},
 			wantErr: true,
 		},

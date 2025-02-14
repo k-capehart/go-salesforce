@@ -24,16 +24,18 @@ type bulkJobQueryIterator struct {
 	uri             string
 	err             error
 	reader          io.ReadCloser
+	config          *Configuration
 }
 
-func newBulkJobQueryIterator(auth *authentication, bulkJobId string) (*bulkJobQueryIterator, error) {
-	pollErr := waitForJobResults(auth, bulkJobId, queryJobType, (time.Second / 2))
+func newBulkJobQueryIterator(sf *Salesforce, bulkJobId string) (*bulkJobQueryIterator, error) {
+	pollErr := waitForJobResults(sf, bulkJobId, queryJobType, (time.Second / 2))
 	if pollErr != nil {
 		return nil, pollErr
 	}
 	return &bulkJobQueryIterator{
-		auth: auth,
-		uri:  "/jobs/query/" + bulkJobId + "/results",
+		auth:   sf.auth,
+		uri:    "/jobs/query/" + bulkJobId + "/results",
+		config: sf.Config,
 	}, nil
 }
 
@@ -48,7 +50,7 @@ func (it *bulkJobQueryIterator) Next() bool {
 	if it.Locator != "" {
 		uri += "/?locator=" + it.Locator
 	}
-	resp, err := doRequest(it.auth, requestPayload{method: http.MethodGet, uri: uri, content: jsonType})
+	resp, err := doRequest(it.auth, requestPayload{method: http.MethodGet, uri: uri, content: jsonType, compress: it.config.CompressionHeaders})
 	if err != nil {
 		it.err = err
 		return false
