@@ -58,6 +58,8 @@ func (it *bulkJobQueryIterator) Next() bool {
 	it.NumberOfRecords, _ = strconv.Atoi(resp.Header["Sforce-Numberofrecords"][0])
 	if resp.Header["Sforce-Locator"][0] != "null" {
 		it.Locator = resp.Header["Sforce-Locator"][0]
+	} else {
+		it.Locator = ""
 	}
 
 	return true
