@@ -61,7 +61,7 @@ func Test_performQuery(t *testing.T) {
 	defer badRespServer.Close()
 
 	type args struct {
-		auth    *authentication
+		sf      *Salesforce
 		query   string
 		sObject []account
 	}
@@ -74,7 +74,7 @@ func Test_performQuery(t *testing.T) {
 		{
 			name: "query_account",
 			args: args{
-				auth:    &sfAuth,
+				sf:      buildSalesforceStruct(&sfAuth),
 				query:   "SELECT Id, Name FROM Account",
 				sObject: []account{},
 			},
@@ -93,7 +93,7 @@ func Test_performQuery(t *testing.T) {
 		{
 			name: "http_error",
 			args: args{
-				auth:    &badSfAuth,
+				sf:      buildSalesforceStruct(&badSfAuth),
 				query:   "SELECT Id, Name FROM Account",
 				sObject: []account{},
 			},
@@ -103,7 +103,7 @@ func Test_performQuery(t *testing.T) {
 		{
 			name: "bad_response",
 			args: args{
-				auth:    &badRespSfAuth,
+				sf:      buildSalesforceStruct(&badRespSfAuth),
 				query:   "SELECT Id FROM Account",
 				sObject: []account{},
 			},
@@ -113,7 +113,7 @@ func Test_performQuery(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := performQuery(tt.args.auth, tt.args.query, &tt.args.sObject); (err != nil) != tt.wantErr {
+			if err := performQuery(tt.args.sf, tt.args.query, &tt.args.sObject); (err != nil) != tt.wantErr {
 				t.Errorf("performQuery() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !reflect.DeepEqual(tt.args.sObject, tt.want) {

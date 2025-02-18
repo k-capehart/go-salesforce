@@ -33,16 +33,17 @@ type compositeSubRequestResult struct {
 	ReferenceId    string             `json:"referenceId"`
 }
 
-func doCompositeRequest(auth *authentication, compReq compositeRequest) (SalesforceResults, error) {
+func doCompositeRequest(sf *Salesforce, compReq compositeRequest) (SalesforceResults, error) {
 	body, jsonErr := json.Marshal(compReq)
 	if jsonErr != nil {
 		return SalesforceResults{}, jsonErr
 	}
-	resp, httpErr := doRequest(auth, requestPayload{
-		method:  http.MethodPost,
-		uri:     "/composite",
-		content: jsonType,
-		body:    string(body),
+	resp, httpErr := doRequest(sf.auth, requestPayload{
+		method:   http.MethodPost,
+		uri:      "/composite",
+		content:  jsonType,
+		body:     string(body),
+		compress: sf.Config.CompressionHeaders,
 	})
 	if httpErr != nil {
 		return SalesforceResults{}, httpErr
@@ -127,7 +128,7 @@ func processCompositeResponse(resp http.Response, allOrNone bool) (SalesforceRes
 	return results, nil
 }
 
-func doInsertComposite(auth *authentication, sObjectName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
+func doInsertComposite(sf *Salesforce, sObjectName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return SalesforceResults{}, err
@@ -143,7 +144,7 @@ func doInsertComposite(auth *authentication, sObjectName string, records any, al
 	if compositeErr != nil {
 		return SalesforceResults{}, compositeErr
 	}
-	results, compositeReqErr := doCompositeRequest(auth, compReq)
+	results, compositeReqErr := doCompositeRequest(sf, compReq)
 	if compositeReqErr != nil {
 		return SalesforceResults{}, compositeReqErr
 	}
@@ -151,7 +152,7 @@ func doInsertComposite(auth *authentication, sObjectName string, records any, al
 	return results, nil
 }
 
-func doUpdateComposite(auth *authentication, sObjectName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
+func doUpdateComposite(sf *Salesforce, sObjectName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return SalesforceResults{}, err
@@ -170,7 +171,7 @@ func doUpdateComposite(auth *authentication, sObjectName string, records any, al
 	if compositeErr != nil {
 		return SalesforceResults{}, compositeErr
 	}
-	results, compositeReqErr := doCompositeRequest(auth, compReq)
+	results, compositeReqErr := doCompositeRequest(sf, compReq)
 	if compositeReqErr != nil {
 		return SalesforceResults{}, compositeReqErr
 	}
@@ -178,7 +179,7 @@ func doUpdateComposite(auth *authentication, sObjectName string, records any, al
 	return results, nil
 }
 
-func doUpsertComposite(auth *authentication, sObjectName string, fieldName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
+func doUpsertComposite(sf *Salesforce, sObjectName string, fieldName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return SalesforceResults{}, err
@@ -197,7 +198,7 @@ func doUpsertComposite(auth *authentication, sObjectName string, fieldName strin
 	if compositeErr != nil {
 		return SalesforceResults{}, compositeErr
 	}
-	results, compositeReqErr := doCompositeRequest(auth, compReq)
+	results, compositeReqErr := doCompositeRequest(sf, compReq)
 	if compositeReqErr != nil {
 		return SalesforceResults{}, compositeReqErr
 	}
@@ -205,7 +206,7 @@ func doUpsertComposite(auth *authentication, sObjectName string, fieldName strin
 	return results, nil
 }
 
-func doDeleteComposite(auth *authentication, sObjectName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
+func doDeleteComposite(sf *Salesforce, sObjectName string, records any, allOrNone bool, batchSize int) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return SalesforceResults{}, err
@@ -250,7 +251,7 @@ func doDeleteComposite(auth *authentication, sObjectName string, records any, al
 		AllOrNone:        allOrNone,
 		CompositeRequest: subReqs,
 	}
-	results, compositeReqErr := doCompositeRequest(auth, compReq)
+	results, compositeReqErr := doCompositeRequest(sf, compReq)
 	if compositeReqErr != nil {
 		return SalesforceResults{}, compositeReqErr
 	}

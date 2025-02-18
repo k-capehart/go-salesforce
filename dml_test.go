@@ -56,7 +56,6 @@ func Test_convertToMap(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func Test_convertToSliceOfMaps(t *testing.T) {
@@ -200,7 +199,7 @@ func Test_doBatchedRequestsForCollection(t *testing.T) {
 	defer sfErrorServer.Close()
 
 	type args struct {
-		auth      *authentication
+		sf        *Salesforce
 		method    string
 		url       string
 		batchSize int
@@ -215,7 +214,7 @@ func Test_doBatchedRequestsForCollection(t *testing.T) {
 		{
 			name: "single_record",
 			args: args{
-				auth:      &sfAuth,
+				sf:        buildSalesforceStruct(&sfAuth),
 				method:    http.MethodPost,
 				url:       "",
 				batchSize: 200,
@@ -234,7 +233,7 @@ func Test_doBatchedRequestsForCollection(t *testing.T) {
 		{
 			name: "multiple_batches",
 			args: args{
-				auth:      &sfAuth,
+				sf:        buildSalesforceStruct(&sfAuth),
 				method:    http.MethodPost,
 				url:       "",
 				batchSize: 1,
@@ -256,7 +255,7 @@ func Test_doBatchedRequestsForCollection(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:      &badReqSfAuth,
+				sf:        buildSalesforceStruct(&badReqSfAuth),
 				method:    http.MethodPost,
 				url:       "",
 				batchSize: 1,
@@ -272,7 +271,7 @@ func Test_doBatchedRequestsForCollection(t *testing.T) {
 		{
 			name: "salesforce_error",
 			args: args{
-				auth:      &sfErrorSfAuth,
+				sf:        buildSalesforceStruct(&sfErrorSfAuth),
 				method:    http.MethodPost,
 				url:       "",
 				batchSize: 1,
@@ -291,7 +290,7 @@ func Test_doBatchedRequestsForCollection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doBatchedRequestsForCollection(tt.args.auth, tt.args.method, tt.args.url, tt.args.batchSize, tt.args.recordMap)
+			got, err := doBatchedRequestsForCollection(tt.args.sf, tt.args.method, tt.args.url, tt.args.batchSize, tt.args.recordMap)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doBatchedRequestsForCollection() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -320,7 +319,7 @@ func Test_doInsertOne(t *testing.T) {
 	defer badReqServer.Close()
 
 	type args struct {
-		auth        *authentication
+		sf          *Salesforce
 		sObjectName string
 		record      any
 	}
@@ -333,7 +332,7 @@ func Test_doInsertOne(t *testing.T) {
 		{
 			name: "successful_insert",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				record: account{
 					Name: "test account",
@@ -345,7 +344,7 @@ func Test_doInsertOne(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:        &badReqSfAuth,
+				sf:          buildSalesforceStruct(&badReqSfAuth),
 				sObjectName: "Account",
 				record: account{
 					Name: "test account",
@@ -357,7 +356,7 @@ func Test_doInsertOne(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				record:      "1",
 			},
@@ -367,7 +366,7 @@ func Test_doInsertOne(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doInsertOne(tt.args.auth, tt.args.sObjectName, tt.args.record)
+			got, err := doInsertOne(tt.args.sf, tt.args.sObjectName, tt.args.record)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doInsertOne() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -391,7 +390,7 @@ func Test_doUpdateOne(t *testing.T) {
 	defer badReqServer.Close()
 
 	type args struct {
-		auth        *authentication
+		sf          *Salesforce
 		sObjectName string
 		record      any
 	}
@@ -403,7 +402,7 @@ func Test_doUpdateOne(t *testing.T) {
 		{
 			name: "successful_update",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				record: account{
 					Id:   "1234",
@@ -415,7 +414,7 @@ func Test_doUpdateOne(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:        &badReqSfAuth,
+				sf:          buildSalesforceStruct(&badReqSfAuth),
 				sObjectName: "Account",
 				record: account{
 					Id:   "1234",
@@ -427,7 +426,7 @@ func Test_doUpdateOne(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				record:      "1",
 			},
@@ -436,7 +435,7 @@ func Test_doUpdateOne(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := doUpdateOne(tt.args.auth, tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
+			if err := doUpdateOne(tt.args.sf, tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
 				t.Errorf("doUpdateOne() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -462,7 +461,7 @@ func Test_doUpsertOne(t *testing.T) {
 	defer badReqServer.Close()
 
 	type args struct {
-		auth        *authentication
+		sf          *Salesforce
 		sObjectName string
 		fieldName   string
 		record      any
@@ -476,7 +475,7 @@ func Test_doUpsertOne(t *testing.T) {
 		{
 			name: "successful_upsert",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				fieldName:   "ExternalId__c",
 				record: account{
@@ -490,7 +489,7 @@ func Test_doUpsertOne(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:        &badReqSfAuth,
+				sf:          buildSalesforceStruct(&badReqSfAuth),
 				sObjectName: "Account",
 				fieldName:   "ExternalId__c",
 				record: account{
@@ -504,7 +503,7 @@ func Test_doUpsertOne(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				fieldName:   "ExternalId__c",
 				record:      "1",
@@ -515,7 +514,7 @@ func Test_doUpsertOne(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doUpsertOne(tt.args.auth, tt.args.sObjectName, tt.args.fieldName, tt.args.record)
+			got, err := doUpsertOne(tt.args.sf, tt.args.sObjectName, tt.args.fieldName, tt.args.record)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doUpsertOne() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -538,7 +537,7 @@ func Test_doDeleteOne(t *testing.T) {
 	defer badReqServer.Close()
 
 	type args struct {
-		auth        *authentication
+		sf          *Salesforce
 		sObjectName string
 		record      any
 	}
@@ -550,7 +549,7 @@ func Test_doDeleteOne(t *testing.T) {
 		{
 			name: "successful_delete",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				record: account{
 					Id: "1234",
@@ -561,7 +560,7 @@ func Test_doDeleteOne(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:        &badReqSfAuth,
+				sf:          buildSalesforceStruct(&badReqSfAuth),
 				sObjectName: "Account",
 				record: account{
 					Id: "1234",
@@ -572,7 +571,7 @@ func Test_doDeleteOne(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				record:      "1",
 			},
@@ -581,7 +580,7 @@ func Test_doDeleteOne(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := doDeleteOne(tt.args.auth, tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
+			if err := doDeleteOne(tt.args.sf, tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
 				t.Errorf("doDeleteOne() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -606,7 +605,7 @@ func Test_doInsertCollection(t *testing.T) {
 	defer server.Close()
 
 	type args struct {
-		auth        *authentication
+		sf          *Salesforce
 		sObjectName string
 		records     any
 		batchSize   int
@@ -620,7 +619,7 @@ func Test_doInsertCollection(t *testing.T) {
 		{
 			name: "successful_insert_collection",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				records: []account{
 					{
@@ -638,7 +637,7 @@ func Test_doInsertCollection(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				records:     "1",
 				batchSize:   200,
@@ -649,8 +648,12 @@ func Test_doInsertCollection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := doInsertCollection(tt.args.auth, tt.args.sObjectName, tt.args.records, tt.args.batchSize); (err != nil) != tt.wantErr {
+			got, err := doInsertCollection(tt.args.sf, tt.args.sObjectName, tt.args.records, tt.args.batchSize)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("doInsertCollection() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("doInsertCollection() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -675,7 +678,7 @@ func Test_doUpdateCollection(t *testing.T) {
 	defer server.Close()
 
 	type args struct {
-		auth        *authentication
+		sf          *Salesforce
 		sObjectName string
 		records     any
 		batchSize   int
@@ -689,7 +692,7 @@ func Test_doUpdateCollection(t *testing.T) {
 		{
 			name: "successful_update_collection",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				records: []account{
 					{
@@ -709,7 +712,7 @@ func Test_doUpdateCollection(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				records:     "1",
 				batchSize:   200,
@@ -720,7 +723,7 @@ func Test_doUpdateCollection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doUpdateCollection(tt.args.auth, tt.args.sObjectName, tt.args.records, tt.args.batchSize)
+			got, err := doUpdateCollection(tt.args.sf, tt.args.sObjectName, tt.args.records, tt.args.batchSize)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doUpdateCollection() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -750,7 +753,7 @@ func Test_doUpsertCollection(t *testing.T) {
 	defer server.Close()
 
 	type args struct {
-		auth        *authentication
+		sf          *Salesforce
 		sObjectName string
 		fieldName   string
 		records     any
@@ -765,7 +768,7 @@ func Test_doUpsertCollection(t *testing.T) {
 		{
 			name: "successful_upsert_collection",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				fieldName:   "ExternalId__c",
 				records: []account{
@@ -786,7 +789,7 @@ func Test_doUpsertCollection(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				fieldName:   "ExternalId__c",
 				records:     "1",
@@ -798,7 +801,7 @@ func Test_doUpsertCollection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doUpsertCollection(tt.args.auth, tt.args.sObjectName, tt.args.fieldName, tt.args.records, tt.args.batchSize)
+			got, err := doUpsertCollection(tt.args.sf, tt.args.sObjectName, tt.args.fieldName, tt.args.records, tt.args.batchSize)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doUpsertCollection() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -862,7 +865,7 @@ func Test_doDeleteCollection(t *testing.T) {
 	defer sfErrorServer.Close()
 
 	type args struct {
-		auth        *authentication
+		sf          *Salesforce
 		sObjectName string
 		records     any
 		batchSize   int
@@ -876,7 +879,7 @@ func Test_doDeleteCollection(t *testing.T) {
 		{
 			name: "successful_delete_collection_single_batch",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				records: []account{
 					{
@@ -894,7 +897,7 @@ func Test_doDeleteCollection(t *testing.T) {
 		{
 			name: "successful_delete_collection_multi_batch",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				records: []account{
 					{
@@ -912,7 +915,7 @@ func Test_doDeleteCollection(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				records:     "1",
 				batchSize:   200,
@@ -923,7 +926,7 @@ func Test_doDeleteCollection(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:        &badReqSfAuth,
+				sf:          buildSalesforceStruct(&badReqSfAuth),
 				sObjectName: "Account",
 				records: []account{
 					{
@@ -938,7 +941,7 @@ func Test_doDeleteCollection(t *testing.T) {
 		{
 			name: "salesforce_errors",
 			args: args{
-				auth:        &sfErrorSfAuth,
+				sf:          buildSalesforceStruct(&sfErrorSfAuth),
 				sObjectName: "Account",
 				records: []account{
 					{
@@ -953,7 +956,7 @@ func Test_doDeleteCollection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doDeleteCollection(tt.args.auth, tt.args.sObjectName, tt.args.records, tt.args.batchSize)
+			got, err := doDeleteCollection(tt.args.sf, tt.args.sObjectName, tt.args.records, tt.args.batchSize)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doDeleteCollection() error = %v, wantErr %v", err, tt.wantErr)
 			}
