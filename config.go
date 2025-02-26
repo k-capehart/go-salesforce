@@ -1,26 +1,9 @@
 package salesforce
 
 type Configuration struct {
-	CompressionHeaders bool
+	CompressionHeaders bool // compress request and response if true to save bandwidth
 }
 
 func (c *Configuration) SetDefaults() {
-	if c == nil {
-		return
-	}
 	c.CompressionHeaders = false
-}
-
-func (sf *Salesforce) SetConfig(config *Configuration) {
-	if config == nil {
-		return
-	}
-	if sf == nil {
-		return
-	}
-	if sf.Config == nil {
-		sf.Config = &Configuration{}
-	}
-	sf.Config.CompressionHeaders = config.CompressionHeaders
-
 }

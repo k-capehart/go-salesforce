@@ -1,6 +1,8 @@
 package salesforce
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -37,12 +39,37 @@ func setupTestServer(body any, status int) (*httptest.Server, authentication) {
 }
 
 func buildSalesforceStruct(auth *authentication) *Salesforce {
-	config := &Configuration{}
+	config := Configuration{}
 	config.SetDefaults()
 	return &Salesforce{
 		auth:   auth,
 		Config: config,
 	}
+}
+
+func setupCompressedTestServer(body any, status int) (*httptest.Server, authentication) {
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if err := json.NewEncoder(gz).Encode(body); err != nil {
+		panic(err)
+	}
+	if err := gz.Close(); err != nil {
+		panic(err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Encoding", "gzip")
+		w.WriteHeader(status)
+		if _, err := w.Write(buf.Bytes()); err != nil {
+			panic(err)
+		}
+	}))
+
+	sfAuth := authentication{
+		InstanceUrl: server.URL,
+		AccessToken: "accesstokenvalue",
+	}
+	return server, sfAuth
 }
 
 func Test_doRequest(t *testing.T) {
@@ -55,6 +82,9 @@ func Test_doRequest(t *testing.T) {
 	recordArrayResp := [2]string{"testRecord1", "testRecord2"}
 	serverWith300Resp, authWith300Resp := setupTestServer(recordArrayResp, http.StatusMultipleChoices)
 	defer serverWith300Resp.Close()
+
+	compressedServer, sfAuthCompressed := setupCompressedTestServer(recordArrayResp, http.StatusOK)
+	defer compressedServer.Close()
 
 	type args struct {
 		auth    *authentication
@@ -106,6 +136,21 @@ func Test_doRequest(t *testing.T) {
 				},
 			},
 			want:    http.StatusMultipleChoices,
+			wantErr: false,
+		},
+		{
+			name: "compression_headers",
+			args: args{
+				auth: &sfAuthCompressed,
+				payload: requestPayload{
+					method:   http.MethodGet,
+					uri:      "",
+					content:  jsonType,
+					body:     "",
+					compress: true,
+				},
+			},
+			want:    http.StatusOK,
 			wantErr: false,
 		},
 	}

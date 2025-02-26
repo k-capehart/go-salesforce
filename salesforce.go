@@ -16,7 +16,7 @@ import (
 
 type Salesforce struct {
 	auth   *authentication
-	Config *Configuration
+	Config Configuration
 }
 
 type SalesforceErrorMessage struct {
@@ -77,6 +77,7 @@ func doRequest(auth *authentication, payload requestPayload) (*http.Response, er
 	req.Header.Set("Authorization", "Bearer "+auth.AccessToken)
 	if payload.compress {
 		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Content-Encoding", "gzip")
 	}
 
 	resp, err := http.DefaultClient.Do(req)
@@ -270,7 +271,7 @@ func Init(creds Creds) (*Salesforce, error) {
 	auth.creds = creds
 	config := Configuration{}
 	config.SetDefaults()
-	return &Salesforce{auth: auth, Config: &config}, nil
+	return &Salesforce{auth: auth, Config: config}, nil
 }
 
 func (sf *Salesforce) DoRequest(method string, uri string, body []byte) (*http.Response, error) {

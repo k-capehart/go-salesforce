@@ -24,7 +24,7 @@ type bulkJobQueryIterator struct {
 	uri             string
 	err             error
 	reader          io.ReadCloser
-	config          *Configuration
+	config          Configuration
 }
 
 func newBulkJobQueryIterator(sf *Salesforce, bulkJobId string) (*bulkJobQueryIterator, error) {
