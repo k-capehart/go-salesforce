@@ -3,17 +3,16 @@ package salesforce
 import (
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"reflect"
 	"strconv"
-	"strings"
 
 	"github.com/forcedotcom/go-soql"
 )
 
 type Salesforce struct {
-	auth *authentication
+	auth   *authentication
+	Config Configuration
 }
 
 type SalesforceErrorMessage struct {
@@ -34,14 +33,6 @@ type SalesforceResults struct {
 	HasSalesforceErrors bool
 }
 
-type requestPayload struct {
-	method  string
-	uri     string
-	content string
-	body    string
-	retry   bool
-}
-
 const (
 	apiVersion            = "v62.0"
 	jsonType              = "application/json"
@@ -50,38 +41,6 @@ const (
 	bulkBatchSizeMax      = 10000
 	invalidSessionIdError = "INVALID_SESSION_ID"
 )
-
-func doRequest(auth *authentication, payload requestPayload) (*http.Response, error) {
-	var reader *strings.Reader
-	var req *http.Request
-	var err error
-	endpoint := auth.InstanceUrl + "/services/data/" + apiVersion + payload.uri
-
-	if payload.body != "" {
-		reader = strings.NewReader(payload.body)
-		req, err = http.NewRequest(payload.method, endpoint, reader)
-	} else {
-		req, err = http.NewRequest(payload.method, endpoint, nil)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("User-Agent", "go-salesforce")
-	req.Header.Set("Content-Type", payload.content)
-	req.Header.Set("Accept", payload.content)
-	req.Header.Set("Authorization", "Bearer "+auth.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return resp, err
-	}
-	if resp.StatusCode < 200 || resp.StatusCode > 300 {
-		resp, err = processSalesforceError(*resp, auth, payload)
-	}
-
-	return resp, err
-}
 
 func validateOfTypeSlice(data any) error {
 	t := reflect.TypeOf(data).Kind().String()
@@ -172,33 +131,6 @@ func validateBulk(sf Salesforce, records any, batchSize int, isFile bool) error 
 	return nil
 }
 
-func processSalesforceError(resp http.Response, auth *authentication, payload requestPayload) (*http.Response, error) {
-	responseData, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return &resp, err
-	}
-	var sfErrors []SalesforceErrorMessage
-	err = json.Unmarshal(responseData, &sfErrors)
-	if err != nil {
-		return &resp, err
-	}
-	for _, sfError := range sfErrors {
-		if sfError.ErrorCode == invalidSessionIdError && !payload.retry { // only attempt to refresh the session once
-			err = refreshSession(auth)
-			if err != nil {
-				return &resp, err
-			}
-			newResp, err := doRequest(auth, requestPayload{payload.method, payload.uri, payload.content, payload.body, true})
-			if err != nil {
-				return &resp, err
-			}
-			return newResp, nil
-		}
-	}
-
-	return &resp, errors.New(string(responseData))
-}
-
 func Init(creds Creds) (*Salesforce, error) {
 	var auth *authentication
 	var err error
@@ -243,7 +175,9 @@ func Init(creds Creds) (*Salesforce, error) {
 		return nil, errors.New("unknown authentication error")
 	}
 	auth.creds = creds
-	return &Salesforce{auth: auth}, nil
+	config := Configuration{}
+	config.SetDefaults()
+	return &Salesforce{auth: auth, Config: config}, nil
 }
 
 func (sf *Salesforce) DoRequest(method string, uri string, body []byte) (*http.Response, error) {
@@ -253,10 +187,11 @@ func (sf *Salesforce) DoRequest(method string, uri string, body []byte) (*http.R
 	}
 
 	resp, err := doRequest(sf.auth, requestPayload{
-		method:  method,
-		uri:     uri,
-		content: jsonType,
-		body:    string(body),
+		method:   method,
+		uri:      uri,
+		content:  jsonType,
+		body:     string(body),
+		compress: sf.Config.CompressionHeaders,
 	})
 	if err != nil {
 		return nil, err
@@ -271,7 +206,7 @@ func (sf *Salesforce) Query(query string, sObject any) error {
 		return authErr
 	}
 
-	queryErr := performQuery(sf.auth, query, sObject)
+	queryErr := performQuery(sf, query, sObject)
 	if queryErr != nil {
 		return queryErr
 	}
@@ -289,7 +224,7 @@ func (sf *Salesforce) QueryStruct(soqlStruct any, sObject any) error {
 	if err != nil {
 		return err
 	}
-	queryErr := performQuery(sf.auth, soqlQuery, sObject)
+	queryErr := performQuery(sf, soqlQuery, sObject)
 	if queryErr != nil {
 		return queryErr
 	}
@@ -303,7 +238,7 @@ func (sf *Salesforce) InsertOne(sObjectName string, record any) (SalesforceResul
 		return SalesforceResult{}, validationErr
 	}
 
-	return doInsertOne(sf.auth, sObjectName, record)
+	return doInsertOne(sf, sObjectName, record)
 }
 
 func (sf *Salesforce) UpdateOne(sObjectName string, record any) error {
@@ -312,7 +247,7 @@ func (sf *Salesforce) UpdateOne(sObjectName string, record any) error {
 		return validationErr
 	}
 
-	return doUpdateOne(sf.auth, sObjectName, record)
+	return doUpdateOne(sf, sObjectName, record)
 }
 
 func (sf *Salesforce) UpsertOne(sObjectName string, externalIdFieldName string, record any) (SalesforceResult, error) {
@@ -321,7 +256,7 @@ func (sf *Salesforce) UpsertOne(sObjectName string, externalIdFieldName string, 
 		return SalesforceResult{}, validationErr
 	}
 
-	return doUpsertOne(sf.auth, sObjectName, externalIdFieldName, record)
+	return doUpsertOne(sf, sObjectName, externalIdFieldName, record)
 }
 
 func (sf *Salesforce) DeleteOne(sObjectName string, record any) error {
@@ -330,7 +265,7 @@ func (sf *Salesforce) DeleteOne(sObjectName string, record any) error {
 		return validationErr
 	}
 
-	return doDeleteOne(sf.auth, sObjectName, record)
+	return doDeleteOne(sf, sObjectName, record)
 }
 
 func (sf *Salesforce) InsertCollection(sObjectName string, records any, batchSize int) (SalesforceResults, error) {
@@ -339,7 +274,7 @@ func (sf *Salesforce) InsertCollection(sObjectName string, records any, batchSiz
 		return SalesforceResults{}, validationErr
 	}
 
-	return doInsertCollection(sf.auth, sObjectName, records, batchSize)
+	return doInsertCollection(sf, sObjectName, records, batchSize)
 }
 
 func (sf *Salesforce) UpdateCollection(sObjectName string, records any, batchSize int) (SalesforceResults, error) {
@@ -348,7 +283,7 @@ func (sf *Salesforce) UpdateCollection(sObjectName string, records any, batchSiz
 		return SalesforceResults{}, validationErr
 	}
 
-	return doUpdateCollection(sf.auth, sObjectName, records, batchSize)
+	return doUpdateCollection(sf, sObjectName, records, batchSize)
 }
 
 func (sf *Salesforce) UpsertCollection(sObjectName string, externalIdFieldName string, records any, batchSize int) (SalesforceResults, error) {
@@ -357,7 +292,7 @@ func (sf *Salesforce) UpsertCollection(sObjectName string, externalIdFieldName s
 		return SalesforceResults{}, validationErr
 	}
 
-	return doUpsertCollection(sf.auth, sObjectName, externalIdFieldName, records, batchSize)
+	return doUpsertCollection(sf, sObjectName, externalIdFieldName, records, batchSize)
 }
 
 func (sf *Salesforce) DeleteCollection(sObjectName string, records any, batchSize int) (SalesforceResults, error) {
@@ -366,7 +301,7 @@ func (sf *Salesforce) DeleteCollection(sObjectName string, records any, batchSiz
 		return SalesforceResults{}, validationErr
 	}
 
-	return doDeleteCollection(sf.auth, sObjectName, records, batchSize)
+	return doDeleteCollection(sf, sObjectName, records, batchSize)
 }
 
 func (sf *Salesforce) InsertComposite(sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error) {
@@ -375,7 +310,7 @@ func (sf *Salesforce) InsertComposite(sObjectName string, records any, batchSize
 		return SalesforceResults{}, validationErr
 	}
 
-	return doInsertComposite(sf.auth, sObjectName, records, allOrNone, batchSize)
+	return doInsertComposite(sf, sObjectName, records, allOrNone, batchSize)
 }
 
 func (sf *Salesforce) UpdateComposite(sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error) {
@@ -384,7 +319,7 @@ func (sf *Salesforce) UpdateComposite(sObjectName string, records any, batchSize
 		return SalesforceResults{}, validationErr
 	}
 
-	return doUpdateComposite(sf.auth, sObjectName, records, allOrNone, batchSize)
+	return doUpdateComposite(sf, sObjectName, records, allOrNone, batchSize)
 }
 
 func (sf *Salesforce) UpsertComposite(sObjectName string, externalIdFieldName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error) {
@@ -393,7 +328,7 @@ func (sf *Salesforce) UpsertComposite(sObjectName string, externalIdFieldName st
 		return SalesforceResults{}, validationErr
 	}
 
-	return doUpsertComposite(sf.auth, sObjectName, externalIdFieldName, records, allOrNone, batchSize)
+	return doUpsertComposite(sf, sObjectName, externalIdFieldName, records, allOrNone, batchSize)
 }
 
 func (sf *Salesforce) DeleteComposite(sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error) {
@@ -402,7 +337,7 @@ func (sf *Salesforce) DeleteComposite(sObjectName string, records any, batchSize
 		return SalesforceResults{}, validationErr
 	}
 
-	return doDeleteComposite(sf.auth, sObjectName, records, allOrNone, batchSize)
+	return doDeleteComposite(sf, sObjectName, records, allOrNone, batchSize)
 }
 
 func (sf *Salesforce) QueryBulkExport(query string, filePath string) error {
@@ -410,7 +345,7 @@ func (sf *Salesforce) QueryBulkExport(query string, filePath string) error {
 	if authErr != nil {
 		return authErr
 	}
-	queryErr := doQueryBulk(sf.auth, filePath, query)
+	queryErr := doQueryBulk(sf, filePath, query)
 	if queryErr != nil {
 		return queryErr
 	}
@@ -428,7 +363,7 @@ func (sf *Salesforce) QueryStructBulkExport(soqlStruct any, filePath string) err
 	if err != nil {
 		return err
 	}
-	queryErr := doQueryBulk(sf.auth, filePath, soqlQuery)
+	queryErr := doQueryBulk(sf, filePath, soqlQuery)
 	if queryErr != nil {
 		return queryErr
 	}
@@ -450,7 +385,7 @@ func (sf *Salesforce) QueryBulkIterator(query string) (IteratorJob, error) {
 		return nil, jsonErr
 	}
 
-	job, jobCreationErr := createBulkJob(sf.auth, queryJobType, body)
+	job, jobCreationErr := createBulkJob(sf, queryJobType, body)
 	if jobCreationErr != nil {
 		return nil, jobCreationErr
 	}
@@ -458,7 +393,7 @@ func (sf *Salesforce) QueryBulkIterator(query string) (IteratorJob, error) {
 		newErr := errors.New("error creating bulk query job")
 		return nil, newErr
 	}
-	return newBulkJobQueryIterator(sf.auth, job.Id)
+	return newBulkJobQueryIterator(sf, job.Id)
 }
 
 func (sf *Salesforce) InsertBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error) {
@@ -467,7 +402,7 @@ func (sf *Salesforce) InsertBulk(sObjectName string, records any, batchSize int,
 		return []string{}, validationErr
 	}
 
-	jobIds, bulkErr := doBulkJob(sf.auth, sObjectName, "", insertOperation, records, batchSize, waitForResults)
+	jobIds, bulkErr := doBulkJob(sf, sObjectName, "", insertOperation, records, batchSize, waitForResults)
 	if bulkErr != nil {
 		return []string{}, bulkErr
 	}
@@ -481,7 +416,7 @@ func (sf *Salesforce) InsertBulkFile(sObjectName string, filePath string, batchS
 		return []string{}, validationErr
 	}
 
-	jobIds, bulkErr := doBulkJobWithFile(sf.auth, sObjectName, "", insertOperation, filePath, batchSize, waitForResults)
+	jobIds, bulkErr := doBulkJobWithFile(sf, sObjectName, "", insertOperation, filePath, batchSize, waitForResults)
 	if bulkErr != nil {
 		return []string{}, bulkErr
 	}
@@ -495,7 +430,7 @@ func (sf *Salesforce) UpdateBulk(sObjectName string, records any, batchSize int,
 		return []string{}, validationErr
 	}
 
-	jobIds, bulkErr := doBulkJob(sf.auth, sObjectName, "", updateOperation, records, batchSize, waitForResults)
+	jobIds, bulkErr := doBulkJob(sf, sObjectName, "", updateOperation, records, batchSize, waitForResults)
 	if bulkErr != nil {
 		return []string{}, bulkErr
 	}
@@ -509,7 +444,7 @@ func (sf *Salesforce) UpdateBulkFile(sObjectName string, filePath string, batchS
 		return []string{}, validationErr
 	}
 
-	jobIds, bulkErr := doBulkJobWithFile(sf.auth, sObjectName, "", updateOperation, filePath, batchSize, waitForResults)
+	jobIds, bulkErr := doBulkJobWithFile(sf, sObjectName, "", updateOperation, filePath, batchSize, waitForResults)
 	if bulkErr != nil {
 		return []string{}, bulkErr
 	}
@@ -523,7 +458,7 @@ func (sf *Salesforce) UpsertBulk(sObjectName string, externalIdFieldName string,
 		return []string{}, validationErr
 	}
 
-	jobIds, bulkErr := doBulkJob(sf.auth, sObjectName, externalIdFieldName, upsertOperation, records, batchSize, waitForResults)
+	jobIds, bulkErr := doBulkJob(sf, sObjectName, externalIdFieldName, upsertOperation, records, batchSize, waitForResults)
 	if bulkErr != nil {
 		return []string{}, bulkErr
 	}
@@ -537,7 +472,7 @@ func (sf *Salesforce) UpsertBulkFile(sObjectName string, externalIdFieldName str
 		return []string{}, validationErr
 	}
 
-	jobIds, bulkErr := doBulkJobWithFile(sf.auth, sObjectName, externalIdFieldName, upsertOperation, filePath, batchSize, waitForResults)
+	jobIds, bulkErr := doBulkJobWithFile(sf, sObjectName, externalIdFieldName, upsertOperation, filePath, batchSize, waitForResults)
 	if bulkErr != nil {
 		return []string{}, bulkErr
 	}
@@ -551,7 +486,7 @@ func (sf *Salesforce) DeleteBulk(sObjectName string, records any, batchSize int,
 		return []string{}, validationErr
 	}
 
-	jobIds, bulkErr := doBulkJob(sf.auth, sObjectName, "", deleteOperation, records, batchSize, waitForResults)
+	jobIds, bulkErr := doBulkJob(sf, sObjectName, "", deleteOperation, records, batchSize, waitForResults)
 	if bulkErr != nil {
 		return []string{}, bulkErr
 	}
@@ -565,7 +500,7 @@ func (sf *Salesforce) DeleteBulkFile(sObjectName string, filePath string, batchS
 		return []string{}, validationErr
 	}
 
-	jobIds, bulkErr := doBulkJobWithFile(sf.auth, sObjectName, "", deleteOperation, filePath, batchSize, waitForResults)
+	jobIds, bulkErr := doBulkJobWithFile(sf, sObjectName, "", deleteOperation, filePath, batchSize, waitForResults)
 	if bulkErr != nil {
 		return []string{}, bulkErr
 	}
@@ -579,13 +514,13 @@ func (sf *Salesforce) GetJobResults(bulkJobId string) (BulkJobResults, error) {
 		return BulkJobResults{}, authErr
 	}
 
-	job, err := getJobResults(sf.auth, ingestJobType, bulkJobId)
+	job, err := getJobResults(sf, ingestJobType, bulkJobId)
 	if err != nil {
 		return BulkJobResults{}, err
 	}
 
 	if job.State == jobStateJobComplete {
-		job, err = getJobRecordResults(sf.auth, job)
+		job, err = getJobRecordResults(sf, job)
 		if err != nil {
 			return job, err
 		}

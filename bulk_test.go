@@ -47,7 +47,7 @@ func Test_createBulkJob(t *testing.T) {
 	queryBody, _ := json.Marshal(queryJobReq)
 
 	type args struct {
-		auth    *authentication
+		sf      *Salesforce
 		jobType string
 		body    []byte
 	}
@@ -60,7 +60,7 @@ func Test_createBulkJob(t *testing.T) {
 		{
 			name: "create_bulk_ingest_job",
 			args: args{
-				auth:    &sfAuth,
+				sf:      buildSalesforceStruct(&sfAuth),
 				jobType: ingestJobType,
 				body:    ingestBody,
 			},
@@ -70,7 +70,7 @@ func Test_createBulkJob(t *testing.T) {
 		{
 			name: "create_bulk_query_job",
 			args: args{
-				auth:    &sfAuth,
+				sf:      buildSalesforceStruct(&sfAuth),
 				jobType: queryJobType,
 				body:    queryBody,
 			},
@@ -80,7 +80,7 @@ func Test_createBulkJob(t *testing.T) {
 		{
 			name: "bad_response",
 			args: args{
-				auth:    &badRespSfAuth,
+				sf:      buildSalesforceStruct(&badRespSfAuth),
 				jobType: queryJobType,
 				body:    queryBody,
 			},
@@ -89,7 +89,7 @@ func Test_createBulkJob(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := createBulkJob(tt.args.auth, tt.args.jobType, tt.args.body)
+			got, err := createBulkJob(tt.args.sf, tt.args.jobType, tt.args.body)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("createBulkJob() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -118,7 +118,7 @@ func Test_getJobResults(t *testing.T) {
 	defer badRespServer.Close()
 
 	type args struct {
-		auth      *authentication
+		sf        *Salesforce
 		jobType   string
 		bulkJobId string
 	}
@@ -131,7 +131,7 @@ func Test_getJobResults(t *testing.T) {
 		{
 			name: "get_job_results",
 			args: args{
-				auth:      &sfAuth,
+				sf:        buildSalesforceStruct(&sfAuth),
 				jobType:   ingestJobType,
 				bulkJobId: "1234",
 			},
@@ -141,7 +141,7 @@ func Test_getJobResults(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:      &badReqSfAuth,
+				sf:        buildSalesforceStruct(&badReqSfAuth),
 				jobType:   ingestJobType,
 				bulkJobId: "1234",
 			},
@@ -150,7 +150,7 @@ func Test_getJobResults(t *testing.T) {
 		{
 			name: "bad_response",
 			args: args{
-				auth:      &badRespSfAuth,
+				sf:        buildSalesforceStruct(&badRespSfAuth),
 				jobType:   ingestJobType,
 				bulkJobId: "1234",
 			},
@@ -159,7 +159,7 @@ func Test_getJobResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getJobResults(tt.args.auth, tt.args.jobType, tt.args.bulkJobId)
+			got, err := getJobResults(tt.args.sf, tt.args.jobType, tt.args.bulkJobId)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getJobResults() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -267,7 +267,7 @@ func Test_getQueryJobResults(t *testing.T) {
 	defer badServer.Close()
 
 	type args struct {
-		auth      *authentication
+		sf        *Salesforce
 		bulkJobId string
 		locator   string
 	}
@@ -280,7 +280,7 @@ func Test_getQueryJobResults(t *testing.T) {
 		{
 			name: "get_single_query_job_result",
 			args: args{
-				auth:      &sfAuth,
+				sf:        buildSalesforceStruct(&sfAuth),
 				bulkJobId: "1234",
 				locator:   "",
 			},
@@ -294,7 +294,7 @@ func Test_getQueryJobResults(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:      &badSfAuth,
+				sf:        buildSalesforceStruct(&badSfAuth),
 				bulkJobId: "1234",
 				locator:   "",
 			},
@@ -303,7 +303,7 @@ func Test_getQueryJobResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getQueryJobResults(tt.args.auth, tt.args.bulkJobId, tt.args.locator)
+			got, err := getQueryJobResults(tt.args.sf, tt.args.bulkJobId, tt.args.locator)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getQueryJobResults() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -395,7 +395,7 @@ func Test_constructBulkJobRequest(t *testing.T) {
 	defer badReqServer.Close()
 
 	type args struct {
-		auth        *authentication
+		sf          *Salesforce
 		sObjectName string
 		operation   string
 		fieldName   string
@@ -409,7 +409,7 @@ func Test_constructBulkJobRequest(t *testing.T) {
 		{
 			name: "construct_bulk_job_success",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				operation:   insertOperation,
 				fieldName:   "",
@@ -420,7 +420,7 @@ func Test_constructBulkJobRequest(t *testing.T) {
 		{
 			name: "construct_bulk_job_fail",
 			args: args{
-				auth:        &badJobSfAuth,
+				sf:          buildSalesforceStruct(&badJobSfAuth),
 				sObjectName: "Account",
 				operation:   insertOperation,
 				fieldName:   "",
@@ -431,7 +431,7 @@ func Test_constructBulkJobRequest(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:        &badReqSfAuth,
+				sf:          buildSalesforceStruct(&badReqSfAuth),
 				sObjectName: "Account",
 				operation:   insertOperation,
 				fieldName:   "",
@@ -442,7 +442,7 @@ func Test_constructBulkJobRequest(t *testing.T) {
 		{
 			name: "bad_response",
 			args: args{
-				auth:        &authentication{},
+				sf:          buildSalesforceStruct(&authentication{}),
 				sObjectName: "Account",
 				operation:   insertOperation,
 				fieldName:   "",
@@ -453,7 +453,7 @@ func Test_constructBulkJobRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := constructBulkJobRequest(tt.args.auth, tt.args.sObjectName, tt.args.operation, tt.args.fieldName)
+			got, err := constructBulkJobRequest(tt.args.sf, tt.args.sObjectName, tt.args.operation, tt.args.fieldName)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("constructBulkJobRequest() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -524,7 +524,7 @@ func Test_doBulkJob(t *testing.T) {
 	}
 
 	type args struct {
-		auth           *authentication
+		sf             *Salesforce
 		sObjectName    string
 		fieldName      string
 		operation      string
@@ -541,7 +541,7 @@ func Test_doBulkJob(t *testing.T) {
 		{
 			name: "bulk_insert_batch_size_200",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				fieldName:   "",
 				operation:   insertOperation,
@@ -562,7 +562,7 @@ func Test_doBulkJob(t *testing.T) {
 		{
 			name: "bulk_upsert_batch_size_1",
 			args: args{
-				auth:        &sfAuth,
+				sf:          buildSalesforceStruct(&sfAuth),
 				sObjectName: "Account",
 				fieldName:   "externalId",
 				operation:   upsertOperation,
@@ -585,7 +585,7 @@ func Test_doBulkJob(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:        &badReqSfAuth,
+				sf:          buildSalesforceStruct(&badReqSfAuth),
 				sObjectName: "Account",
 				fieldName:   "externalId",
 				operation:   upsertOperation,
@@ -603,7 +603,7 @@ func Test_doBulkJob(t *testing.T) {
 		{
 			name: "bulk_insert_wait_for_results",
 			args: args{
-				auth:        &waitingSfAuth,
+				sf:          buildSalesforceStruct(&waitingSfAuth),
 				sObjectName: "Account",
 				fieldName:   "",
 				operation:   insertOperation,
@@ -621,7 +621,7 @@ func Test_doBulkJob(t *testing.T) {
 		{
 			name: "bad_request_upload_fail",
 			args: args{
-				auth:        &uploadFailSfAuth,
+				sf:          buildSalesforceStruct(&uploadFailSfAuth),
 				sObjectName: "Account",
 				fieldName:   "",
 				operation:   insertOperation,
@@ -639,7 +639,7 @@ func Test_doBulkJob(t *testing.T) {
 		{
 			name: "bad_data",
 			args: args{
-				auth:           &sfAuth,
+				sf:             buildSalesforceStruct(&sfAuth),
 				sObjectName:    "Account",
 				fieldName:      "",
 				operation:      insertOperation,
@@ -653,7 +653,7 @@ func Test_doBulkJob(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doBulkJob(tt.args.auth, tt.args.sObjectName, tt.args.fieldName, tt.args.operation, tt.args.records, tt.args.batchSize, tt.args.waitForResults)
+			got, err := doBulkJob(tt.args.sf, tt.args.sObjectName, tt.args.fieldName, tt.args.operation, tt.args.records, tt.args.batchSize, tt.args.waitForResults)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doBulkJob() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -677,7 +677,7 @@ func Test_waitForJobResultsAsync(t *testing.T) {
 	defer badServer.Close()
 
 	type args struct {
-		auth      *authentication
+		sf        *Salesforce
 		bulkJobId string
 		jobType   string
 		interval  time.Duration
@@ -691,7 +691,7 @@ func Test_waitForJobResultsAsync(t *testing.T) {
 		{
 			name: "wait_for_ingest_result",
 			args: args{
-				auth:      &sfAuth,
+				sf:        buildSalesforceStruct(&sfAuth),
 				bulkJobId: "1234",
 				jobType:   ingestJobType,
 				interval:  time.Nanosecond,
@@ -702,7 +702,7 @@ func Test_waitForJobResultsAsync(t *testing.T) {
 		{
 			name: "wait_for_query_result",
 			args: args{
-				auth:      &sfAuth,
+				sf:        buildSalesforceStruct(&sfAuth),
 				bulkJobId: "1234",
 				jobType:   queryJobType,
 				interval:  time.Nanosecond,
@@ -713,7 +713,7 @@ func Test_waitForJobResultsAsync(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:      &badSfAuth,
+				sf:        buildSalesforceStruct(&badSfAuth),
 				bulkJobId: "",
 				jobType:   queryJobType,
 				interval:  time.Nanosecond,
@@ -724,7 +724,7 @@ func Test_waitForJobResultsAsync(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			go waitForJobResultsAsync(tt.args.auth, tt.args.bulkJobId, tt.args.jobType, tt.args.interval, tt.args.c)
+			go waitForJobResultsAsync(tt.args.sf, tt.args.bulkJobId, tt.args.jobType, tt.args.interval, tt.args.c)
 			err := <-tt.args.c
 			if (err != nil) != tt.wantErr {
 				t.Errorf("waitForJobResult() error = %v, wantErr %v", err, tt.wantErr)
@@ -745,7 +745,7 @@ func Test_waitForJobResults(t *testing.T) {
 	defer badServer.Close()
 
 	type args struct {
-		auth      *authentication
+		sf        *Salesforce
 		bulkJobId string
 		jobType   string
 		interval  time.Duration
@@ -759,7 +759,7 @@ func Test_waitForJobResults(t *testing.T) {
 		{
 			name: "wait_for_ingest_result",
 			args: args{
-				auth:      &sfAuth,
+				sf:        buildSalesforceStruct(&sfAuth),
 				bulkJobId: "1234",
 				jobType:   ingestJobType,
 				interval:  time.Nanosecond,
@@ -769,7 +769,7 @@ func Test_waitForJobResults(t *testing.T) {
 		{
 			name: "wait_for_query_result",
 			args: args{
-				auth:      &sfAuth,
+				sf:        buildSalesforceStruct(&sfAuth),
 				bulkJobId: "1234",
 				jobType:   queryJobType,
 				interval:  time.Nanosecond,
@@ -779,7 +779,7 @@ func Test_waitForJobResults(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:      &badSfAuth,
+				sf:        buildSalesforceStruct(&badSfAuth),
 				bulkJobId: "",
 				jobType:   queryJobType,
 				interval:  time.Nanosecond,
@@ -789,7 +789,7 @@ func Test_waitForJobResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := waitForJobResults(tt.args.auth, tt.args.bulkJobId, tt.args.jobType, tt.args.interval)
+			err := waitForJobResults(tt.args.sf, tt.args.bulkJobId, tt.args.jobType, tt.args.interval)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("waitForQueryResults() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -820,7 +820,7 @@ func Test_collectQueryResults(t *testing.T) {
 	defer badServer.Close()
 
 	type args struct {
-		auth      *authentication
+		sf        *Salesforce
 		bulkJobId string
 	}
 	tests := []struct {
@@ -832,7 +832,7 @@ func Test_collectQueryResults(t *testing.T) {
 		{
 			name: "query_with_locator",
 			args: args{
-				auth:      &sfAuth,
+				sf:        buildSalesforceStruct(&sfAuth),
 				bulkJobId: "123",
 			},
 			want:    [][]string{{"col"}, {"row"}, {"row"}},
@@ -841,7 +841,7 @@ func Test_collectQueryResults(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:      &badSfAuth,
+				sf:        buildSalesforceStruct(&badSfAuth),
 				bulkJobId: "123",
 			},
 			wantErr: true,
@@ -849,7 +849,7 @@ func Test_collectQueryResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := collectQueryResults(tt.args.auth, tt.args.bulkJobId)
+			got, err := collectQueryResults(tt.args.sf, tt.args.bulkJobId)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("collectQueryResults() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -891,7 +891,7 @@ func Test_uploadJobData(t *testing.T) {
 	defer badRequestServer.Close()
 
 	type args struct {
-		auth    *authentication
+		sf      *Salesforce
 		data    string
 		bulkJob bulkJob
 	}
@@ -903,7 +903,7 @@ func Test_uploadJobData(t *testing.T) {
 		{
 			name: "update_job_state_success",
 			args: args{
-				auth:    &sfAuth,
+				sf:      buildSalesforceStruct(&sfAuth),
 				data:    "data",
 				bulkJob: bulkJob{},
 			},
@@ -912,7 +912,7 @@ func Test_uploadJobData(t *testing.T) {
 		{
 			name: "batch_req_fail",
 			args: args{
-				auth:    &badBatchReqAuth,
+				sf:      buildSalesforceStruct(&badBatchReqAuth),
 				data:    "data",
 				bulkJob: bulkJob{},
 			},
@@ -921,7 +921,7 @@ func Test_uploadJobData(t *testing.T) {
 		{
 			name: "update_job_state_fail_aborted",
 			args: args{
-				auth:    &badBatchAndUpdateJobStateReqAuth,
+				sf:      buildSalesforceStruct(&badBatchAndUpdateJobStateReqAuth),
 				data:    "data",
 				bulkJob: bulkJob{},
 			},
@@ -930,7 +930,7 @@ func Test_uploadJobData(t *testing.T) {
 		{
 			name: "update_job_state_fail_complete",
 			args: args{
-				auth:    &badRequestSfAuth,
+				sf:      buildSalesforceStruct(&badRequestSfAuth),
 				data:    "data",
 				bulkJob: bulkJob{},
 			},
@@ -939,7 +939,7 @@ func Test_uploadJobData(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := uploadJobData(tt.args.auth, tt.args.data, tt.args.bulkJob); (err != nil) != tt.wantErr {
+			if err := uploadJobData(tt.args.sf, tt.args.data, tt.args.bulkJob); (err != nil) != tt.wantErr {
 				t.Errorf("uploadJobData() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1042,7 +1042,7 @@ func Test_updateJobState(t *testing.T) {
 	type args struct {
 		job   bulkJob
 		state string
-		auth  *authentication
+		sf    *Salesforce
 	}
 	tests := []struct {
 		name    string
@@ -1054,14 +1054,14 @@ func Test_updateJobState(t *testing.T) {
 			args: args{
 				job:   bulkJob{},
 				state: "",
-				auth:  &badSfAuth,
+				sf:    buildSalesforceStruct(&badSfAuth),
 			},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := updateJobState(tt.args.job, tt.args.state, tt.args.auth); (err != nil) != tt.wantErr {
+			if err := updateJobState(tt.args.job, tt.args.state, tt.args.sf); (err != nil) != tt.wantErr {
 				t.Errorf("updateJobState() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1131,7 +1131,7 @@ func Test_doBulkJobWithFile(t *testing.T) {
 	}
 
 	type args struct {
-		auth           *authentication
+		sf             *Salesforce
 		sObjectName    string
 		fieldName      string
 		operation      string
@@ -1148,7 +1148,7 @@ func Test_doBulkJobWithFile(t *testing.T) {
 		{
 			name: "bulk_insert_batch_size_200",
 			args: args{
-				auth:           &sfAuth,
+				sf:             buildSalesforceStruct(&sfAuth),
 				sObjectName:    "Account",
 				fieldName:      "",
 				operation:      insertOperation,
@@ -1162,7 +1162,7 @@ func Test_doBulkJobWithFile(t *testing.T) {
 		{
 			name: "bulk_insert_batch_size_1",
 			args: args{
-				auth:           &sfAuth,
+				sf:             buildSalesforceStruct(&sfAuth),
 				sObjectName:    "Account",
 				fieldName:      "",
 				operation:      insertOperation,
@@ -1176,7 +1176,7 @@ func Test_doBulkJobWithFile(t *testing.T) {
 		{
 			name: "bad_request",
 			args: args{
-				auth:           &badReqSfAuth,
+				sf:             buildSalesforceStruct(&badReqSfAuth),
 				sObjectName:    "Account",
 				fieldName:      "externalId",
 				operation:      upsertOperation,
@@ -1189,7 +1189,7 @@ func Test_doBulkJobWithFile(t *testing.T) {
 		{
 			name: "bulk_insert_wait_for_results",
 			args: args{
-				auth:           &waitingSfAuth,
+				sf:             buildSalesforceStruct(&waitingSfAuth),
 				sObjectName:    "Account",
 				fieldName:      "",
 				operation:      insertOperation,
@@ -1203,7 +1203,7 @@ func Test_doBulkJobWithFile(t *testing.T) {
 		{
 			name: "bad_request_upload_fail",
 			args: args{
-				auth:           &uploadFailSfAuth,
+				sf:             buildSalesforceStruct(&uploadFailSfAuth),
 				sObjectName:    "Account",
 				fieldName:      "",
 				operation:      insertOperation,
@@ -1217,7 +1217,7 @@ func Test_doBulkJobWithFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doBulkJobWithFile(tt.args.auth, tt.args.sObjectName, tt.args.fieldName, tt.args.operation, tt.args.filePath, tt.args.batchSize, tt.args.waitForResults)
+			got, err := doBulkJobWithFile(tt.args.sf, tt.args.sObjectName, tt.args.fieldName, tt.args.operation, tt.args.filePath, tt.args.batchSize, tt.args.waitForResults)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doBulkJobWithFile() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1272,7 +1272,7 @@ func Test_doQueryBulk(t *testing.T) {
 	}
 
 	type args struct {
-		auth     *authentication
+		sf       *Salesforce
 		filePath string
 		query    string
 	}
@@ -1284,7 +1284,7 @@ func Test_doQueryBulk(t *testing.T) {
 		{
 			name: "bad_job_creation",
 			args: args{
-				auth:     &badJobCreationSfAuth,
+				sf:       buildSalesforceStruct(&badJobCreationSfAuth),
 				filePath: "data/data.csv",
 				query:    "SELECT Id FROM Account",
 			},
@@ -1293,7 +1293,7 @@ func Test_doQueryBulk(t *testing.T) {
 		{
 			name: "get_results_fail",
 			args: args{
-				auth:     &badResultsSfAuth,
+				sf:       buildSalesforceStruct(&badResultsSfAuth),
 				filePath: "data/data.csv",
 				query:    "SELECT Id FROM Account",
 			},
@@ -1302,7 +1302,7 @@ func Test_doQueryBulk(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := doQueryBulk(tt.args.auth, tt.args.filePath, tt.args.query); (err != nil) != tt.wantErr {
+			if err := doQueryBulk(tt.args.sf, tt.args.filePath, tt.args.query); (err != nil) != tt.wantErr {
 				t.Errorf("doQueryBulk() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1341,7 +1341,7 @@ func Test_getJobRecordResults(t *testing.T) {
 	defer successThenFailServer.Close()
 
 	type args struct {
-		auth           *authentication
+		sf             *Salesforce
 		bulkJobResults BulkJobResults
 	}
 	tests := []struct {
@@ -1353,7 +1353,7 @@ func Test_getJobRecordResults(t *testing.T) {
 		{
 			name: "successful_get_job_record_results",
 			args: args{
-				auth:           &sfAuth,
+				sf:             buildSalesforceStruct(&sfAuth),
 				bulkJobResults: BulkJobResults{Id: "1234"},
 			},
 			want: BulkJobResults{
@@ -1370,7 +1370,7 @@ func Test_getJobRecordResults(t *testing.T) {
 		{
 			name: "failed_to_get_successful_records",
 			args: args{
-				auth:           &badRequestAuth,
+				sf:             buildSalesforceStruct(&badRequestAuth),
 				bulkJobResults: BulkJobResults{Id: "1234"},
 			},
 			want:    BulkJobResults{Id: "1234"},
@@ -1379,7 +1379,7 @@ func Test_getJobRecordResults(t *testing.T) {
 		{
 			name: "failed_to_get_failed_records",
 			args: args{
-				auth:           &successThenFailAuth,
+				sf:             buildSalesforceStruct(&successThenFailAuth),
 				bulkJobResults: BulkJobResults{Id: "1234"},
 			},
 			want: BulkJobResults{
@@ -1393,7 +1393,7 @@ func Test_getJobRecordResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getJobRecordResults(tt.args.auth, tt.args.bulkJobResults)
+			got, err := getJobRecordResults(tt.args.sf, tt.args.bulkJobResults)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getJobRecordResults() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1433,7 +1433,7 @@ func Test_getBulkJobRecords(t *testing.T) {
 	defer badDataServer.Close()
 
 	type args struct {
-		auth       *authentication
+		sf         *Salesforce
 		bulkJobId  string
 		resultType string
 	}
@@ -1446,7 +1446,7 @@ func Test_getBulkJobRecords(t *testing.T) {
 		{
 			name: "successful_get_failed_job_records",
 			args: args{
-				auth:       &sfAuth,
+				sf:         buildSalesforceStruct(&sfAuth),
 				bulkJobId:  "1234",
 				resultType: failedResults,
 			},
@@ -1458,7 +1458,7 @@ func Test_getBulkJobRecords(t *testing.T) {
 		{
 			name: "failed_bad_request",
 			args: args{
-				auth:       &badReqAuth,
+				sf:         buildSalesforceStruct(&badReqAuth),
 				bulkJobId:  "1234",
 				resultType: failedResults,
 			},
@@ -1468,7 +1468,7 @@ func Test_getBulkJobRecords(t *testing.T) {
 		{
 			name: "failed_conversion",
 			args: args{
-				auth:       &badDataAuth,
+				sf:         buildSalesforceStruct(&badDataAuth),
 				bulkJobId:  "1234",
 				resultType: failedResults,
 			},
@@ -1478,7 +1478,7 @@ func Test_getBulkJobRecords(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getBulkJobRecords(tt.args.auth, tt.args.bulkJobId, tt.args.resultType)
+			got, err := getBulkJobRecords(tt.args.sf, tt.args.bulkJobId, tt.args.resultType)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getBulkJobRecords() error = %v, wantErr %v", err, tt.wantErr)
 				return

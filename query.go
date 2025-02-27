@@ -17,7 +17,7 @@ type queryResponse struct {
 	Records        []map[string]any `json:"records"`
 }
 
-func performQuery(auth *authentication, query string, sObject any) error {
+func performQuery(sf *Salesforce, query string, sObject any) error {
 	query = url.QueryEscape(query)
 	queryResp := &queryResponse{
 		Done:           false,
@@ -25,10 +25,11 @@ func performQuery(auth *authentication, query string, sObject any) error {
 	}
 
 	for !queryResp.Done {
-		resp, err := doRequest(auth, requestPayload{
-			method:  http.MethodGet,
-			uri:     queryResp.NextRecordsUrl,
-			content: jsonType,
+		resp, err := doRequest(sf.auth, requestPayload{
+			method:   http.MethodGet,
+			uri:      queryResp.NextRecordsUrl,
+			content:  jsonType,
+			compress: sf.Config.CompressionHeaders,
 		})
 		if err != nil {
 			return err
