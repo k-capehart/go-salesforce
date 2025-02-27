@@ -7,3 +7,7 @@ type Configuration struct {
 func (c *Configuration) SetDefaults() {
 	c.CompressionHeaders = false
 }
+
+func (c *Configuration) SetCompressionHeaders(compression bool) {
+	c.CompressionHeaders = compression
+}

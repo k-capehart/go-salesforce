@@ -56,13 +56,20 @@ const (
 )
 
 func doRequest(auth *authentication, payload requestPayload) (*http.Response, error) {
-	var reader *strings.Reader
+	var reader io.Reader
 	var req *http.Request
 	var err error
 	endpoint := auth.InstanceUrl + "/services/data/" + apiVersion + payload.uri
 
 	if payload.body != "" {
-		reader = strings.NewReader(payload.body)
+		if payload.compress {
+			reader, err = compress(payload.body)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			reader = strings.NewReader(payload.body)
+		}
 		req, err = http.NewRequest(payload.method, endpoint, reader)
 	} else {
 		req, err = http.NewRequest(payload.method, endpoint, nil)
@@ -76,8 +83,8 @@ func doRequest(auth *authentication, payload requestPayload) (*http.Response, er
 	req.Header.Set("Accept", payload.content)
 	req.Header.Set("Authorization", "Bearer "+auth.AccessToken)
 	if payload.compress {
-		req.Header.Set("Accept-Encoding", "gzip")
-		req.Header.Set("Content-Encoding", "gzip")
+		req.Header.Set("Content-Encoding", "gzip") // compress request
+		req.Header.Set("Accept-Encoding", "gzip")  // compress response
 	}
 
 	resp, err := http.DefaultClient.Do(req)
@@ -87,26 +94,40 @@ func doRequest(auth *authentication, payload requestPayload) (*http.Response, er
 	if resp.StatusCode < 200 || resp.StatusCode > 300 {
 		resp, err = processSalesforceError(*resp, auth, payload)
 	}
-	if payload.compress {
-		resp.Body, err = decompress(resp)
+
+	// salesforce does not guarantee that the response will be compressed
+	if resp.Header.Get("Content-Encoding") == "gzip" {
+		resp.Body, err = decompress(resp.Body)
 	}
 
 	return resp, err
 }
 
-func decompress(resp *http.Response) (io.ReadCloser, error) {
-	gzReader, err := gzip.NewReader(resp.Body)
+func compress(body string) (io.Reader, error) {
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write([]byte(body)); err != nil {
+		return nil, err
+	}
+	if err := gz.Close(); err != nil {
+		return nil, err
+	}
+	return &buf, nil
+}
+
+func decompress(body io.ReadCloser) (io.ReadCloser, error) {
+	gzReader, err := gzip.NewReader(body)
 	if err != nil {
 		return nil, err
 	}
 	defer gzReader.Close()
 
-	body, err := io.ReadAll(gzReader)
+	decompressed, err := io.ReadAll(gzReader)
 	if err != nil {
 		return nil, err
 	}
 
-	return io.NopCloser(bytes.NewReader(body)), nil
+	return io.NopCloser(bytes.NewReader(decompressed)), nil
 }
 
 func validateOfTypeSlice(data any) error {

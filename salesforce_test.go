@@ -19,6 +19,18 @@ import (
 func setupTestServer(body any, status int) (*httptest.Server, authentication) {
 	respBody, _ := json.Marshal(body)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Content-Encoding") == "gzip" {
+			w.Header().Set("Content-Encoding", "gzip")
+			var buf bytes.Buffer
+			gz := gzip.NewWriter(&buf)
+			if _, err := gz.Write(respBody); err != nil {
+				panic(err)
+			}
+			if err := gz.Close(); err != nil {
+				panic(err)
+			}
+			respBody = buf.Bytes()
+		}
 		if r.RequestURI[len(r.RequestURI)-8:] == "/batches" {
 			w.WriteHeader(http.StatusCreated)
 		} else {
@@ -47,31 +59,6 @@ func buildSalesforceStruct(auth *authentication) *Salesforce {
 	}
 }
 
-func setupCompressedTestServer(body any, status int) (*httptest.Server, authentication) {
-	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
-	if err := json.NewEncoder(gz).Encode(body); err != nil {
-		panic(err)
-	}
-	if err := gz.Close(); err != nil {
-		panic(err)
-	}
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Encoding", "gzip")
-		w.WriteHeader(status)
-		if _, err := w.Write(buf.Bytes()); err != nil {
-			panic(err)
-		}
-	}))
-
-	sfAuth := authentication{
-		InstanceUrl: server.URL,
-		AccessToken: "accesstokenvalue",
-	}
-	return server, sfAuth
-}
-
 func Test_doRequest(t *testing.T) {
 	server, sfAuth := setupTestServer("", http.StatusOK)
 	defer server.Close()
@@ -79,11 +66,11 @@ func Test_doRequest(t *testing.T) {
 	badServer, badSfAuth := setupTestServer("", http.StatusBadRequest)
 	defer badServer.Close()
 
-	recordArrayResp := [2]string{"testRecord1", "testRecord2"}
+	recordArrayResp := "{\"records\":[{\"Id\":\"123abc\"}]}"
 	serverWith300Resp, authWith300Resp := setupTestServer(recordArrayResp, http.StatusMultipleChoices)
 	defer serverWith300Resp.Close()
 
-	compressedServer, sfAuthCompressed := setupCompressedTestServer(recordArrayResp, http.StatusOK)
+	compressedServer, sfAuthCompressed := setupTestServer("test", http.StatusOK)
 	defer compressedServer.Close()
 
 	type args struct {
@@ -146,7 +133,7 @@ func Test_doRequest(t *testing.T) {
 					method:   http.MethodGet,
 					uri:      "",
 					content:  jsonType,
-					body:     "",
+					body:     "test",
 					compress: true,
 				},
 			},
@@ -3173,6 +3160,59 @@ func TestGetInstanceUrl(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.sf.GetInstanceUrl(); got != tt.want {
 				t.Errorf("GetInstanceUrl() error = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_compression(t *testing.T) {
+	compressedResp, _ := compress("testRecord1")
+
+	type args struct {
+		body io.ReadCloser
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []byte
+		wantErr bool
+	}{
+		{
+			name: "decompress_gzip",
+			args: args{
+				body: io.NopCloser(compressedResp),
+			},
+			want:    []byte("testRecord1"),
+			wantErr: false,
+		},
+		{
+			name: "decompress_invalid",
+			args: args{
+				body: io.NopCloser(strings.NewReader("invalid data")),
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := decompress(tt.args.body)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("decompress() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			var readGot []byte
+			if got != nil {
+				readGot, err = io.ReadAll(got)
+				if (err != nil) != tt.wantErr {
+					t.Errorf("decompress() error = %v, wantErr %v", err, tt.wantErr)
+					return
+				}
+			} else {
+				readGot = nil
+			}
+			if !reflect.DeepEqual(readGot, tt.want) {
+				t.Errorf("decompress() = %v, want %v", readGot, tt.want)
 			}
 		})
 	}
