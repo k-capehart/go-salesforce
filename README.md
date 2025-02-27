@@ -17,6 +17,7 @@ A REST API wrapper for interacting with Salesforce using the Go programming lang
 - [Installation](#installation)
 - [Types](#types)
 - [Authentication](#authentication)
+- [Configuration](#configuration)
 - [SOQL](#soql)
 - [SObject Single Record Operations](#sobject-single-record-operations)
 - [SObject Collections](#sobject-collections)
@@ -35,7 +36,12 @@ go get github.com/k-capehart/go-salesforce/v2
 
 ```go
 type Salesforce struct {
-    auth *authentication
+    auth   *authentication
+    Config Configuration
+}
+
+type Configuration struct {
+	  CompressionHeaders bool
 }
 
 type Creds struct {
@@ -91,6 +97,7 @@ Returns a new Salesforce instance given a user's credentials.
 - [Creating a Connected App in Salesforce](https://help.salesforce.com/s/articleView?id=sf.connected_app_create.htm&type=5)
 - [Review Salesforce oauth flows](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_flows.htm&type=5)
 - If an operation fails with the Error Code `INVALID_SESSION_ID`, go-salesforce will attempt to refresh the session by resubmitting the same credentials used during initialization
+- Configuration values are set to the defaults
 
 [Client Credentials Flow](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_client_credentials_flow.htm&type=5)
 
@@ -149,7 +156,7 @@ if err != nil {
 }
 ```
 
-### GetAccessToken()
+### GetAccessToken
 
 `func (sf *Salesforce) GetAccessToken() string`
 
@@ -159,7 +166,7 @@ Returns the current session's Access Token as a string.
 token := sf.GetAccessToken()
 ```
 
-### GetInstanceUrl()
+### GetInstanceUrl
 
 `func (sf *Salesforce) GetInstanceUrl() string`
 
@@ -167,6 +174,35 @@ Returns the current session's Instance URL as a string.
 
 ```go
 url := sf.GetInstanceUrl()
+```
+
+## Configuration
+
+- Configure optional parameters for your Salesforce instance
+
+### SetDefaults
+
+`func (c *Configuration) SetDefaults()`
+
+Set the default configuration values
+
+- `c`: an instance of the Configuration type
+
+```go
+sf.Config.SetDefaults()
+```
+
+### SetCompressionHeaders
+
+`func (c *Configuration) SetCompressionHeaders(compression bool)`
+
+Enable or disable [Compression Headers](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_rest_compression.htm) when sending requests and receiving responses
+
+- `c`: an instance of the Configuration type
+- default: false
+
+```go
+sf.Config.SetCompressionHeaders(true)
 ```
 
 ## SOQL
