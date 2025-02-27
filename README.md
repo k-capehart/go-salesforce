@@ -41,7 +41,7 @@ type Salesforce struct {
 }
 
 type Configuration struct {
-	  CompressionHeaders bool
+    CompressionHeaders bool
 }
 
 type Creds struct {
