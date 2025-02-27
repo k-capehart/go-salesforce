@@ -186,7 +186,7 @@ url := sf.GetInstanceUrl()
 
 Set the default configuration values
 
-- `c`: an instance of the Configuration type
+- CompressionHeaders: false
 
 ```go
 sf.Config.SetDefaults()
@@ -197,9 +197,6 @@ sf.Config.SetDefaults()
 `func (c *Configuration) SetCompressionHeaders(compression bool)`
 
 Enable or disable [Compression Headers](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_rest_compression.htm) when sending requests and receiving responses
-
-- `c`: an instance of the Configuration type
-- default: false
 
 ```go
 sf.Config.SetCompressionHeaders(true)
