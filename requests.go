@@ -57,6 +57,9 @@ func doRequest(auth *authentication, payload requestPayload) (*http.Response, er
 	}
 	if resp.StatusCode < 200 || resp.StatusCode > 300 {
 		resp, err = processSalesforceError(*resp, auth, payload)
+		if err != nil {
+			return resp, err
+		}
 	}
 
 	// salesforce does not guarantee that the response will be compressed
