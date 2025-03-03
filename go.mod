@@ -11,7 +11,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/jszwec/csvutil v1.10.0
 	github.com/spf13/afero v1.12.0
-	k8s.io/apimachinery v0.32.1
+	k8s.io/apimachinery v0.32.2
 )
 
 require (
