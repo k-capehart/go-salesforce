@@ -278,25 +278,18 @@ if err != nil {
 
 When querying Salesforce objects, it's common to access fields that are related through parent-child or lookup relationships. For instance, querying `Account.Name` with related `Contact` might look like this:
 
-#### Example SOQL Query
-
-```sql
-SELECT Id, Account.Name FROM Contact
-```
-
-#### Corresponding Go Structs
-
-To effectively handle the data returned by this query, define your Go structs as follows:
-
 ```go
-type ContentDocumentLink struct {
+type Account struct {
+    Name string
+}
+
+type Contact struct {
     Id       string
     Account Account
 }
 
-type Account struct {
-    Name string
-}
+contacts := []Contact{}
+sf.Query("SELECT Id, Account.Name FROM Contact", &contacts)
 ```
 
 ## SObject Single Record Operations
