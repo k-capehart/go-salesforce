@@ -20,6 +20,7 @@ type bulkJobCreationRequest struct {
 	Object              string `json:"object"`
 	Operation           string `json:"operation"`
 	ExternalIdFieldName string `json:"externalIdFieldName"`
+	AssignmentRuleId    string `json:"assignmentRuleId,omitempty"`
 }
 
 type bulkQueryJobCreationRequest struct {
@@ -364,11 +365,12 @@ func writeCSVFile(filePath string, data [][]string) error {
 	return nil
 }
 
-func constructBulkJobRequest(sf *Salesforce, sObjectName string, operation string, fieldName string) (bulkJob, error) {
+func constructBulkJobRequest(sf *Salesforce, sObjectName string, operation string, fieldName string, assignmentRuleId string) (bulkJob, error) {
 	jobReq := bulkJobCreationRequest{
 		Object:              sObjectName,
 		Operation:           operation,
 		ExternalIdFieldName: fieldName,
+		AssignmentRuleId:    assignmentRuleId,
 	}
 	body, _ := json.Marshal(jobReq)
 
@@ -384,7 +386,7 @@ func constructBulkJobRequest(sf *Salesforce, sObjectName string, operation strin
 	return job, nil
 }
 
-func doBulkJob(sf *Salesforce, sObjectName string, fieldName string, operation string, records any, batchSize int, waitForResults bool) ([]string, error) {
+func doBulkJob(sf *Salesforce, sObjectName string, fieldName string, operation string, records any, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return []string{}, err
@@ -402,7 +404,7 @@ func doBulkJob(sf *Salesforce, sObjectName string, fieldName string, operation s
 		}
 		recordMap = remaining
 
-		job, constructJobErr := constructBulkJobRequest(sf, sObjectName, operation, fieldName)
+		job, constructJobErr := constructBulkJobRequest(sf, sObjectName, operation, fieldName, assignmentRuleId)
 		if constructJobErr != nil {
 			return jobIds, constructJobErr
 		}
@@ -430,7 +432,7 @@ func doBulkJob(sf *Salesforce, sObjectName string, fieldName string, operation s
 	return jobIds, jobErrors
 }
 
-func doBulkJobWithFile(sf *Salesforce, sObjectName string, fieldName string, operation string, filePath string, batchSize int, waitForResults bool) ([]string, error) {
+func doBulkJobWithFile(sf *Salesforce, sObjectName string, fieldName string, operation string, filePath string, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error) {
 	var jobErrors error
 	var jobIds []string
 
@@ -451,7 +453,7 @@ func doBulkJobWithFile(sf *Salesforce, sObjectName string, fieldName string, ope
 		}
 		records = remaining
 
-		job, constructJobErr := constructBulkJobRequest(sf, sObjectName, operation, fieldName)
+		job, constructJobErr := constructBulkJobRequest(sf, sObjectName, operation, fieldName, assignmentRuleId)
 		if constructJobErr != nil {
 			jobErrors = errors.Join(jobErrors, constructJobErr)
 			break
