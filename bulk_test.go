@@ -453,7 +453,7 @@ func Test_constructBulkJobRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := constructBulkJobRequest(tt.args.sf, tt.args.sObjectName, tt.args.operation, tt.args.fieldName)
+			got, err := constructBulkJobRequest(tt.args.sf, tt.args.sObjectName, tt.args.operation, tt.args.fieldName, "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("constructBulkJobRequest() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -653,7 +653,7 @@ func Test_doBulkJob(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doBulkJob(tt.args.sf, tt.args.sObjectName, tt.args.fieldName, tt.args.operation, tt.args.records, tt.args.batchSize, tt.args.waitForResults)
+			got, err := doBulkJob(tt.args.sf, tt.args.sObjectName, tt.args.fieldName, tt.args.operation, tt.args.records, tt.args.batchSize, tt.args.waitForResults, "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doBulkJob() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1217,7 +1217,7 @@ func Test_doBulkJobWithFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doBulkJobWithFile(tt.args.sf, tt.args.sObjectName, tt.args.fieldName, tt.args.operation, tt.args.filePath, tt.args.batchSize, tt.args.waitForResults)
+			got, err := doBulkJobWithFile(tt.args.sf, tt.args.sObjectName, tt.args.fieldName, tt.args.operation, tt.args.filePath, tt.args.batchSize, tt.args.waitForResults, "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doBulkJobWithFile() error = %v, wantErr %v", err, tt.wantErr)
 				return
