@@ -794,6 +794,38 @@ if err := it.Error(); err != nil {
 }
 ```
 
+#### Bulk with nested objects
+- Nested objects are supported using the `csv` tag
+- The `csv` tag should be formatted as `csv:"APIFieldName.,inline"`
+```go
+type Address struct {
+	Street string
+}
+
+type Contact struct {
+	Id      string
+	Address Address `csv:"Address__r.,inline"`
+}
+
+contacts := []Contact{}
+
+it, err := sf.QueryBulkIterator("SELECT Id, Address__r.Street FROM Contact")
+if err != nil {
+	panic(err)
+}
+
+for it.Next() {
+    var data []Contact
+    if err := it.Decode(&data); err != nil {
+        panic(err)
+    }
+}
+
+if err := it.Error(); err != nil {
+    panic(err)
+}
+```
+
 ### InsertBulk
 
 `func (sf *Salesforce) InsertBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error)`
