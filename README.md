@@ -123,9 +123,6 @@ sf, err := salesforce.Init(salesforce.Creds{
     ConsumerKey:    CONSUMER_KEY,
     ConsumerSecret: CONSUMER_SECRET,
 })
-if err != nil {
-    panic(err)
-}
 ```
 
 [JWT Bearer Flow](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_jwt_flow.htm&type=5)
@@ -137,9 +134,6 @@ sf, err := salesforce.Init(salesforce.Creds{
     ConsumerKey:    CONSUMER_KEY,
     ConsumerRSAPem: CONSUMER_RSA_PEM,
 })
-if err != nil {
-    panic(err)
-}
 ```
 
 Authenticate with an Access Token
@@ -151,9 +145,6 @@ sf, err := salesforce.Init(salesforce.Creds{
     Domain:      DOMAIN,
     AccessToken: ACCESS_TOKEN,
 })
-if err != nil {
-    panic(err)
-}
 ```
 
 ### GetAccessToken
@@ -227,9 +218,6 @@ type Contact struct {
 ```go
 contacts := []Contact{}
 err := sf.Query("SELECT Id, LastName FROM Contact WHERE LastName = 'Lee'", &contacts)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### QueryStruct
@@ -269,9 +257,6 @@ soqlStruct := ContactSoqlQuery{
 }
 contacts := []Contact{}
 err := sf.QueryStruct(soqlStruct, &contacts)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### Handling Relationship Queries
@@ -320,9 +305,6 @@ contact := Contact{
     LastName: "Stark",
 }
 result, err := sf.InsertOne("Contact", contact)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### UpdateOne
@@ -348,9 +330,6 @@ contact := Contact{
     LastName: "Banner",
 }
 err := sf.UpdateOne("Contact", contact)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### UpsertOne
@@ -377,9 +356,6 @@ contact := ContactWithExternalId{
     LastName:             "Rogers",
 }
 result, err := sf.UpsertOne("Contact", "ContactExternalId__c", contact)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### DeleteOne
@@ -403,9 +379,6 @@ contact := Contact{
     Id: "003Dn00000pEYQSIA4",
 }
 err := sf.DeleteOne("Contact", contact)
-if err != nil {
-    panic(err)
-}
 ```
 
 ## SObject Collections
@@ -445,9 +418,6 @@ contacts := []Contact{
     },
 }
 results, err := sf.InsertCollection("Contact", contacts, 200)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### UpdateCollection
@@ -480,9 +450,6 @@ contacts := []Contact{
     },
 }
 results, err := sf.UpdateCollection("Contact", contacts, 200)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### UpsertCollection
@@ -516,9 +483,6 @@ contacts := []ContactWithExternalId{
     },
 }
 results, err := sf.UpsertCollection("Contact", "ContactExternalId__c", contacts, 200)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### DeleteCollection
@@ -548,9 +512,6 @@ contacts := []Contact{
     },
 }
 results, err := sf.DeleteCollection("Contact", contacts, 200)
-if err != nil {
-    panic(err)
-}
 ```
 
 ## Composite Requests
@@ -593,9 +554,6 @@ contacts := []Contact{
     },
 }
 results, err := sf.InsertComposite("Contact", contacts, 200, true)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### UpdateComposite
@@ -629,9 +587,6 @@ contacts := []Contact{
     },
 }
 results, err := sf.UpdateComposite("Contact", contacts, 200, true)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### UpsertComposite
@@ -666,9 +621,6 @@ contacts := []ContactWithExternalId{
     },
 }
 results, err := sf.UpsertComposite("Contact", "ContactExternalId__c", contacts, 200, true)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### DeleteComposite
@@ -699,9 +651,6 @@ contacts := []Contact{
     },
 }
 results, err := sf.DeleteComposite("Contact", contacts, 200, true)
-if err != nil {
-    panic(err)
-}
 ```
 
 ## Bulk v2
@@ -723,9 +672,6 @@ Performs a query and exports the data to a csv file
 
 ```go
 err := sf.QueryBulkExport("SELECT Id, FirstName, LastName FROM Contact", "data/export.csv")
-if err != nil {
-    panic(err)
-}
 ```
 
 ### QueryStructBulkExport
@@ -757,9 +703,6 @@ soqlStruct := ContactSoqlQuery{
     SelectClause: ContactSoql{},
 }
 err := sf.QueryStructBulkExport(soqlStruct, "data/export2.csv")
-if err != nil {
-    panic(err)
-}
 ```
 
 ### QueryBulkIterator
@@ -795,8 +738,10 @@ if err := it.Error(); err != nil {
 ```
 
 #### Bulk with nested objects
+
 - Nested objects are supported using the `csv` tag
 - The `csv` tag should be formatted as `csv:"APIFieldName.,inline"`
+
 ```go
 type Address struct {
 	Street string
@@ -853,9 +798,6 @@ contacts := []Contact{
     },
 }
 jobIds, err := sf.InsertBulk("Contact", contacts, 1000, false)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### InsertBulkFile
@@ -880,9 +822,6 @@ Bruce,Banner
 
 ```go
 jobIds, err := sf.InsertBulkFile("Contact", "data/avengers.csv", 1000, false)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### UpdateBulk
@@ -916,9 +855,6 @@ contacts := []Contact{
     },
 }
 jobIds, err := sf.UpdateBulk("Contact", contacts, 1000, false)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### UpdateBulkFile
@@ -947,9 +883,6 @@ Id,FirstName,LastName
 
 ```go
 jobIds, err := sf.UpdateBulkFile("Contact", "data/update_avengers.csv", 1000, false)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### UpsertBulk
@@ -984,9 +917,6 @@ contacts := []ContactWithExternalId{
     },
 }
 jobIds, err := sf.UpsertBulk("Contact", "ContactExternalId__c", contacts, 1000, false)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### UpsertBulkFile
@@ -1014,9 +944,6 @@ Avng10,Danny,Rand
 
 ```go
 jobIds, err := sf.UpsertBulkFile("Contact", "ContactExternalId__c", "data/upsert_avengers.csv", 1000, false)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### DeleteBulk
@@ -1047,9 +974,6 @@ contacts := []ContactIds{
     },
 }
 jobIds, err := sf.DeleteBulk("Contact", contacts, 1000, false)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### DeleteBulkFile
@@ -1078,9 +1002,6 @@ Id
 
 ```go
 jobIds, err := sf.DeleteBulkFile("Contact", "data/delete_avengers.csv", 1000, false)
-if err != nil {
-    panic(err)
-}
 ```
 
 ### GetJobResults
