@@ -462,10 +462,12 @@ func Test_validateBulk(t *testing.T) {
 	type account struct{}
 
 	type args struct {
-		sf        Salesforce
-		records   any
-		batchSize int
-		isFile    bool
+		sf               Salesforce
+		records          any
+		batchSize        int
+		isFile           bool
+		sObjectName      string
+		assignmentRuleId string
 	}
 	tests := []struct {
 		name    string
@@ -478,19 +480,23 @@ func Test_validateBulk(t *testing.T) {
 				sf: Salesforce{auth: &authentication{
 					AccessToken: "1234",
 				}},
-				records:   []account{},
-				batchSize: 10000,
-				isFile:    false,
+				records:          []account{},
+				batchSize:        10000,
+				isFile:           false,
+				sObjectName:      "Lead",
+				assignmentRuleId: "",
 			},
 			wantErr: false,
 		},
 		{
 			name: "validation_fail_auth",
 			args: args{
-				sf:        Salesforce{},
-				records:   []account{},
-				batchSize: 10000,
-				isFile:    false,
+				sf:               Salesforce{},
+				records:          []account{},
+				batchSize:        10000,
+				isFile:           false,
+				sObjectName:      "Lead",
+				assignmentRuleId: "",
 			},
 			wantErr: true,
 		},
@@ -500,9 +506,11 @@ func Test_validateBulk(t *testing.T) {
 				sf: Salesforce{auth: &authentication{
 					AccessToken: "1234",
 				}},
-				records:   0,
-				batchSize: 10000,
-				isFile:    false,
+				records:          0,
+				batchSize:        10000,
+				isFile:           false,
+				sObjectName:      "Lead",
+				assignmentRuleId: "",
 			},
 			wantErr: true,
 		},
@@ -512,9 +520,11 @@ func Test_validateBulk(t *testing.T) {
 				sf: Salesforce{auth: &authentication{
 					AccessToken: "1234",
 				}},
-				records:   []account{},
-				batchSize: 0,
-				isFile:    false,
+				records:          []account{},
+				batchSize:        0,
+				isFile:           false,
+				sObjectName:      "Lead",
+				assignmentRuleId: "",
 			},
 			wantErr: true,
 		},
@@ -524,16 +534,46 @@ func Test_validateBulk(t *testing.T) {
 				sf: Salesforce{auth: &authentication{
 					AccessToken: "1234",
 				}},
-				records:   nil,
-				batchSize: 2000,
-				isFile:    true,
+				records:          nil,
+				batchSize:        2000,
+				isFile:           true,
+				sObjectName:      "Lead",
+				assignmentRuleId: "",
+			},
+			wantErr: false,
+		},
+		{
+			name: "validation_fail_assignment_contact",
+			args: args{
+				sf: Salesforce{auth: &authentication{
+					AccessToken: "1234",
+				}},
+				records:          nil,
+				batchSize:        2000,
+				isFile:           true,
+				sObjectName:      "Contact",
+				assignmentRuleId: "fakeAssignmentRuleId",
+			},
+			wantErr: true,
+		},
+		{
+			name: "validation_success_assignment_case",
+			args: args{
+				sf: Salesforce{auth: &authentication{
+					AccessToken: "1234",
+				}},
+				records:          nil,
+				batchSize:        2000,
+				isFile:           true,
+				sObjectName:      "Case",
+				assignmentRuleId: "fakeAssignmentRuleId",
 			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateBulk(tt.args.sf, tt.args.records, tt.args.batchSize, tt.args.isFile); (err != nil) != tt.wantErr {
+			if err := validateBulk(tt.args.sf, tt.args.records, tt.args.batchSize, tt.args.isFile, tt.args.sObjectName, tt.args.assignmentRuleId); (err != nil) != tt.wantErr {
 				t.Errorf("validateBulk() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1969,6 +2009,92 @@ func TestSalesforce_InsertBulk(t *testing.T) {
 	}
 }
 
+func TestSalesforce_InsertBulkAssign(t *testing.T) {
+	type account struct {
+		Name string
+	}
+	job := bulkJob{
+		Id:    "1234",
+		State: jobStateOpen,
+	}
+	server, sfAuth := setupTestServer(job, http.StatusOK)
+	defer server.Close()
+
+	type fields struct {
+		auth *authentication
+	}
+	type args struct {
+		sObjectName      string
+		records          any
+		batchSize        int
+		waitForResults   bool
+		assignmentRuleId string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "successful_insert",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName: "Lead",
+				records: []account{
+					{
+						Name: "test account 1",
+					},
+					{
+						Name: "test account 2",
+					},
+				},
+				batchSize:        2000,
+				assignmentRuleId: "5678",
+			},
+			want:    []string{"1234"},
+			wantErr: false,
+		},
+		{
+			name: "object_validation_fail",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName: "Account",
+				records: []account{
+					{
+						Name: "test account 1",
+					},
+					{
+						Name: "test account 2",
+					},
+				},
+				batchSize:        2000,
+				assignmentRuleId: "5678",
+			},
+			want:    []string{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sf := buildSalesforceStruct(tt.fields.auth)
+			got, err := sf.InsertBulkAssign(tt.args.sObjectName, tt.args.records, tt.args.batchSize, tt.args.waitForResults, tt.args.assignmentRuleId)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Salesforce.InsertBulkAssign() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.InsertBulkAssign() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestSalesforce_UpdateBulk(t *testing.T) {
 	type account struct {
 		Id   string
@@ -2043,6 +2169,97 @@ func TestSalesforce_UpdateBulk(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Salesforce.UpdateBulk() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSalesforce_UpdateBulkAssign(t *testing.T) {
+	type account struct {
+		Id   string
+		Name string
+	}
+	job := bulkJob{
+		Id:    "1234",
+		State: jobStateOpen,
+	}
+	server, sfAuth := setupTestServer(job, http.StatusOK)
+	defer server.Close()
+
+	type fields struct {
+		auth *authentication
+	}
+	type args struct {
+		sObjectName      string
+		records          any
+		batchSize        int
+		waitForResults   bool
+		assignmentRuleId string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "successful_update",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName: "Lead",
+				records: []account{
+					{
+						Id:   "1234",
+						Name: "test account 1",
+					},
+					{
+						Id:   "5678",
+						Name: "test account 2",
+					},
+				},
+				batchSize:        2000,
+				assignmentRuleId: "5678",
+			},
+			want:    []string{"1234"},
+			wantErr: false,
+		},
+		{
+			name: "object_validation_fail",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName: "Account",
+				records: []account{
+					{
+						Id:   "1234",
+						Name: "test account 1",
+					},
+					{
+						Id:   "5678",
+						Name: "test account 2",
+					},
+				},
+				batchSize:        2000,
+				assignmentRuleId: "5678",
+			},
+			want:    []string{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sf := buildSalesforceStruct(tt.fields.auth)
+			got, err := sf.UpdateBulkAssign(tt.args.sObjectName, tt.args.records, tt.args.batchSize, tt.args.waitForResults, tt.args.assignmentRuleId)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Salesforce.UpdateBulkAssign() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.UpdateBulkAssign() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -2125,6 +2342,100 @@ func TestSalesforce_UpsertBulk(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Salesforce.UpsertBulk() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSalesforce_UpsertBulkAssign(t *testing.T) {
+	type account struct {
+		ExternalId__c string
+		Name          string
+	}
+	job := bulkJob{
+		Id:    "1234",
+		State: jobStateOpen,
+	}
+	server, sfAuth := setupTestServer(job, http.StatusOK)
+	defer server.Close()
+
+	type fields struct {
+		auth *authentication
+	}
+	type args struct {
+		sObjectName         string
+		externalIdFieldName string
+		records             any
+		batchSize           int
+		waitForResults      bool
+		assignmentRuleId    string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "successful_upsert",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:         "Lead",
+				externalIdFieldName: "ExternalId__c",
+				records: []account{
+					{
+						ExternalId__c: "1234",
+						Name:          "test account 1",
+					},
+					{
+						ExternalId__c: "5678",
+						Name:          "test account 2",
+					},
+				},
+				batchSize:        2000,
+				assignmentRuleId: "5678",
+			},
+			want:    []string{"1234"},
+			wantErr: false,
+		},
+		{
+			name: "object_validation_fail",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:         "Account",
+				externalIdFieldName: "ExternalId__c",
+				records: []account{
+					{
+						ExternalId__c: "1234",
+						Name:          "test account 1",
+					},
+					{
+						ExternalId__c: "5678",
+						Name:          "test account 2",
+					},
+				},
+				batchSize:        2000,
+				assignmentRuleId: "5678",
+			},
+			want:    []string{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sf := buildSalesforceStruct(tt.fields.auth)
+			got, err := sf.UpsertBulkAssign(tt.args.sObjectName, tt.args.externalIdFieldName, tt.args.records, tt.args.batchSize, tt.args.waitForResults, tt.args.assignmentRuleId)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Salesforce.UpsertBulkAssign() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.UpsertBulkAssign() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -2342,6 +2653,85 @@ func TestSalesforce_InsertBulkFile(t *testing.T) {
 	}
 }
 
+func TestSalesforce_InsertBulkFileAssign(t *testing.T) {
+	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
+	if err := appFs.MkdirAll("data", 0755); err != nil {
+		t.Fatalf("error creating directory in virtual file system")
+	}
+	if err := afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow"), 0644); err != nil {
+		t.Fatalf("error creating file in virtual file system")
+	}
+
+	job := bulkJob{
+		Id:    "1234",
+		State: jobStateOpen,
+	}
+	server, sfAuth := setupTestServer(job, http.StatusOK)
+	defer server.Close()
+
+	type fields struct {
+		auth *authentication
+	}
+	type args struct {
+		sObjectName      string
+		filePath         string
+		batchSize        int
+		waitForResults   bool
+		assignmentRuleId string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "insert bulk data successfully",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:      "Lead",
+				filePath:         "data/data.csv",
+				batchSize:        2000,
+				waitForResults:   false,
+				assignmentRuleId: "5678",
+			},
+			want:    []string{"1234"},
+			wantErr: false,
+		},
+		{
+			name: "object validation errors",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:      "Account",
+				filePath:         "data/data.csv",
+				batchSize:        2000,
+				waitForResults:   false,
+				assignmentRuleId: "5678",
+			},
+			want:    []string{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sf := buildSalesforceStruct(tt.fields.auth)
+			got, err := sf.InsertBulkFileAssign(tt.args.sObjectName, tt.args.filePath, tt.args.batchSize, tt.args.waitForResults, tt.args.assignmentRuleId)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Salesforce.InsertBulkFileAssign() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.InsertBulkFileAssign() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestSalesforce_UpdateBulkFile(t *testing.T) {
 	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
 	if err := appFs.MkdirAll("data", 0755); err != nil {
@@ -2413,6 +2803,85 @@ func TestSalesforce_UpdateBulkFile(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Salesforce.UpdateBulkFile() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSalesforce_UpdateBulkFileAssign(t *testing.T) {
+	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
+	if err := appFs.MkdirAll("data", 0755); err != nil {
+		t.Fatalf("error creating directory in virtual file system")
+	}
+	if err := afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow"), 0644); err != nil {
+		t.Fatalf("error creating file in virtual file system")
+	}
+
+	job := bulkJob{
+		Id:    "1234",
+		State: jobStateOpen,
+	}
+	server, sfAuth := setupTestServer(job, http.StatusOK)
+	defer server.Close()
+
+	type fields struct {
+		auth *authentication
+	}
+	type args struct {
+		sObjectName      string
+		filePath         string
+		batchSize        int
+		waitForResults   bool
+		assignmentRuleId string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "update bulk data successfully",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:      "Lead",
+				filePath:         "data/data.csv",
+				batchSize:        2000,
+				waitForResults:   false,
+				assignmentRuleId: "5678",
+			},
+			want:    []string{"1234"},
+			wantErr: false,
+		},
+		{
+			name: "object validation error",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:      "Account",
+				filePath:         "data/data.csv",
+				batchSize:        2000,
+				waitForResults:   false,
+				assignmentRuleId: "5678",
+			},
+			want:    []string{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sf := buildSalesforceStruct(tt.fields.auth)
+			got, err := sf.UpdateBulkFileAssign(tt.args.sObjectName, tt.args.filePath, tt.args.batchSize, tt.args.waitForResults, tt.args.assignmentRuleId)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Salesforce.UpdateBulkFileAssign() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.UpdateBulkFileAssign() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -2492,6 +2961,88 @@ func TestSalesforce_UpsertBulkFile(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Salesforce.UpsertBulkFile() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSalesforce_UpsertBulkFileAssign(t *testing.T) {
+	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
+	if err := appFs.MkdirAll("data", 0755); err != nil {
+		t.Fatalf("error creating directory in virtual file system")
+	}
+	if err := afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow"), 0644); err != nil {
+		t.Fatalf("error creating file in virtual file system")
+	}
+
+	job := bulkJob{
+		Id:    "1234",
+		State: jobStateOpen,
+	}
+	server, sfAuth := setupTestServer(job, http.StatusOK)
+	defer server.Close()
+
+	type fields struct {
+		auth *authentication
+	}
+	type args struct {
+		sObjectName         string
+		externalIdFieldName string
+		filePath            string
+		batchSize           int
+		waitForResults      bool
+		assignmentRuleId    string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "upsert bulk data successfully",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:         "Lead",
+				externalIdFieldName: "ExternalId__c",
+				filePath:            "data/data.csv",
+				batchSize:           2000,
+				waitForResults:      false,
+				assignmentRuleId:    "5678",
+			},
+			want:    []string{"1234"},
+			wantErr: false,
+		},
+		{
+			name: "object validation error",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:         "Account",
+				externalIdFieldName: "ExternalId__c",
+				filePath:            "data/data.csv",
+				batchSize:           2000,
+				waitForResults:      false,
+				assignmentRuleId:    "5678",
+			},
+			want:    []string{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sf := buildSalesforceStruct(tt.fields.auth)
+			got, err := sf.UpsertBulkFileAssign(tt.args.sObjectName, tt.args.externalIdFieldName, tt.args.filePath, tt.args.batchSize, tt.args.waitForResults, tt.args.assignmentRuleId)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Salesforce.UpsertBulkFileAssign() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Salesforce.UpsertBulkFileAssign() = %v, want %v", got, tt.want)
 			}
 		})
 	}
