@@ -744,19 +744,19 @@ if err := it.Error(); err != nil {
 
 ```go
 type Address struct {
-	Street string
+    Street string
 }
 
 type Contact struct {
-	Id      string
-	Address Address `csv:"Address__r.,inline"`
+    Id      string
+    Address Address `csv:"Address__r.,inline"`
 }
 
 contacts := []Contact{}
 
 it, err := sf.QueryBulkIterator("SELECT Id, Address__r.Street FROM Contact")
 if err != nil {
-	panic(err)
+    panic(err)
 }
 
 for it.Next() {
@@ -838,7 +838,7 @@ Inserts a list of Lead or Case records to be assigned via an Assignment rule, us
 
 ```go
 type Lead struct {
-	  LastName string
+    LastName string
     Company string
 }
 ```
