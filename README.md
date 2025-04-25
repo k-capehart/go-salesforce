@@ -344,14 +344,14 @@ Updates (or inserts) one salesforce record using the given external Id
   - A value for the External Id is required
 
 ```go
-type ContactWithExternalId struct {
+type Contact struct {
     ContactExternalId__c string
     LastName             string
 }
 ```
 
 ```go
-contact := ContactWithExternalId{
+contact := Contact{
     ContactExternalId__c: "Avng0",
     LastName:             "Rogers",
 }
@@ -465,14 +465,14 @@ Updates (or inserts) a list of salesforce records using the given ExternalId
 - `batchSize`: `1 <= batchSize <= 200`
 
 ```go
-type ContactWithExternalId struct {
+type Contact struct {
     ContactExternalId__c string
     LastName             string
 }
 ```
 
 ```go
-contacts := []ContactWithExternalId{
+contacts := []Contact{
     {
         ContactExternalId__c: "Avng1",
         LastName:             "Danvers",
@@ -603,14 +603,14 @@ Updates (or inserts) a list of salesforce records using the given ExternalId in 
 - `allOrNone`: denotes whether to roll back entire operation if a record fails
 
 ```go
-type ContactWithExternalId struct {
+type Contact struct {
     ContactExternalId__c string
     LastName             string
 }
 ```
 
 ```go
-contacts := []ContactWithExternalId{
+contacts := []Contact{
     {
         ContactExternalId__c: "Avng3",
         LastName:             "Maximoff",
@@ -824,6 +824,60 @@ Bruce,Banner
 jobIds, err := sf.InsertBulkFile("Contact", "data/avengers.csv", 1000, false)
 ```
 
+## InsertBulkAssign
+
+`func (sf *Salesforce) InsertBulkAssign(sObjectName string, records any, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
+
+Inserts a list of Lead or Case records to be assigned via an Assignment rule, using Bulk API v2, returning a list of Job IDs
+
+- `sObjectName`: API name of Salesforce object (must be Lead or Case)
+- `records`: a slice of Lead or Case records
+- `batchSize`: `1 <= batchSize <= 10000`
+- `waitForResults`: denotes whether to wait for jobs to finish
+- `assignmentRuleId`: the Salesforce Id of a Lead or Case Assignment Rule
+
+```go
+type Lead struct {
+	  LastName string
+    Company string
+}
+```
+
+```go
+leads := []Lead{
+    {
+        LastName: "Spector",
+        Company:  "The Avengers",
+    },
+}
+jobIds, err := sf.InsertBulkAssign("Lead", leads, 100, true, "01QDn00000112FHMAY")
+```
+
+## InsertBulkFileAssign
+
+`func (sf *Salesforce) InsertBulkFileAssign(sObjectName string, filePath string, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
+
+Inserts a list of Lead or Case records to be assigned via an Assignment rule, from a csv file using Bulk API v2, returning a list of Job IDs
+
+- `sObjectName`: API name of Salesforce object (must be Lead or Case)
+- `filePath`: path to a csv file containing Lead or Case data
+- `batchSize`: `1 <= batchSize <= 10000`
+- `waitForResults`: denotes whether to wait for jobs to finish
+- `assignmentRuleId`: the Salesforce Id of a Lead or Case Assignment Rule
+
+`data/avengers.csv`
+
+```
+FirstName,LastName,Company
+Tony,Stark,The Avengers
+Steve,Rogers,The Avengers
+Bruce,Banner,The Avengers
+```
+
+```go
+jobIds, err := sf.InsertBulkFileAssign("Contact", "data/avengers.csv", 1000, false, "01QDn00000112FHMAY")
+```
+
 ### UpdateBulk
 
 `func (sf *Salesforce) UpdateBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error)`
@@ -885,6 +939,62 @@ Id,FirstName,LastName
 jobIds, err := sf.UpdateBulkFile("Contact", "data/update_avengers.csv", 1000, false)
 ```
 
+## UpdateBulkAssign
+
+`func (sf *Salesforce) UpdateBulkAssign(sObjectName string, records any, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
+
+Updates a list of Lead or Case records to be assigned via an Assignment rule, using Bulk API v2, returning a list of Job IDs
+
+- `sObjectName`: API name of Salesforce object (must be Lead or Case)
+- `records`: a slice of Lead or Case records
+- `batchSize`: `1 <= batchSize <= 10000`
+- `waitForResults`: denotes whether to wait for jobs to finish
+- `assignmentRuleId`: the Salesforce Id of a Lead or Case Assignment Rule
+
+```go
+type Lead struct {
+    Id        string
+    LastName  string
+    Company   string
+}
+```
+
+```go
+leads := []Lead{
+    {
+        Id:       "00QDn0000024r6FMAQ",
+        LastName: "Grant",
+        Company:  "The Avengers",
+    },
+}
+jobIds, err := sf.UpdateBulkAssign("Lead", leads, 100, true, "01QDn00000112FHMAY")
+```
+
+## UpdateBulkFileAssign
+
+`func (sf *Salesforce) UpdateBulkFileAssign(sObjectName string, filePath string, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
+
+Updates a list of Lead or Case records to be assigned via an Assignment rule, from a csv file using Bulk API v2, returning a list of Job IDs
+
+- `sObjectName`: API name of Salesforce object (must be Lead or Case)
+- `filePath`: path to a csv file containing Lead or Case data
+- `batchSize`: `1 <= batchSize <= 10000`
+- `waitForResults`: denotes whether to wait for jobs to finish
+- `assignmentRuleId`: the Salesforce Id of a Lead or Case Assignment Rule
+
+`data/update_avengers.csv`
+
+```
+Id,FirstName,LastName,Company
+00QDn0000024r6WMAQ,Clint,Barton,The Avengers
+00QDn0000024r6VMAQ,Natasha,Romanoff,The Avengers
+00QDn0000024r6UMAQ,Hank,Pym,The Avengers
+```
+
+```go
+jobIds, err := sf.UpdateBulkFileAssign("Lead", "data/update_avengers.csv", 100, true, "01QDn00000112FHMAY")
+```
+
 ### UpsertBulk
 
 `func (sf *Salesforce) UpsertBulk(sObjectName string, externalIdFieldName string, records any, batchSize int, waitForResults bool) ([]string, error)`
@@ -899,14 +1009,14 @@ Updates (or inserts) a list of salesforce records using Bulk API v2, returning a
 - `waitForResults`: denotes whether to wait for jobs to finish
 
 ```go
-type ContactWithExternalId struct {
+type Contact struct {
     ContactExternalId__c string
     LastName             string
 }
 ```
 
 ```go
-contacts := []ContactWithExternalId{
+contacts := []Contact{
     {
         ContactExternalId__c: "Avng5",
         LastName:             "Rhodes",
@@ -944,6 +1054,65 @@ Avng10,Danny,Rand
 
 ```go
 jobIds, err := sf.UpsertBulkFile("Contact", "ContactExternalId__c", "data/upsert_avengers.csv", 1000, false)
+```
+
+## UpsertBulkAssign
+
+`func (sf *Salesforce) UpsertBulkAssign(sObjectName string, externalIdFieldName string, records any, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
+
+Updates (or inserts) a list of Lead or Case records to be assigned via an Assignment rule, using Bulk API v2, returning a list of Job IDs
+
+- `sObjectName`: API name of Salesforce object (must be Lead or Case)
+- `externalIdFieldName`: field API name for an external Id that exists on the given object
+- `records`: a slice of Lead or Case records
+- `batchSize`: `1 <= batchSize <= 10000`
+- `waitForResults`: denotes whether to wait for jobs to finish
+- `assignmentRuleId`: the Salesforce Id of a Lead or Case Assignment Rule
+
+```go
+type Lead struct {
+    LeadExternalId__c string
+    LastName          string
+    Company           string
+}
+```
+
+```go
+leads := []Lead{
+    {
+        LeadExternalId__c: "MK3",
+        LastName:          "Lockley",
+        Company:           "The Avengers",
+    },
+}
+jobIds, err := sf.UpsertBulkAssign("Lead", "LeadExternalId__c", leads, 100, true, "00QDn0000024r6FMAQ")
+```
+
+## UpsertBulkFileAssign
+
+`func (sf *Salesforce) UpsertBulkFileAssign(sObjectName string, externalIdFieldName string, filePath string, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
+
+Updates (or inserts) a list of Lead or Case records to be assigned via an Assignment rule, from a csv file using Bulk API v2, returning a list of Job IDs
+
+- `sObjectName`: API name of Salesforce object (must be Lead or Case)
+- `externalIdFieldName`: field API name for an external Id that exists on the given object
+- `filePath`: path to a csv file containing salesforce data
+  - A value for the External Id is required within csv data
+- `batchSize`: `1 <= batchSize <= 10000`
+- `waitForResults`: denotes whether to wait for jobs to finish
+- `assignmentRuleId`: the Salesforce Id of a Lead or Case Assignment Rule
+
+`data/upsert_avengers`
+
+```
+LeadExternalId,FirstName,LastName,Company
+Avng11,Nick,Fury,The Avengers
+Avng12,Maria,Hill,The Avengers
+Avng13,Howard,Stark,The Avengers
+```
+
+```go
+jobIds, err := sf.UpsertBulkFileAssign("Lead", "LeadExternalId__c", "data/upsert_avengers.csv", 100, true, "01QDn00000112FHMAY")
 ```
 
 ### DeleteBulk
