@@ -1,0 +1,108 @@
+name: 'Go Format Check'
+description: 'Check Go code formatting and manage PR comments'
+inputs:
+  github-token:
+    description: 'GitHub token for API access'
+    required: true
+    default: ${{ github.token }}
+outputs:
+  formatting-needed:
+    description: 'Whether formatting is needed'
+    value: ${{ steps.format-check.outputs.formatting_needed }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Install formatting tools
+      shell: bash
+      run: make install-tools
+
+    - name: Check if formatting is needed
+      id: format-check
+      shell: bash
+      run: |
+        # Create a copy of the current state
+        git status --porcelain > before_format.txt
+        
+        # Run formatting
+        make fmt
+        
+        # Check if there are any changes after formatting
+        git status --porcelain > after_format.txt
+        
+        if ! diff -q before_format.txt after_format.txt > /dev/null; then
+          echo "formatting_needed=true" >> $GITHUB_OUTPUT
+          echo "## Formatting Issues Detected" > format_report.md
+          echo "" >> format_report.md
+          echo "The following files need formatting:" >> format_report.md
+          echo "" >> format_report.md
+          echo "\`\`\`" >> format_report.md
+          git diff --name-only >> format_report.md
+          echo "\`\`\`" >> format_report.md
+          echo "" >> format_report.md
+          echo "Please run \`make fmt\` to fix the formatting issues." >> format_report.md
+          echo "" >> format_report.md
+          echo "<details>" >> format_report.md
+          echo "<summary>View formatting diff</summary>" >> format_report.md
+          echo "" >> format_report.md
+          echo "\`\`\`diff" >> format_report.md
+          git diff >> format_report.md
+          echo "\`\`\`" >> format_report.md
+          echo "</details>" >> format_report.md
+        else
+          echo "formatting_needed=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Handle PR formatting comments
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          const { owner, repo } = context.repo;
+          const issue_number = context.issue.number;
+          
+          // Find existing formatting comments
+          const comments = await github.rest.issues.listComments({
+            owner,
+            repo,
+            issue_number
+          });
+          
+          const botComments = comments.data.filter(comment => 
+            comment.user.type === 'Bot' && 
+            comment.body.includes('## Formatting Issues Detected')
+          );
+          
+          const formattingNeeded = '${{ steps.format-check.outputs.formatting_needed }}' === 'true';
+          
+          if (formattingNeeded) {
+            // Read the formatting report
+            const fs = require('fs');
+            const comment = fs.readFileSync('format_report.md', 'utf8');
+            
+            if (botComments.length > 0) {
+              // Update the most recent formatting comment
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: botComments[botComments.length - 1].id,
+                body: comment
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body: comment
+              });
+            }
+          } else {
+            // Delete all existing formatting comments when no issues
+            for (const comment of botComments) {
+              await github.rest.issues.deleteComment({
+                owner,
+                repo,
+                comment_id: comment.id
+              });
+            }
+          }

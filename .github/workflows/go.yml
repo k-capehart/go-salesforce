@@ -5,31 +5,59 @@ name: Go
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "develop"]
   pull_request:
-    branches: ["main"]
+    branches: ["main", "develop"]
   workflow_dispatch:
 
 jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache-dependency-path: "go.sum"
+
+      - name: Run format check
+        id: format-check
+        uses: ./.github/actions/format-check
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fail if formatting is needed
+        if: steps.format-check.outputs.formatting-needed == 'true'
+        run: |
+          echo "Code formatting is required. Please run 'make fmt' and commit the changes."
+          exit 1
+
   build:
     runs-on: ubuntu-latest
+    needs: [format-check]
+    if: always() && (needs.format-check.result == 'success' || needs.format-check.result == 'skipped')
     permissions:
       checks: write
     steps:
       - uses: actions/checkout@v3
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version-file: "go.mod"
+          cache-dependency-path: "go.sum"
 
       - name: Build
         run: go build -v ./...
 
-      - name: Golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
+      - name: Lint
+        uses: ./.github/actions/lint
 
       - name: Test
         run: go test -v ./... -coverprofile ./coverage.txt
