@@ -50,7 +50,15 @@ func (it *bulkJobQueryIterator) Next() bool {
 	if it.Locator != "" {
 		uri += "/?locator=" + it.Locator
 	}
-	resp, err := doRequest(it.auth, requestPayload{method: http.MethodGet, uri: uri, content: jsonType, compress: it.config.CompressionHeaders})
+	resp, err := doRequest(
+		it.auth,
+		requestPayload{
+			method:   http.MethodGet,
+			uri:      uri,
+			content:  jsonType,
+			compress: it.config.CompressionHeaders,
+		},
+	)
 	if err != nil {
 		it.err = err
 		return false

@@ -50,7 +50,10 @@ func performQuery(sf *Salesforce, query string, sObject any) error {
 		queryResp.Records = append(queryResp.Records, tempQueryResp.Records...)
 		queryResp.Done = tempQueryResp.Done
 		if !tempQueryResp.Done && tempQueryResp.NextRecordsUrl != "" {
-			queryResp.NextRecordsUrl = strings.TrimPrefix(tempQueryResp.NextRecordsUrl, "/services/data/"+apiVersion)
+			queryResp.NextRecordsUrl = strings.TrimPrefix(
+				tempQueryResp.NextRecordsUrl,
+				"/services/data/"+apiVersion,
+			)
 		}
 	}
 

@@ -113,7 +113,11 @@ func decompress(body io.ReadCloser) (io.ReadCloser, error) {
 	return io.NopCloser(bytes.NewReader(decompressed)), nil
 }
 
-func processSalesforceError(resp http.Response, auth *authentication, payload requestPayload) (*http.Response, error) {
+func processSalesforceError(
+	resp http.Response,
+	auth *authentication,
+	payload requestPayload,
+) (*http.Response, error) {
 	responseData, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return &resp, err
@@ -124,12 +128,25 @@ func processSalesforceError(resp http.Response, auth *authentication, payload re
 		return &resp, err
 	}
 	for _, sfError := range sfErrors {
-		if sfError.ErrorCode == invalidSessionIdError && !payload.retry { // only attempt to refresh the session once
+		if sfError.ErrorCode == invalidSessionIdError &&
+			!payload.retry { // only attempt to refresh the session once
 			err = refreshSession(auth)
 			if err != nil {
 				return &resp, err
 			}
-			newResp, err := doRequest(auth, requestPayload{payload.method, payload.uri, payload.content, payload.body, true, payload.compress, payload.options})
+
+			newResp, err := doRequest(
+				auth,
+				requestPayload{
+					payload.method,
+					payload.uri,
+					payload.content,
+					payload.body,
+					true,
+					payload.compress,
+					payload.options,
+				},
+			)
 			if err != nil {
 				return &resp, err
 			}

@@ -55,8 +55,14 @@ func processSalesforceResponse(resp http.Response) ([]SalesforceResult, error) {
 	return results, nil
 }
 
-func doBatchedRequestsForCollection(sf *Salesforce, method string, url string, batchSize int, recordMap []map[string]any) (SalesforceResults, error) {
-	var results = []SalesforceResult{}
+func doBatchedRequestsForCollection(
+	sf *Salesforce,
+	method string,
+	url string,
+	batchSize int,
+	recordMap []map[string]any,
+) (SalesforceResults, error) {
+	results := []SalesforceResult{}
 
 	for len(recordMap) > 0 {
 		var batch, remaining []map[string]any
@@ -177,7 +183,12 @@ func doUpdateOne(sf *Salesforce, sObjectName string, record any) error {
 	return nil
 }
 
-func doUpsertOne(sf *Salesforce, sObjectName string, fieldName string, record any) (SalesforceResult, error) {
+func doUpsertOne(
+	sf *Salesforce,
+	sObjectName string,
+	fieldName string,
+	record any,
+) (SalesforceResult, error) {
 	recordMap, err := convertToMap(record)
 	if err != nil {
 		return SalesforceResult{}, err
@@ -185,7 +196,11 @@ func doUpsertOne(sf *Salesforce, sObjectName string, fieldName string, record an
 
 	externalIdValue, ok := recordMap[fieldName].(string)
 	if !ok || externalIdValue == "" {
-		return SalesforceResult{}, fmt.Errorf("salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'", fieldName, sObjectName)
+		return SalesforceResult{}, fmt.Errorf(
+			"salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'",
+			fieldName,
+			sObjectName,
+		)
 	}
 
 	recordMap["attributes"] = map[string]string{"type": sObjectName}
@@ -241,7 +256,12 @@ func doDeleteOne(sf *Salesforce, sObjectName string, record any) error {
 	return nil
 }
 
-func doInsertCollection(sf *Salesforce, sObjectName string, records any, batchSize int) (SalesforceResults, error) {
+func doInsertCollection(
+	sf *Salesforce,
+	sObjectName string,
+	records any,
+	batchSize int,
+) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return SalesforceResults{}, err
@@ -251,10 +271,21 @@ func doInsertCollection(sf *Salesforce, sObjectName string, records any, batchSi
 		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
 	}
 
-	return doBatchedRequestsForCollection(sf, http.MethodPost, "/composite/sobjects/", batchSize, recordMap)
+	return doBatchedRequestsForCollection(
+		sf,
+		http.MethodPost,
+		"/composite/sobjects/",
+		batchSize,
+		recordMap,
+	)
 }
 
-func doUpdateCollection(sf *Salesforce, sObjectName string, records any, batchSize int) (SalesforceResults, error) {
+func doUpdateCollection(
+	sf *Salesforce,
+	sObjectName string,
+	records any,
+	batchSize int,
+) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return SalesforceResults{}, err
@@ -267,10 +298,22 @@ func doUpdateCollection(sf *Salesforce, sObjectName string, records any, batchSi
 		}
 	}
 
-	return doBatchedRequestsForCollection(sf, http.MethodPatch, "/composite/sobjects/", batchSize, recordMap)
+	return doBatchedRequestsForCollection(
+		sf,
+		http.MethodPatch,
+		"/composite/sobjects/",
+		batchSize,
+		recordMap,
+	)
 }
 
-func doUpsertCollection(sf *Salesforce, sObjectName string, fieldName string, records any, batchSize int) (SalesforceResults, error) {
+func doUpsertCollection(
+	sf *Salesforce,
+	sObjectName string,
+	fieldName string,
+	records any,
+	batchSize int,
+) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return SalesforceResults{}, err
@@ -279,16 +322,24 @@ func doUpsertCollection(sf *Salesforce, sObjectName string, fieldName string, re
 		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
 		externalIdValue, ok := recordMap[i][fieldName].(string)
 		if !ok || externalIdValue == "" {
-			return SalesforceResults{}, fmt.Errorf("salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'", fieldName, sObjectName)
+			return SalesforceResults{}, fmt.Errorf(
+				"salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'",
+				fieldName,
+				sObjectName,
+			)
 		}
 	}
 
 	uri := "/composite/sobjects/" + sObjectName + "/" + fieldName
 	return doBatchedRequestsForCollection(sf, http.MethodPatch, uri, batchSize, recordMap)
-
 }
 
-func doDeleteCollection(sf *Salesforce, sObjectName string, records any, batchSize int) (SalesforceResults, error) {
+func doDeleteCollection(
+	sf *Salesforce,
+	sObjectName string,
+	records any,
+	batchSize int,
+) (SalesforceResults, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return SalesforceResults{}, err
@@ -321,7 +372,7 @@ func doDeleteCollection(sf *Salesforce, sObjectName string, records any, batchSi
 		batchedIds = append(batchedIds, ids)
 	}
 
-	var results = []SalesforceResult{}
+	results := []SalesforceResult{}
 
 	for i := range batchedIds {
 		resp, err := doRequest(sf.auth, requestPayload{

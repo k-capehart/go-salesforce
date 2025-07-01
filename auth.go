@@ -141,7 +141,14 @@ func doAuth(url string, body *strings.Reader) (*authentication, error) {
 	return auth, nil
 }
 
-func usernamePasswordFlow(domain string, username string, password string, securityToken string, consumerKey string, consumerSecret string) (*authentication, error) {
+func usernamePasswordFlow(
+	domain string,
+	username string,
+	password string,
+	securityToken string,
+	consumerKey string,
+	consumerSecret string,
+) (*authentication, error) {
 	payload := url.Values{
 		"grant_type":    {grantTypeUsernamePassword},
 		"client_id":     {consumerKey},
@@ -159,7 +166,11 @@ func usernamePasswordFlow(domain string, username string, password string, secur
 	return auth, nil
 }
 
-func clientCredentialsFlow(domain string, consumerKey string, consumerSecret string) (*authentication, error) {
+func clientCredentialsFlow(
+	domain string,
+	consumerKey string,
+	consumerSecret string,
+) (*authentication, error) {
 	payload := url.Values{
 		"grant_type":    {grantTypeClientCredentials},
 		"client_id":     {consumerKey},
@@ -184,7 +195,13 @@ func setAccessToken(domain string, accessToken string) (*authentication, error) 
 	return auth, nil
 }
 
-func jwtFlow(domain string, username string, consumerKey string, consumerRSAPem string, expirationTime time.Duration) (*authentication, error) {
+func jwtFlow(
+	domain string,
+	username string,
+	consumerKey string,
+	consumerRSAPem string,
+	expirationTime time.Duration,
+) (*authentication, error) {
 	audience := domain
 	if strings.Contains(audience, "test.salesforce") || strings.Contains(audience, "sandbox") {
 		audience = "https://test.salesforce.com"

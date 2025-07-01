@@ -71,7 +71,11 @@ func TestConfiguration_SetCompressionHeaders(t *testing.T) {
 			}
 			c.SetCompressionHeaders(tt.args.compression)
 			if c.CompressionHeaders != tt.want {
-				t.Errorf("Configuration.SetCompressionHeaders() = %v, want %v", c.CompressionHeaders, tt.want)
+				t.Errorf(
+					"Configuration.SetCompressionHeaders() = %v, want %v",
+					c.CompressionHeaders,
+					tt.want,
+				)
 			}
 		})
 	}

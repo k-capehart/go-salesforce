@@ -170,7 +170,11 @@ func getJobRecordResults(sf *Salesforce, bulkJobResults BulkJobResults) (BulkJob
 	return bulkJobResults, err
 }
 
-func getBulkJobRecords(sf *Salesforce, bulkJobId string, resultType string) ([]map[string]any, error) {
+func getBulkJobRecords(
+	sf *Salesforce,
+	bulkJobId string,
+	resultType string,
+) ([]map[string]any, error) {
 	resp, err := doRequest(sf.auth, requestPayload{
 		method:   http.MethodGet,
 		uri:      "/jobs/ingest/" + bulkJobId + "/" + resultType,
@@ -189,25 +193,48 @@ func getBulkJobRecords(sf *Salesforce, bulkJobId string, resultType string) ([]m
 	return results, nil
 }
 
-func waitForJobResultsAsync(sf *Salesforce, bulkJobId string, jobType string, interval time.Duration, c chan error) {
-	err := wait.PollUntilContextTimeout(context.Background(), interval, time.Minute, false, func(context.Context) (bool, error) {
-		bulkJob, reqErr := getJobResults(sf, jobType, bulkJobId)
-		if reqErr != nil {
-			return true, reqErr
-		}
-		return isBulkJobDone(bulkJob)
-	})
+func waitForJobResultsAsync(
+	sf *Salesforce,
+	bulkJobId string,
+	jobType string,
+	interval time.Duration,
+	c chan error,
+) {
+	err := wait.PollUntilContextTimeout(
+		context.Background(),
+		interval,
+		time.Minute,
+		false,
+		func(context.Context) (bool, error) {
+			bulkJob, reqErr := getJobResults(sf, jobType, bulkJobId)
+			if reqErr != nil {
+				return true, reqErr
+			}
+			return isBulkJobDone(bulkJob)
+		},
+	)
 	c <- err
 }
 
-func waitForJobResults(sf *Salesforce, bulkJobId string, jobType string, interval time.Duration) error {
-	err := wait.PollUntilContextTimeout(context.Background(), interval, time.Minute, false, func(context.Context) (bool, error) {
-		bulkJob, reqErr := getJobResults(sf, jobType, bulkJobId)
-		if reqErr != nil {
-			return true, reqErr
-		}
-		return isBulkJobDone(bulkJob)
-	})
+func waitForJobResults(
+	sf *Salesforce,
+	bulkJobId string,
+	jobType string,
+	interval time.Duration,
+) error {
+	err := wait.PollUntilContextTimeout(
+		context.Background(),
+		interval,
+		time.Minute,
+		false,
+		func(context.Context) (bool, error) {
+			bulkJob, reqErr := getJobResults(sf, jobType, bulkJobId)
+			if reqErr != nil {
+				return true, reqErr
+			}
+			return isBulkJobDone(bulkJob)
+		},
+	)
 	return err
 }
 
@@ -224,12 +251,24 @@ func isBulkJobDone(bulkJob BulkJobResults) (bool, error) {
 	return false, nil
 }
 
-func getQueryJobResults(sf *Salesforce, bulkJobId string, locator string) (bulkJobQueryResults, error) {
+func getQueryJobResults(
+	sf *Salesforce,
+	bulkJobId string,
+	locator string,
+) (bulkJobQueryResults, error) {
 	uri := "/jobs/query/" + bulkJobId + "/results"
 	if locator != "" {
 		uri = uri + "/?locator=" + locator
 	}
-	resp, err := doRequest(sf.auth, requestPayload{method: http.MethodGet, uri: uri, content: jsonType, compress: sf.Config.CompressionHeaders})
+	resp, err := doRequest(
+		sf.auth,
+		requestPayload{
+			method:   http.MethodGet,
+			uri:      uri,
+			content:  jsonType,
+			compress: sf.Config.CompressionHeaders,
+		},
+	)
 	if err != nil {
 		return bulkJobQueryResults{}, err
 	}
@@ -265,7 +304,9 @@ func collectQueryResults(sf *Salesforce, bulkJobId string) ([][]string, error) {
 		if resultsErr != nil {
 			return nil, resultsErr
 		}
-		records = append(records, queryResults.Data[1:]...) // don't include headers in subsequent batches
+		records = append(
+			records,
+			queryResults.Data[1:]...) // don't include headers in subsequent batches
 	}
 	return records, nil
 }
@@ -365,7 +406,13 @@ func writeCSVFile(filePath string, data [][]string) error {
 	return nil
 }
 
-func constructBulkJobRequest(sf *Salesforce, sObjectName string, operation string, fieldName string, assignmentRuleId string) (bulkJob, error) {
+func constructBulkJobRequest(
+	sf *Salesforce,
+	sObjectName string,
+	operation string,
+	fieldName string,
+	assignmentRuleId string,
+) (bulkJob, error) {
 	jobReq := bulkJobCreationRequest{
 		Object:              sObjectName,
 		Operation:           operation,
@@ -379,14 +426,25 @@ func constructBulkJobRequest(sf *Salesforce, sObjectName string, operation strin
 		return bulkJob{}, jobCreationErr
 	}
 	if job.Id == "" || job.State != jobStateOpen {
-		newErr := errors.New("error creating bulk data job: id does not exist or job closed prematurely")
+		newErr := errors.New(
+			"error creating bulk data job: id does not exist or job closed prematurely",
+		)
 		return job, newErr
 	}
 
 	return job, nil
 }
 
-func doBulkJob(sf *Salesforce, sObjectName string, fieldName string, operation string, records any, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error) {
+func doBulkJob(
+	sf *Salesforce,
+	sObjectName string,
+	fieldName string,
+	operation string,
+	records any,
+	batchSize int,
+	waitForResults bool,
+	assignmentRuleId string,
+) ([]string, error) {
 	recordMap, err := convertToSliceOfMaps(records)
 	if err != nil {
 		return []string{}, err
@@ -404,7 +462,13 @@ func doBulkJob(sf *Salesforce, sObjectName string, fieldName string, operation s
 		}
 		recordMap = remaining
 
-		job, constructJobErr := constructBulkJobRequest(sf, sObjectName, operation, fieldName, assignmentRuleId)
+		job, constructJobErr := constructBulkJobRequest(
+			sf,
+			sObjectName,
+			operation,
+			fieldName,
+			assignmentRuleId,
+		)
 		if constructJobErr != nil {
 			return jobIds, constructJobErr
 		}
@@ -432,7 +496,16 @@ func doBulkJob(sf *Salesforce, sObjectName string, fieldName string, operation s
 	return jobIds, jobErrors
 }
 
-func doBulkJobWithFile(sf *Salesforce, sObjectName string, fieldName string, operation string, filePath string, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error) {
+func doBulkJobWithFile(
+	sf *Salesforce,
+	sObjectName string,
+	fieldName string,
+	operation string,
+	filePath string,
+	batchSize int,
+	waitForResults bool,
+	assignmentRuleId string,
+) ([]string, error) {
 	var jobErrors error
 	var jobIds []string
 
@@ -453,7 +526,13 @@ func doBulkJobWithFile(sf *Salesforce, sObjectName string, fieldName string, ope
 		}
 		records = remaining
 
-		job, constructJobErr := constructBulkJobRequest(sf, sObjectName, operation, fieldName, assignmentRuleId)
+		job, constructJobErr := constructBulkJobRequest(
+			sf,
+			sObjectName,
+			operation,
+			fieldName,
+			assignmentRuleId,
+		)
 		if constructJobErr != nil {
 			jobErrors = errors.Join(jobErrors, constructJobErr)
 			break

@@ -19,7 +19,10 @@ func Test_doRequest(t *testing.T) {
 	defer badServer.Close()
 
 	recordArrayResp := "{\"records\":[{\"Id\":\"123abc\"}]}"
-	serverWith300Resp, authWith300Resp := setupTestServer(recordArrayResp, http.StatusMultipleChoices)
+	serverWith300Resp, authWith300Resp := setupTestServer(
+		recordArrayResp,
+		http.StatusMultipleChoices,
+	)
 	defer serverWith300Resp.Close()
 
 	compressedServer, sfAuthCompressed := setupTestServer("test", http.StatusOK)
@@ -199,19 +202,21 @@ func Test_processSalesforceError(t *testing.T) {
 	defer serverRefreshFail.Close()
 	sfAuthRefreshFail.grantType = grantTypeClientCredentials
 
-	serverRetryFail := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.RequestURI, "/oauth2/token") {
-			body, err := json.Marshal(badSfAuth)
-			if err != nil {
-				panic(err)
+	serverRetryFail := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.RequestURI, "/oauth2/token") {
+				body, err := json.Marshal(badSfAuth)
+				if err != nil {
+					panic(err)
+				}
+				if _, err := w.Write(body); err != nil {
+					panic(err)
+				}
+			} else {
+				w.WriteHeader(http.StatusBadRequest)
 			}
-			if _, err := w.Write(body); err != nil {
-				panic(err)
-			}
-		} else {
-			w.WriteHeader(http.StatusBadRequest)
-		}
-	}))
+		}),
+	)
 	defer serverRetryFail.Close()
 	sfAuthRetryFail := authentication{
 		InstanceUrl: serverRetryFail.URL,
