@@ -1,8 +1,6 @@
 module github.com/k-capehart/go-salesforce/v2
 
-go 1.23.0
-
-toolchain go1.24.1
+go 1.24.1
 
 require github.com/forcedotcom/go-soql v0.0.0-20220705175410-00f698360bee
 
@@ -11,7 +9,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/jszwec/csvutil v1.10.0
 	github.com/spf13/afero v1.14.0
-	k8s.io/apimachinery v0.32.3
+	k8s.io/apimachinery v0.33.0
 )
 
 require (
