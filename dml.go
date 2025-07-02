@@ -83,12 +83,12 @@ func doBatchedRequestsForCollection(
 			return SalesforceResults{Results: results}, err
 		}
 
-		resp, err := doRequest(sf.auth, requestPayload{
+		resp, err := doRequest(sf.auth, sf.config, requestPayload{
 			method:   method,
 			uri:      url,
 			content:  jsonType,
 			body:     string(body),
-			compress: sf.Config.CompressionHeaders,
+			compress: sf.config.compressionHeaders,
 		})
 		if err != nil {
 			return SalesforceResults{Results: results}, err
@@ -130,12 +130,12 @@ func doInsertOne(sf *Salesforce, sObjectName string, record any) (SalesforceResu
 		return SalesforceResult{}, err
 	}
 
-	resp, err := doRequest(sf.auth, requestPayload{
+	resp, err := doRequest(sf.auth, sf.config, requestPayload{
 		method:   http.MethodPost,
 		uri:      "/sobjects/" + sObjectName,
 		content:  jsonType,
 		body:     string(body),
-		compress: sf.Config.CompressionHeaders,
+		compress: sf.config.compressionHeaders,
 	})
 	if err != nil {
 		return SalesforceResult{}, err
@@ -169,12 +169,12 @@ func doUpdateOne(sf *Salesforce, sObjectName string, record any) error {
 		return err
 	}
 
-	_, err = doRequest(sf.auth, requestPayload{
+	_, err = doRequest(sf.auth, sf.config, requestPayload{
 		method:   http.MethodPatch,
 		uri:      "/sobjects/" + sObjectName + "/" + recordId,
 		content:  jsonType,
 		body:     string(body),
-		compress: sf.Config.CompressionHeaders,
+		compress: sf.config.compressionHeaders,
 	})
 	if err != nil {
 		return err
@@ -212,12 +212,12 @@ func doUpsertOne(
 		return SalesforceResult{}, err
 	}
 
-	resp, err := doRequest(sf.auth, requestPayload{
+	resp, err := doRequest(sf.auth, sf.config, requestPayload{
 		method:   http.MethodPatch,
 		uri:      "/sobjects/" + sObjectName + "/" + fieldName + "/" + externalIdValue,
 		content:  jsonType,
 		body:     string(body),
-		compress: sf.Config.CompressionHeaders,
+		compress: sf.config.compressionHeaders,
 	})
 	if err != nil {
 		return SalesforceResult{}, err
@@ -243,11 +243,11 @@ func doDeleteOne(sf *Salesforce, sObjectName string, record any) error {
 		return errors.New("salesforce id not found in object data")
 	}
 
-	_, err = doRequest(sf.auth, requestPayload{
+	_, err = doRequest(sf.auth, sf.config, requestPayload{
 		method:   http.MethodDelete,
 		uri:      "/sobjects/" + sObjectName + "/" + recordId,
 		content:  jsonType,
-		compress: sf.Config.CompressionHeaders,
+		compress: sf.config.compressionHeaders,
 	})
 	if err != nil {
 		return err
@@ -375,11 +375,11 @@ func doDeleteCollection(
 	results := []SalesforceResult{}
 
 	for i := range batchedIds {
-		resp, err := doRequest(sf.auth, requestPayload{
+		resp, err := doRequest(sf.auth, sf.config, requestPayload{
 			method:   http.MethodDelete,
 			uri:      "/composite/sobjects/?ids=" + batchedIds[i] + "&allOrNone=false",
 			content:  jsonType,
-			compress: sf.Config.CompressionHeaders,
+			compress: sf.config.compressionHeaders,
 		})
 		if err != nil {
 			return SalesforceResults{Results: results}, err

@@ -236,7 +236,8 @@ func Test_setAccessToken(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := setAccessToken(tt.args.domain, tt.args.accessToken)
+			config := getDefaultConfig(t)
+			got, err := config.getAccessTokenAuthentication(tt.args.domain, tt.args.accessToken)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("setAccessToken() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -421,4 +422,14 @@ func Test_jwtFlow(t *testing.T) {
 			}
 		})
 	}
+}
+
+// getDefaultConfig returns a default configuration for internal use
+func getDefaultConfig(t *testing.T) *configuration {
+	t.Helper()
+	config := &configuration{}
+	config.setDefaults()
+	config.configureHttpClient()
+	config.shouldValidateAuthentication = true
+	return config
 }

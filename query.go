@@ -25,11 +25,11 @@ func performQuery(sf *Salesforce, query string, sObject any) error {
 	}
 
 	for !queryResp.Done {
-		resp, err := doRequest(sf.auth, requestPayload{
+		resp, err := doRequest(sf.auth, sf.config, requestPayload{
 			method:   http.MethodGet,
 			uri:      queryResp.NextRecordsUrl,
 			content:  jsonType,
-			compress: sf.Config.CompressionHeaders,
+			compress: sf.config.compressionHeaders,
 		})
 		if err != nil {
 			return err

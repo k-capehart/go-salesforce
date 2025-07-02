@@ -30,11 +30,15 @@ type requestPayload struct {
 	options  []RequestOption
 }
 
-func doRequest(auth *authentication, payload requestPayload) (*http.Response, error) {
+func doRequest(
+	auth *authentication,
+	config *configuration,
+	payload requestPayload,
+) (*http.Response, error) {
 	var reader io.Reader
 	var req *http.Request
 	var err error
-	endpoint := auth.InstanceUrl + "/services/data/" + apiVersion + payload.uri
+	endpoint := auth.InstanceUrl + "/services/data/" + config.apiVersion + payload.uri
 
 	if payload.body != "" {
 		if payload.compress {
@@ -67,12 +71,12 @@ func doRequest(auth *authentication, payload requestPayload) (*http.Response, er
 		option(req)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := config.httpClient.Do(req)
 	if err != nil {
 		return resp, err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode > 300 {
-		resp, err = processSalesforceError(*resp, auth, payload)
+		resp, err = processSalesforceError(*resp, auth, config, payload)
 		if err != nil {
 			return resp, err
 		}
@@ -116,6 +120,7 @@ func decompress(body io.ReadCloser) (io.ReadCloser, error) {
 func processSalesforceError(
 	resp http.Response,
 	auth *authentication,
+	config *configuration,
 	payload requestPayload,
 ) (*http.Response, error) {
 	responseData, err := io.ReadAll(resp.Body)
@@ -137,6 +142,7 @@ func processSalesforceError(
 
 			newResp, err := doRequest(
 				auth,
+				config,
 				requestPayload{
 					payload.method,
 					payload.uri,

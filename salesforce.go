@@ -8,13 +8,15 @@ import (
 	"reflect"
 	"slices"
 	"strconv"
+	"time"
 
 	"github.com/forcedotcom/go-soql"
 )
 
 type Salesforce struct {
-	auth   *authentication
-	Config Configuration
+	auth     *authentication
+	config   *configuration
+	AuthFlow AuthFlowType
 }
 
 type SalesforceErrorMessage struct {
@@ -36,12 +38,15 @@ type SalesforceResults struct {
 }
 
 const (
-	apiVersion            = "v62.0"
-	jsonType              = "application/json"
-	csvType               = "text/csv"
-	batchSizeMax          = 200
-	bulkBatchSizeMax      = 10000
-	invalidSessionIdError = "INVALID_SESSION_ID"
+	apiVersion                    = "v63.0"
+	jsonType                      = "application/json"
+	csvType                       = "text/csv"
+	batchSizeMax                  = 200
+	bulkBatchSizeMax              = 10000
+	invalidSessionIdError         = "INVALID_SESSION_ID"
+	httpDefaultMaxIdleConnections = 10
+	httpDefaultIdleConnTimeout    = time.Duration(30 * time.Second)
+	httpDefaultTimeout            = time.Duration(120 * time.Second)
 )
 
 func validateOfTypeSlice(data any) error {
@@ -114,7 +119,7 @@ func validateCollections(sf Salesforce, records any, batchSize int) error {
 	if typErr != nil {
 		return typErr
 	}
-	batchSizeErr := validateBatchSizeWithinRange(batchSize, batchSizeMax)
+	batchSizeErr := validateBatchSizeWithinRange(batchSize, sf.config.batchSizeMax)
 	if batchSizeErr != nil {
 		return batchSizeErr
 	}
@@ -139,7 +144,7 @@ func validateBulk(
 			return typErr
 		}
 	}
-	batchSizeErr := validateBatchSizeWithinRange(batchSize, bulkBatchSizeMax)
+	batchSizeErr := validateBatchSizeWithinRange(batchSize, sf.config.bulkBatchSizeMax)
 	if batchSizeErr != nil {
 		return batchSizeErr
 	}
@@ -159,12 +164,29 @@ func validateObjectWithAssignmentRuleId(sObjectName string) error {
 	return nil
 }
 
-func Init(creds Creds) (*Salesforce, error) {
+func Init(creds Creds, options ...Option) (*Salesforce, error) {
 	var auth *authentication
 	var err error
+	var authFlow AuthFlowType
+
+	// Initialize configuration with defaults
+	config := &configuration{}
+	config.setDefaults()
+
+	// Apply functional options
+	for _, option := range options {
+		if err := option(config); err != nil {
+			return nil, fmt.Errorf("configuration error: %w", err)
+		}
+	}
+
+	config.configureHttpClient()
+
 	if creds == (Creds{}) {
 		return nil, errors.New("creds is empty")
 	}
+
+	// Determine authentication flow and authenticate
 	if creds.Domain != "" && creds.ConsumerKey != "" && creds.ConsumerSecret != "" &&
 		creds.Username != "" && creds.Password != "" && creds.SecurityToken != "" {
 		auth, err = usernamePasswordFlow(
@@ -175,17 +197,20 @@ func Init(creds Creds) (*Salesforce, error) {
 			creds.ConsumerKey,
 			creds.ConsumerSecret,
 		)
+		authFlow = AuthFlowUsernamePassword
 	} else if creds.Domain != "" && creds.ConsumerKey != "" && creds.ConsumerSecret != "" {
 		auth, err = clientCredentialsFlow(
 			creds.Domain,
 			creds.ConsumerKey,
 			creds.ConsumerSecret,
 		)
+		authFlow = AuthFlowClientCredentials
 	} else if creds.AccessToken != "" {
-		auth, err = setAccessToken(
+		auth, err = config.getAccessTokenAuthentication(
 			creds.Domain,
 			creds.AccessToken,
 		)
+		authFlow = AuthFlowAccessToken
 	} else if creds.Domain != "" && creds.Username != "" &&
 		creds.ConsumerKey != "" && creds.ConsumerRSAPem != "" {
 		auth, err = jwtFlow(
@@ -195,6 +220,7 @@ func Init(creds Creds) (*Salesforce, error) {
 			creds.ConsumerRSAPem,
 			JwtExpirationTime,
 		)
+		authFlow = AuthFlowJWT
 	}
 
 	if err != nil {
@@ -203,9 +229,12 @@ func Init(creds Creds) (*Salesforce, error) {
 		return nil, errors.New("unknown authentication error")
 	}
 	auth.creds = creds
-	config := Configuration{}
-	config.SetDefaults()
-	return &Salesforce{auth: auth, Config: config}, nil
+
+	return &Salesforce{
+		auth:     auth,
+		config:   config,
+		AuthFlow: authFlow,
+	}, nil
 }
 
 func (sf *Salesforce) DoRequest(
@@ -219,13 +248,13 @@ func (sf *Salesforce) DoRequest(
 		return nil, authErr
 	}
 
-	resp, err := doRequest(sf.auth, requestPayload{
+	resp, err := doRequest(sf.auth, sf.config, requestPayload{
 		method:   method,
 		uri:      uri,
 		content:  jsonType,
 		body:     string(body),
-		compress: sf.Config.CompressionHeaders,
 		options:  opts,
+		compress: sf.config.compressionHeaders,
 	})
 	if err != nil {
 		return nil, err
@@ -793,6 +822,36 @@ func (sf *Salesforce) GetJobResults(bulkJobId string) (BulkJobResults, error) {
 	}
 
 	return job, nil
+}
+
+// GetAuthFlow returns the authentication flow type used
+func (sf *Salesforce) GetAuthFlow() AuthFlowType {
+	return sf.AuthFlow
+}
+
+// GetAPIVersion returns the configured API version
+func (sf *Salesforce) GetAPIVersion() string {
+	return sf.config.apiVersion
+}
+
+// GetBatchSizeMax returns the configured maximum batch size for collections
+func (sf *Salesforce) GetBatchSizeMax() int {
+	return sf.config.batchSizeMax
+}
+
+// GetBulkBatchSizeMax returns the configured maximum batch size for bulk operations
+func (sf *Salesforce) GetBulkBatchSizeMax() int {
+	return sf.config.bulkBatchSizeMax
+}
+
+// GetCompressionHeaders returns whether compression headers are enabled
+func (sf *Salesforce) GetCompressionHeaders() bool {
+	return sf.config.compressionHeaders
+}
+
+// GetHTTPClient returns the configured HTTP client
+func (sf *Salesforce) GetHTTPClient() *http.Client {
+	return sf.config.httpClient
 }
 
 func (sf *Salesforce) GetAccessToken() string {

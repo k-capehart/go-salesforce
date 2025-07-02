@@ -27,5 +27,6 @@ mod-upgrade:
 	go get -u ./...
 
 test:
-	go test ./... -v
+	go test -v ./...
 
+.PHONY: all tidy generate build install-tools fmt lint mod-upgrade test
