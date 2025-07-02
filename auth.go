@@ -1,6 +1,7 @@
 package salesforce
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -79,11 +80,11 @@ func validateAuth(sf Salesforce) error {
 	return nil
 }
 
-func (conf *configuration) validateAuthentication(auth authentication) error {
+func (conf *configuration) validateAuthentication(ctx context.Context, auth authentication) error {
 	if err := validateAuth(Salesforce{auth: &auth}); err != nil {
 		return err
 	}
-	_, err := doRequest(&auth, conf, requestPayload{
+	_, err := doRequest(ctx, &auth, conf, requestPayload{
 		method:  http.MethodGet,
 		uri:     "/limits",
 		content: jsonType,
@@ -215,12 +216,13 @@ func clientCredentialsFlow(
 }
 
 func (conf *configuration) getAccessTokenAuthentication(
+	ctx context.Context,
 	domain string,
 	accessToken string,
 ) (*authentication, error) {
 	auth := &authentication{InstanceUrl: domain, AccessToken: accessToken}
 	if conf.shouldValidateAuthentication {
-		if err := conf.validateAuthentication(*auth); err != nil {
+		if err := conf.validateAuthentication(ctx, *auth); err != nil {
 			return nil, err
 		}
 	}

@@ -1,6 +1,7 @@
 package salesforce
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -17,7 +18,7 @@ type queryResponse struct {
 	Records        []map[string]any `json:"records"`
 }
 
-func performQuery(sf *Salesforce, query string, sObject any) error {
+func (sf *Salesforce) performQuery(ctx context.Context, query string, sObject any) error {
 	query = url.QueryEscape(query)
 	queryResp := &queryResponse{
 		Done:           false,
@@ -25,7 +26,7 @@ func performQuery(sf *Salesforce, query string, sObject any) error {
 	}
 
 	for !queryResp.Done {
-		resp, err := doRequest(sf.auth, sf.config, requestPayload{
+		resp, err := doRequest(ctx, sf.auth, sf.config, requestPayload{
 			method:   http.MethodGet,
 			uri:      queryResp.NextRecordsUrl,
 			content:  jsonType,

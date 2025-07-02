@@ -64,9 +64,12 @@ func TestWithRoundTripper(t *testing.T) {
 }
 
 func TestConfigurationHTTPClientDefaults(t *testing.T) {
+	const httpDefaultTimeout = 120 * time.Second
+
 	t.Run("default_http_client", func(t *testing.T) {
 		config := configuration{}
 		config.setDefaults()
+		config.httpTimeout = httpDefaultTimeout // There is no timeout out of the box
 		config.configureHttpClient()
 
 		if config.httpClient == nil {
@@ -106,8 +109,9 @@ func TestConfigurationHTTPClientDefaults(t *testing.T) {
 	t.Run("with_custom_round_tripper", func(t *testing.T) {
 		config := configuration{}
 		customRT := &http.Transport{MaxIdleConns: httpDefaultMaxIdleConnections}
-		config.roundTripper = customRT
 		config.setDefaults()
+		config.roundTripper = customRT
+		config.httpTimeout = httpDefaultTimeout // There is no timeout out of the box
 		config.configureHttpClient()
 
 		if config.httpClient == nil {

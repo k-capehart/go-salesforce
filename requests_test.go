@@ -99,7 +99,7 @@ func Test_doRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config := getDefaultConfig(t)
-			got, err := doRequest(tt.args.auth, config, tt.args.payload)
+			got, err := doRequest(t.Context(), tt.args.auth, config, tt.args.payload)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doRequest() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -292,7 +292,13 @@ func Test_processSalesforceError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config := getDefaultConfig(t)
-			got, err := processSalesforceError(tt.args.resp, tt.args.auth, config, tt.args.payload)
+			got, err := processSalesforceError(
+				t.Context(),
+				tt.args.resp,
+				tt.args.auth,
+				config,
+				tt.args.payload,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("processSalesforceError() error = %v, wantErr %v", err, tt.wantErr)
 				return

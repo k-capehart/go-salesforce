@@ -290,8 +290,8 @@ func Test_doBatchedRequestsForCollection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doBatchedRequestsForCollection(
-				tt.args.sf,
+			got, err := tt.args.sf.doBatchedRequestsForCollection(
+				t.Context(),
 				tt.args.method,
 				tt.args.url,
 				tt.args.batchSize,
@@ -372,7 +372,7 @@ func Test_doInsertOne(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doInsertOne(tt.args.sf, tt.args.sObjectName, tt.args.record)
+			got, err := tt.args.sf.doInsertOne(t.Context(), tt.args.sObjectName, tt.args.record)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doInsertOne() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -441,7 +441,7 @@ func Test_doUpdateOne(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := doUpdateOne(tt.args.sf, tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
+			if err := tt.args.sf.doUpdateOne(t.Context(), tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
 				t.Errorf("doUpdateOne() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -520,8 +520,8 @@ func Test_doUpsertOne(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doUpsertOne(
-				tt.args.sf,
+			got, err := tt.args.sf.doUpsertOne(
+				t.Context(),
 				tt.args.sObjectName,
 				tt.args.fieldName,
 				tt.args.record,
@@ -591,7 +591,7 @@ func Test_doDeleteOne(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := doDeleteOne(tt.args.sf, tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
+			if err := tt.args.sf.doDeleteOne(t.Context(), tt.args.sObjectName, tt.args.record); (err != nil) != tt.wantErr {
 				t.Errorf("doDeleteOne() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -659,8 +659,8 @@ func Test_doInsertCollection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doInsertCollection(
-				tt.args.sf,
+			got, err := tt.args.sf.doInsertCollection(
+				t.Context(),
 				tt.args.sObjectName,
 				tt.args.records,
 				tt.args.batchSize,
@@ -739,8 +739,8 @@ func Test_doUpdateCollection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doUpdateCollection(
-				tt.args.sf,
+			got, err := tt.args.sf.doUpdateCollection(
+				t.Context(),
 				tt.args.sObjectName,
 				tt.args.records,
 				tt.args.batchSize,
@@ -822,8 +822,8 @@ func Test_doUpsertCollection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doUpsertCollection(
-				tt.args.sf,
+			got, err := tt.args.sf.doUpsertCollection(
+				t.Context(),
 				tt.args.sObjectName,
 				tt.args.fieldName,
 				tt.args.records,
@@ -983,8 +983,8 @@ func Test_doDeleteCollection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doDeleteCollection(
-				tt.args.sf,
+			got, err := tt.args.sf.doDeleteCollection(
+				t.Context(),
 				tt.args.sObjectName,
 				tt.args.records,
 				tt.args.batchSize,

@@ -25,7 +25,8 @@ func (c *configuration) setDefaults() {
 	c.apiVersion = apiVersion
 	c.batchSizeMax = batchSizeMax
 	c.bulkBatchSizeMax = bulkBatchSizeMax
-	c.httpTimeout = httpDefaultTimeout
+	c.httpTimeout = 0    // Default to no timeout (can be set via WithHTTPTimeout option)
+	c.roundTripper = nil // No custom round tripper by default
 }
 
 func (c *configuration) configureHttpClient() {
