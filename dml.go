@@ -111,7 +111,14 @@ func doBatchedRequestsForCollection(
 }
 
 func decodeResponseBody(response *http.Response) (value SalesforceResult, err error) {
-	defer response.Body.Close()
+	defer func() {
+		if closeErr := response.Body.Close(); closeErr != nil {
+			// If we don't already have an error, use the close error
+			if err == nil {
+				err = closeErr
+			}
+		}
+	}()
 	decoder := json.NewDecoder(response.Body)
 	err = decoder.Decode(&value)
 	return value, err

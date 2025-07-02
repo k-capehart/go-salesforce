@@ -107,7 +107,9 @@ func decompress(body io.ReadCloser) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer gzReader.Close()
+	defer func() {
+		_ = gzReader.Close() // Ignore error since we've read what we need
+	}()
 
 	decompressed, err := io.ReadAll(gzReader)
 	if err != nil {

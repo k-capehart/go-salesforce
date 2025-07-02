@@ -377,7 +377,9 @@ func readCSVFile(filePath string) ([][]string, error) {
 	if fileErr != nil {
 		return nil, fileErr
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close() // Ignore error since we've already read what we need
+	}()
 
 	reader := csv.NewReader(file)
 	records, readErr := reader.ReadAll()
@@ -393,7 +395,9 @@ func writeCSVFile(filePath string, data [][]string) error {
 	if fileErr != nil {
 		return fileErr
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close() // Ignore error since main operation completed
+	}()
 
 	writer := csv.NewWriter(file)
 	if writer == nil {

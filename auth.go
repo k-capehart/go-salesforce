@@ -163,7 +163,9 @@ func doAuth(url string, body *strings.Reader) (*authentication, error) {
 		return nil, jsonError
 	}
 
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close() // Ignore error since we've already read what we need
+	}()
 	return auth, nil
 }
 
