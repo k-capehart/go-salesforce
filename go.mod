@@ -9,7 +9,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/jszwec/csvutil v1.10.0
 	github.com/spf13/afero v1.14.0
-	k8s.io/apimachinery v0.33.0
+	k8s.io/apimachinery v0.33.2
 )
 
 require (
