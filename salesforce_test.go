@@ -588,9 +588,10 @@ func TestSalesforce_DoRequest(t *testing.T) {
 		auth *authentication
 	}
 	type args struct {
-		method string
-		uri    string
-		body   []byte
+		method  string
+		uri     string
+		body    []byte
+		options []RequestOption
 	}
 	tests := []struct {
 		name    string
@@ -616,6 +617,25 @@ func TestSalesforce_DoRequest(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "successful_request_with_header",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				method: http.MethodGet,
+				uri:    "/request",
+				body:   []byte("example"),
+				options: []RequestOption{
+					WithHeader("If-Modified-Since", "Wed, 21 Oct 2015 07:28:00 GMT"),
+				},
+			},
+			want: &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader("\"response_body\"")),
+			},
+			wantErr: false,
+		},
+		{
 			name: "validation_fail_auth",
 			fields: fields{
 				auth: nil,
@@ -631,7 +651,7 @@ func TestSalesforce_DoRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sf := buildSalesforceStruct(tt.fields.auth)
-			got, err := sf.DoRequest(tt.args.method, tt.args.uri, tt.args.body)
+			got, err := sf.DoRequest(tt.args.method, tt.args.uri, tt.args.body, tt.args.options...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.DoRequest() error = %v, wantErr %v", err, tt.wantErr)
 				return

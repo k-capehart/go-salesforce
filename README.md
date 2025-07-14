@@ -1211,26 +1211,42 @@ for _, id := range jobIds {
 
 ### DoRequest
 
-`func (sf *Salesforce) DoRequest(method string, uri string, body []byte) (*http.Response, error)`
+`func (sf *Salesforce) DoRequest(method string, uri string, body []byte, opts ...RequestOption) (*http.Response, error)`
 
 Make a http call to Salesforce, returning a response to be parsed by the client
 
 - `method`: request method ("GET", "POST", "PUT", "PATCH", "DELETE")
 - `uri`: uniform resource identifier (include everything after `/services/data/apiVersion`)
 - `body`: json encoded body to be included in request
+- `opts`: optional request options (currently supports custom headers via `WithHeader`)
 
-Example to call the `/limits` endpoint
+#### WithHeader
+
+`func WithHeader(key, value string) RequestOption`
+
+Creates a request option that sets a custom header on the HTTP request
+
+- `key`: the header name
+- `value`: the header value
 
 ```go
-resp, err := sf.DoRequest(http.MethodGet, "/limits", nil)
+// Use If-Modified-Since for efficient caching
+resp, err := sf.DoRequest("GET", "/sobjects/Account/describe", nil,
+    salesforce.WithHeader("If-Modified-Since", "Wed, 21 Oct 2015 07:28:00 GMT"))
 if err != nil {
     panic(err)
 }
-respBody, err := io.ReadAll(resp.Body)
-if err != nil {
-    panic(err)
+
+if resp.StatusCode == 304 {
+    fmt.Println("Data not modified, using cached version")
 }
-fmt.Println(string(respBody))
+```
+
+```go
+// Multiple custom headers
+resp, err := sf.DoRequest("GET", "/sobjects", nil,
+    salesforce.WithHeader("If-Modified-Since", "Wed, 21 Oct 2015 07:28:00 GMT"),
+    salesforce.WithHeader("Accept-Language", "en-US"))
 ```
 
 ## Contributing
