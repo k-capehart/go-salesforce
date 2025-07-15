@@ -1224,6 +1224,9 @@ Example to call the `/limits` endpoint
 
 ```go
 resp, err := sf.DoRequest(http.MethodGet, "/limits", nil)
+if err != nil {
+    panic(err)
+}
 respBody, err := io.ReadAll(resp.Body)
 if err != nil {
     panic(err)
