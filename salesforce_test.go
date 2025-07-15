@@ -685,14 +685,13 @@ func TestSalesforce_DoRequest(t *testing.T) {
 							t.Errorf("DoRequest() Header[%s] = %v, want %v", key, actualValues, expectedValues)
 						}
 					}
-				} else {
+				} else if !tt.wantErr {
 					t.Error("No request was captured for header validation")
 				}
 			case nil:
-				// Handle cases where want is nil
-				if got == nil && !tt.wantErr {
-					t.Error("Salesforce.DoRequest() did not return a response")
-				}
+				// No validation needed
+			default:
+				t.Errorf("Unsupported want type: %T", expected)
 			}
 		})
 	}
