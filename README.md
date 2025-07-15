@@ -1220,6 +1220,17 @@ Make a http call to Salesforce, returning a response to be parsed by the client
 - `body`: json encoded body to be included in request
 - `opts`: optional request options (currently supports custom headers via `WithHeader`)
 
+Example to call the `/limits` endpoint
+
+```go
+resp, err := sf.DoRequest(http.MethodGet, "/limits", nil)
+respBody, err := io.ReadAll(resp.Body)
+if err != nil {
+    panic(err)
+}
+fmt.Println(string(respBody))
+```
+
 #### WithHeader
 
 `func WithHeader(key, value string) RequestOption`
