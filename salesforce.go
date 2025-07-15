@@ -195,7 +195,7 @@ func Init(creds Creds) (*Salesforce, error) {
 	return &Salesforce{auth: auth, Config: config}, nil
 }
 
-func (sf *Salesforce) DoRequest(method string, uri string, body []byte) (*http.Response, error) {
+func (sf *Salesforce) DoRequest(method string, uri string, body []byte, opts ...RequestOption) (*http.Response, error) {
 	authErr := validateAuth(*sf)
 	if authErr != nil {
 		return nil, authErr
@@ -207,6 +207,7 @@ func (sf *Salesforce) DoRequest(method string, uri string, body []byte) (*http.R
 		content:  jsonType,
 		body:     string(body),
 		compress: sf.Config.CompressionHeaders,
+		options:  opts,
 	})
 	if err != nil {
 		return nil, err

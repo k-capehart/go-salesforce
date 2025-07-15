@@ -49,6 +49,17 @@ func setupTestServer(body any, status int) (*httptest.Server, authentication) {
 	return server, sfAuth
 }
 
+func setupTestServerWithCapture(body any, status int) (*httptest.Server, authentication, **http.Request) {
+	var capturedRequest *http.Request
+	server, auth := setupTestServer(body, status)
+	handler := server.Config.Handler
+	server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedRequest = r
+		handler.ServeHTTP(w, r)
+	})
+	return server, auth, &capturedRequest
+}
+
 func buildSalesforceStruct(auth *authentication) *Salesforce {
 	config := Configuration{}
 	config.SetDefaults()
@@ -581,22 +592,23 @@ func Test_validateBulk(t *testing.T) {
 }
 
 func TestSalesforce_DoRequest(t *testing.T) {
-	server, sfAuth := setupTestServer("response_body", http.StatusOK)
+	server, sfAuth, capturedRequest := setupTestServerWithCapture("response_body", http.StatusOK)
 	defer server.Close()
 
 	type fields struct {
 		auth *authentication
 	}
 	type args struct {
-		method string
-		uri    string
-		body   []byte
+		method  string
+		uri     string
+		body    []byte
+		options []RequestOption
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
-		want    *http.Response
+		want    any
 		wantErr bool
 	}{
 		{
@@ -616,6 +628,24 @@ func TestSalesforce_DoRequest(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "request_with_header",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				method: http.MethodGet,
+				uri:    "/request",
+				body:   []byte("example"),
+				options: []RequestOption{
+					WithHeader("If-Modified-Since", "Wed, 21 Oct 2015 07:28:00 GMT"),
+				},
+			},
+			want: http.Header{
+				"If-Modified-Since": []string{"Wed, 21 Oct 2015 07:28:00 GMT"},
+			},
+			wantErr: false,
+		},
+		{
 			name: "validation_fail_auth",
 			fields: fields{
 				auth: nil,
@@ -631,19 +661,37 @@ func TestSalesforce_DoRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sf := buildSalesforceStruct(tt.fields.auth)
-			got, err := sf.DoRequest(tt.args.method, tt.args.uri, tt.args.body)
+			got, err := sf.DoRequest(tt.args.method, tt.args.uri, tt.args.body, tt.args.options...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Salesforce.DoRequest() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if got != nil {
-				gotBody, _ := io.ReadAll(got.Body)
-				wantBody, _ := io.ReadAll(tt.want.Body)
-				if got.StatusCode != tt.want.StatusCode || string(gotBody) != string(wantBody) {
-					t.Errorf("Salesforce.DoRequest() = %v %v, want %v %v", got.StatusCode, string(gotBody), tt.want.StatusCode, string(wantBody))
+			switch expected := tt.want.(type) {
+			case *http.Response:
+				if got != nil {
+					gotBody, _ := io.ReadAll(got.Body)
+					wantBody, _ := io.ReadAll(expected.Body)
+					if got.StatusCode != expected.StatusCode || string(gotBody) != string(wantBody) {
+						t.Errorf("Salesforce.DoRequest() = %v %v, want %v %v", got.StatusCode, string(gotBody), expected.StatusCode, string(wantBody))
+					}
+				} else if !tt.wantErr {
+					t.Error("Salesforce.DoRequest() did not return a response")
 				}
-			} else if !tt.wantErr {
-				t.Error("Salesforce.DoRequest() did not return a response")
+			case http.Header:
+				if *capturedRequest != nil {
+					for key, expectedValues := range expected {
+						actualValues := (*capturedRequest).Header[key]
+						if !reflect.DeepEqual(actualValues, expectedValues) {
+							t.Errorf("DoRequest() Header[%s] = %v, want %v", key, actualValues, expectedValues)
+						}
+					}
+				} else if !tt.wantErr {
+					t.Error("No request was captured for header validation")
+				}
+			case nil:
+				// No validation needed
+			default:
+				t.Errorf("Unsupported want type: %T", expected)
 			}
 		})
 	}

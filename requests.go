@@ -10,6 +10,16 @@ import (
 	"strings"
 )
 
+// RequestOption represents a functional option for configuring HTTP requests
+type RequestOption func(*http.Request)
+
+// WithHeader sets a custom header on the HTTP request
+func WithHeader(key, value string) RequestOption {
+	return func(req *http.Request) {
+		req.Header.Set(key, value)
+	}
+}
+
 type requestPayload struct {
 	method   string
 	uri      string
@@ -17,6 +27,7 @@ type requestPayload struct {
 	body     string
 	retry    bool
 	compress bool
+	options  []RequestOption
 }
 
 func doRequest(auth *authentication, payload requestPayload) (*http.Response, error) {
@@ -49,6 +60,11 @@ func doRequest(auth *authentication, payload requestPayload) (*http.Response, er
 	if payload.compress {
 		req.Header.Set("Content-Encoding", "gzip") // compress request
 		req.Header.Set("Accept-Encoding", "gzip")  // compress response
+	}
+
+	// Apply custom request options
+	for _, option := range payload.options {
+		option(req)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
@@ -113,7 +129,7 @@ func processSalesforceError(resp http.Response, auth *authentication, payload re
 			if err != nil {
 				return &resp, err
 			}
-			newResp, err := doRequest(auth, requestPayload{payload.method, payload.uri, payload.content, payload.body, true, payload.compress})
+			newResp, err := doRequest(auth, requestPayload{payload.method, payload.uri, payload.content, payload.body, true, payload.compress, payload.options})
 			if err != nil {
 				return &resp, err
 			}
