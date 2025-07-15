@@ -1,2 +1,7 @@
 cover.out
 cover.html
+
+# Files used by Github Actions to determine if code needs to be reformatted:
+after_format.txt
+before_format.txt
+

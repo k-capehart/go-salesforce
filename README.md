@@ -171,6 +171,105 @@ url := sf.GetInstanceUrl()
 
 - Configure optional parameters for your Salesforce instance
 
+## HTTP Client Configuration
+
+The Salesforce Go client now supports custom HTTP transport layer configuration, allowing you to:
+
+1. **Provide a custom `http.RoundTripper`** - Lower-level control over HTTP request/response cycle
+    - `http.RoundTripper` can be layered to allow for logging, observability, etc layers for each request
+2. **Use default HTTP client** - Sensible defaults are provided when no custom configuration is specified
+3. **Use Context** to pass timeout and other values that might be used within RoundTripper middleware (like Trace IDs, etc)
+
+#### Usage Examples
+
+##### Custom Round Tripper
+
+```go
+func main() {
+    // Create a custom round tripper for fine-grained HTTP control
+    customRoundTripper := &http.Transport{
+        TLSClientConfig: &tls.Config{
+            MinVersion: tls.VersionTLS12,
+        },
+        MaxIdleConns:        10,
+        IdleConnTimeout:     30 * time.Second,
+        DisableCompression:  false,
+        DisableKeepAlives:   false,
+        MaxIdleConnsPerHost: 5,
+    }
+
+    creds := salesforce.Creds{
+        // ... your credentials
+    }
+
+    // Initialize with custom round tripper
+    sf, err := salesforce.Init(creds, 
+        salesforce.WithRoundTripper(customRoundTripper),
+        salesforce.WithAPIVersion("v64.0"),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+#### Configuration Options
+
+##### HTTP Client Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `WithRoundTripper(rt http.RoundTripper)` | Set a custom round tripper | Default transport |
+
+##### Other Configuration Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `WithAPIVersion(version string)` | Set Salesforce API version | v63.0 |
+| `WithBatchSizeMax(size int)` | Set max batch size for collections | 200 |
+| `WithBulkBatchSizeMax(size int)` | Set max batch size for bulk operations | 10000 |
+| `WithCompressionHeaders(enabled bool)` | Enable/disable compression | false |
+| `WithHTTPTimeout(timeout time.Duration)` | Sets HttpClient's overall timeout value (can also be achieved via Context's deadline) | 0 (no timeout) |
+| `WithValidateAuthentication(validate bool)` | For JWT flow will make an API call to `/limits` to confirm token is valid | true |
+
+#### Default HTTP Client Configuration
+
+When no custom round tripper is provided, the library uses:
+
+```go
+&http.Client{
+    Timeout: 0,                                 // No default timeout, can be controlled via Context
+    Transport: &http.Transport{
+        MaxIdleConns:       10,
+        IdleConnTimeout:    30 * time.Second,
+        DisableCompression: false,
+    },
+}
+```
+
+#### Accessing Configuration
+
+You can retrieve the current configuration using getter methods:
+
+```go
+sf, _ := salesforce.Init(creds)
+
+// Get the configured HTTP client
+client := sf.GetHTTPClient()
+
+// Get other configuration values
+apiVersion := sf.GetAPIVersion()
+batchSizeMax := sf.GetBatchSizeMax()
+bulkBatchSizeMax := sf.GetBulkBatchSizeMax()
+compressionEnabled := sf.GetCompressionHeaders()
+```
+
+#### Implementation Details
+
+- The `doRequest` function uses the configured HTTP client instead of `http.DefaultClient`
+- The API version from configuration is used in all endpoint URLs
+- Custom configurations are validated during initialization to prevent runtime errors
+
 ### SetDefaults
 
 `func (c *Configuration) SetDefaults()`
@@ -201,10 +300,11 @@ Query Salesforce records
 
 ### Query
 
-`func (sf *Salesforce) Query(query string, sObject any) error`
+`func (sf *Salesforce) Query(ctx context.Context, query string, sObject any) error`
 
 Performs a SOQL query given a query string and decodes the response into the given struct
 
+- `ctx`: context for request cancellation and timeout control
 - `query`: a SOQL query
 - `sObject`: a slice of a custom struct type representing a Salesforce Object
 
@@ -217,15 +317,16 @@ type Contact struct {
 
 ```go
 contacts := []Contact{}
-err := sf.Query("SELECT Id, LastName FROM Contact WHERE LastName = 'Lee'", &contacts)
+err := sf.Query(context.Background(), "SELECT Id, LastName FROM Contact WHERE LastName = 'Lee'", &contacts)
 ```
 
 ### QueryStruct
 
-`func (sf *Salesforce) QueryStruct(soqlStruct any, sObject any) error`
+`func (sf *Salesforce) QueryStruct(ctx context.Context, soqlStruct any, sObject any) error`
 
 Performs a SOQL query given a go-soql struct and decodes the response into the given struct
 
+- `ctx`: context for request cancellation and timeout control
 - `soqlStruct`: a custom struct using `soql` tags
 - `sObject`: a slice of a custom struct type representing a Salesforce Object
 - Review [forcedotcom/go-soql](https://github.com/forcedotcom/go-soql)
@@ -256,7 +357,7 @@ soqlStruct := ContactSoqlQuery{
     },
 }
 contacts := []Contact{}
-err := sf.QueryStruct(soqlStruct, &contacts)
+err := sf.QueryStruct(context.Background(), soqlStruct, &contacts)
 ```
 
 ### Handling Relationship Queries
@@ -274,7 +375,7 @@ type Contact struct {
 }
 
 contacts := []Contact{}
-sf.Query("SELECT Id, Account.Name FROM Contact", &contacts)
+sf.Query(context.Background(), "SELECT Id, Account.Name FROM Contact", &contacts)
 ```
 
 ## SObject Single Record Operations
@@ -287,10 +388,11 @@ Insert, Update, Upsert, or Delete one record at a time
 
 ### InsertOne
 
-`func (sf *Salesforce) InsertOne(sObjectName string, record any) (SalesforceResult, error)`
+`func (sf *Salesforce) InsertOne(ctx context.Context, sObjectName string, record any) (SalesforceResult, error)`
 
 InsertOne inserts one salesforce record of the given type
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `record`: a Salesforce object record
 
@@ -304,15 +406,16 @@ type Contact struct {
 contact := Contact{
     LastName: "Stark",
 }
-result, err := sf.InsertOne("Contact", contact)
+result, err := sf.InsertOne(context.Background(), "Contact", contact)
 ```
 
 ### UpdateOne
 
-`func (sf *Salesforce) UpdateOne(sObjectName string, record any) error`
+`func (sf *Salesforce) UpdateOne(ctx context.Context, sObjectName string, record any) error`
 
 Updates one salesforce record of the given type
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `record`: a Salesforce object record
   - An Id is required
@@ -329,15 +432,16 @@ contact := Contact{
     Id:       "003Dn00000pEYQSIA4",
     LastName: "Banner",
 }
-err := sf.UpdateOne("Contact", contact)
+err := sf.UpdateOne(context.Background(), "Contact", contact)
 ```
 
 ### UpsertOne
 
-`func (sf *Salesforce) UpsertOne(sObjectName string, externalIdFieldName string, record any) (SalesforceResult, error)`
+`func (sf *Salesforce) UpsertOne(ctx context.Context, sObjectName string, externalIdFieldName string, record any) (SalesforceResult, error)`
 
 Updates (or inserts) one salesforce record using the given external Id
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `externalIdFieldName`: field API name for an external Id that exists on the given object
 - `record`: a Salesforce object record
@@ -355,15 +459,16 @@ contact := Contact{
     ContactExternalId__c: "Avng0",
     LastName:             "Rogers",
 }
-result, err := sf.UpsertOne("Contact", "ContactExternalId__c", contact)
+result, err := sf.UpsertOne(context.Background(), "Contact", "ContactExternalId__c", contact)
 ```
 
 ### DeleteOne
 
-`func (sf *Salesforce) DeleteOne(sObjectName string, record any) error`
+`func (sf *Salesforce) DeleteOne(ctx context.Context, sObjectName string, record any) error`
 
 Deletes a Salesforce record
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `record`: a Salesforce object record
   - Should only contain an Id
@@ -378,7 +483,7 @@ type Contact struct {
 contact := Contact{
     Id: "003Dn00000pEYQSIA4",
 }
-err := sf.DeleteOne("Contact", contact)
+err := sf.DeleteOne(context.Background(), "Contact", contact)
 ```
 
 ## SObject Collections
@@ -394,10 +499,11 @@ Insert, Update, Upsert, or Delete collections of records
 
 ### InsertCollection
 
-`func (sf *Salesforce) InsertCollection(sObjectName string, records any, batchSize int) (SalesforceResults, error)`
+`func (sf *Salesforce) InsertCollection(ctx context.Context, sObjectName string, records any, batchSize int) (SalesforceResults, error)`
 
 Inserts a list of salesforce records of the given type
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `records`: a slice of salesforce records
 - `batchSize`: `1 <= batchSize <= 200`
@@ -417,15 +523,16 @@ contacts := []Contact{
         LastName: "Romanoff",
     },
 }
-results, err := sf.InsertCollection("Contact", contacts, 200)
+results, err := sf.InsertCollection(context.Background(), "Contact", contacts, 200)
 ```
 
 ### UpdateCollection
 
-`func (sf *Salesforce) UpdateCollection(sObjectName string, records any, batchSize int) (SalesforceResults, error)`
+`func (sf *Salesforce) UpdateCollection(ctx context.Context, sObjectName string, records any, batchSize int) (SalesforceResults, error)`
 
 Updates a list of salesforce records of the given type
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `records`: a slice of salesforce records
   - An Id is required
@@ -449,15 +556,16 @@ contacts := []Contact{
         LastName: "Odinson",
     },
 }
-results, err := sf.UpdateCollection("Contact", contacts, 200)
+results, err := sf.UpdateCollection(context.Background(), "Contact", contacts, 200)
 ```
 
 ### UpsertCollection
 
-`func (sf *Salesforce) UpsertCollection(sObjectName string, externalIdFieldName string, records any, batchSize int) (SalesforceResults, error)`
+`func (sf *Salesforce) UpsertCollection(ctx context.Context, sObjectName string, externalIdFieldName string, records any, batchSize int) (SalesforceResults, error)`
 
 Updates (or inserts) a list of salesforce records using the given ExternalId
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `externalIdFieldName`: field API name for an external Id that exists on the given object
 - `records`: a slice of salesforce records
@@ -482,15 +590,16 @@ contacts := []Contact{
         LastName:             "Pym",
     },
 }
-results, err := sf.UpsertCollection("Contact", "ContactExternalId__c", contacts, 200)
+results, err := sf.UpsertCollection(context.Background(), "Contact", "ContactExternalId__c", contacts, 200)
 ```
 
 ### DeleteCollection
 
-`func (sf *Salesforce) DeleteCollection(sObjectName string, records any, batchSize int) (SalesforceResults, error)`
+`func (sf *Salesforce) DeleteCollection(ctx context.Context, sObjectName string, records any, batchSize int) (SalesforceResults, error)`
 
 Deletes a list of salesforce records
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `records`: a slice of salesforce records
   - Should only contain Ids
@@ -511,7 +620,7 @@ contacts := []Contact{
         Id: "003Dn00000pEfy9IAC",
     },
 }
-results, err := sf.DeleteCollection("Contact", contacts, 200)
+results, err := sf.DeleteCollection(context.Background(), "Contact", contacts, 200)
 ```
 
 ## Composite Requests
@@ -529,10 +638,11 @@ Make numerous 'subrequests' contained within a single 'composite request', reduc
 
 ### InsertComposite
 
-`func (sf *Salesforce) InsertComposite(sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error)`
+`func (sf *Salesforce) InsertComposite(ctx context.Context, sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error)`
 
 Inserts a list of salesforce records in a single request
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `records`: a slice of salesforce records
 - `batchSize`: `1 <= batchSize <= 200`
@@ -553,15 +663,16 @@ contacts := []Contact{
         LastName: "Murdock",
     },
 }
-results, err := sf.InsertComposite("Contact", contacts, 200, true)
+results, err := sf.InsertComposite(context.Background(), "Contact", contacts, 200, true)
 ```
 
 ### UpdateComposite
 
-`func (sf *Salesforce) UpdateComposite(sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error)`
+`func (sf *Salesforce) UpdateComposite(ctx context.Context, sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error)`
 
 Updates a list of salesforce records in a single request
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `records`: a slice of salesforce records
   - An Id is required
@@ -586,15 +697,16 @@ contacts := []Contact{
         LastName: "Storm",
     },
 }
-results, err := sf.UpdateComposite("Contact", contacts, 200, true)
+results, err := sf.UpdateComposite(context.Background(), "Contact", contacts, 200, true)
 ```
 
 ### UpsertComposite
 
-`func (sf *Salesforce) UpsertComposite(sObjectName string, externalIdFieldName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error)`
+`func (sf *Salesforce) UpsertComposite(ctx context.Context, sObjectName string, externalIdFieldName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error)`
 
 Updates (or inserts) a list of salesforce records using the given ExternalId in a single request
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `externalIdFieldName`: field API name for an external Id that exists on the given object
 - `records`: a slice of salesforce records
@@ -620,15 +732,16 @@ contacts := []Contact{
         LastName:             "Wilson",
     },
 }
-results, err := sf.UpsertComposite("Contact", "ContactExternalId__c", contacts, 200, true)
+results, err := sf.UpsertComposite(context.Background(), "Contact", "ContactExternalId__c", contacts, 200, true)
 ```
 
 ### DeleteComposite
 
-`func (sf *Salesforce) DeleteComposite(sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error)`
+`func (sf *Salesforce) DeleteComposite(ctx context.Context, sObjectName string, records any, batchSize int, allOrNone bool) (SalesforceResults, error)`
 
 Deletes a list of salesforce records in a single request
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `records`: a slice of salesforce records
   - Should only contain Ids
@@ -650,7 +763,7 @@ contacts := []Contact{
         Id: "003Dn00000pEi0NIAS",
     },
 }
-results, err := sf.DeleteComposite("Contact", contacts, 200, true)
+results, err := sf.DeleteComposite(context.Background(), "Contact", contacts, 200, true)
 ```
 
 ## Bulk v2
@@ -663,23 +776,25 @@ Create Bulk API Jobs to query, insert, update, upsert, and delete large collecti
 
 ### QueryBulkExport
 
-`func (sf *Salesforce) QueryBulkExport(query string, filePath string) error`
+`func (sf *Salesforce) QueryBulkExport(ctx context.Context, query string, filePath string) error`
 
 Performs a query and exports the data to a csv file
 
+- `ctx`: context for request cancellation and timeout control
 - `filePath`: name and path of a csv file to be created
 - `query`: a SOQL query
 
 ```go
-err := sf.QueryBulkExport("SELECT Id, FirstName, LastName FROM Contact", "data/export.csv")
+err := sf.QueryBulkExport(context.Background(), "SELECT Id, FirstName, LastName FROM Contact", "data/export.csv")
 ```
 
 ### QueryStructBulkExport
 
-`func (sf *Salesforce) QueryStructBulkExport(soqlStruct any, filePath string) error`
+`func (sf *Salesforce) QueryStructBulkExport(ctx context.Context, soqlStruct any, filePath string) error`
 
 Performs a SOQL query given a go-soql struct and decodes the response into the given struct
 
+- `ctx`: context for request cancellation and timeout control
 - `filePath`: name and path of a csv file to be created
 - `soqlStruct`: a custom struct using `soql` tags
 - Review [forcedotcom/go-soql](https://github.com/forcedotcom/go-soql)
@@ -702,15 +817,16 @@ type ContactSoqlQuery struct {
 soqlStruct := ContactSoqlQuery{
     SelectClause: ContactSoql{},
 }
-err := sf.QueryStructBulkExport(soqlStruct, "data/export2.csv")
+err := sf.QueryStructBulkExport(context.Background(), soqlStruct, "data/export2.csv")
 ```
 
 ### QueryBulkIterator
 
-`func (sf *Salesforce) QueryBulkIterator(query string) (IteratorJob, error)`
+`func (sf *Salesforce) QueryBulkIterator(ctx context.Context, query string) (IteratorJob, error)`
 
 Performs a query and return a IteratorJob to decode data
 
+- `ctx`: context for request cancellation and timeout control
 - `query`: a SOQL query
 
 ```go
@@ -720,19 +836,19 @@ type Contact struct {
     LastName  string `json:"LastName" csv:"LastName"`
 }
 
-it, err := sf.QueryBulkIterator("SELECT Id, FirstName, LastName FROM Contact")
+it, err := sf.QueryBulkIterator(context.Background(), "SELECT Id, FirstName, LastName FROM Contact")
 if err != nil {
     panic(err)
 }
 
-for it.Next() {
+for it.Next(context.Background()) {
     var data []Contact
     if err := it.Decode(&data); err != nil {
         panic(err)
     }
 }
 
-if err := it.Error(); err != nil {
+if err := it.Error(context.Background()); err != nil {
     panic(err)
 }
 ```
@@ -754,29 +870,30 @@ type Contact struct {
 
 contacts := []Contact{}
 
-it, err := sf.QueryBulkIterator("SELECT Id, Address__r.Street FROM Contact")
+it, err := sf.QueryBulkIterator(context.Background(), "SELECT Id, Address__r.Street FROM Contact")
 if err != nil {
     panic(err)
 }
 
-for it.Next() {
+for it.Next(context.Background()) {
     var data []Contact
     if err := it.Decode(&data); err != nil {
         panic(err)
     }
 }
 
-if err := it.Error(); err != nil {
+if err := it.Error(context.Background()); err != nil {
     panic(err)
 }
 ```
 
 ### InsertBulk
 
-`func (sf *Salesforce) InsertBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error)`
+`func (sf *Salesforce) InsertBulk(ctx context.Context, sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error)`
 
 Inserts a list of salesforce records using Bulk API v2, returning a list of Job IDs
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `records`: a slice of salesforce records
 - `batchSize`: `1 <= batchSize <= 10000`
@@ -797,15 +914,16 @@ contacts := []Contact{
         LastName: "Van Dyne",
     },
 }
-jobIds, err := sf.InsertBulk("Contact", contacts, 1000, false)
+jobIds, err := sf.InsertBulk(context.Background(), "Contact", contacts, 1000, false)
 ```
 
 ### InsertBulkFile
 
-`func (sf *Salesforce) InsertBulkFile(sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error)`
+`func (sf *Salesforce) InsertBulkFile(ctx context.Context, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error)`
 
 Inserts a collection of salesforce records from a csv file using Bulk API v2, returning a list of Job IDs
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `filePath`: path to a csv file containing salesforce data
 - `batchSize`: `1 <= batchSize <= 10000`
@@ -821,15 +939,16 @@ Bruce,Banner
 ```
 
 ```go
-jobIds, err := sf.InsertBulkFile("Contact", "data/avengers.csv", 1000, false)
+jobIds, err := sf.InsertBulkFile(context.Background(), "Contact", "data/avengers.csv", 1000, false)
 ```
 
 ## InsertBulkAssign
 
-`func (sf *Salesforce) InsertBulkAssign(sObjectName string, records any, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
+`func (sf *Salesforce) InsertBulkAssign(ctx context.Context, sObjectName string, records any, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
 
 Inserts a list of Lead or Case records to be assigned via an Assignment rule, using Bulk API v2, returning a list of Job IDs
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object (must be Lead or Case)
 - `records`: a slice of Lead or Case records
 - `batchSize`: `1 <= batchSize <= 10000`
@@ -850,15 +969,16 @@ leads := []Lead{
         Company:  "The Avengers",
     },
 }
-jobIds, err := sf.InsertBulkAssign("Lead", leads, 100, true, "01QDn00000112FHMAY")
+jobIds, err := sf.InsertBulkAssign(context.Background(), "Lead", leads, 100, true, "01QDn00000112FHMAY")
 ```
 
 ## InsertBulkFileAssign
 
-`func (sf *Salesforce) InsertBulkFileAssign(sObjectName string, filePath string, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
+`func (sf *Salesforce) InsertBulkFileAssign(ctx context.Context, sObjectName string, filePath string, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
 
 Inserts a list of Lead or Case records to be assigned via an Assignment rule, from a csv file using Bulk API v2, returning a list of Job IDs
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object (must be Lead or Case)
 - `filePath`: path to a csv file containing Lead or Case data
 - `batchSize`: `1 <= batchSize <= 10000`
@@ -875,15 +995,16 @@ Bruce,Banner,The Avengers
 ```
 
 ```go
-jobIds, err := sf.InsertBulkFileAssign("Contact", "data/avengers.csv", 1000, false, "01QDn00000112FHMAY")
+jobIds, err := sf.InsertBulkFileAssign(context.Background(), "Contact", "data/avengers.csv", 1000, false, "01QDn00000112FHMAY")
 ```
 
 ### UpdateBulk
 
-`func (sf *Salesforce) UpdateBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error)`
+`func (sf *Salesforce) UpdateBulk(ctx context.Context, sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error)`
 
 Updates a list of salesforce records using Bulk API v2, returning a list of Job IDs
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `records`: a slice of salesforce records
   - An Id is required
@@ -913,10 +1034,11 @@ jobIds, err := sf.UpdateBulk("Contact", contacts, 1000, false)
 
 ### UpdateBulkFile
 
-`func (sf *Salesforce) UpdateBulkFile(sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error)`
+`func (sf *Salesforce) UpdateBulkFile(ctx context.Context, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error)`
 
 Updates a collection of salesforce records from a csv file using Bulk API v2, returning a list of Job IDs
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `filePath`: path to a csv file containing salesforce data
   - An Id is required within csv data
@@ -936,15 +1058,16 @@ Id,FirstName,LastName
 ```
 
 ```go
-jobIds, err := sf.UpdateBulkFile("Contact", "data/update_avengers.csv", 1000, false)
+jobIds, err := sf.UpdateBulkFile(context.Background(), "Contact", "data/update_avengers.csv", 1000, false)
 ```
 
 ## UpdateBulkAssign
 
-`func (sf *Salesforce) UpdateBulkAssign(sObjectName string, records any, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
+`func (sf *Salesforce) UpdateBulkAssign(ctx context.Context, sObjectName string, records any, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
 
 Updates a list of Lead or Case records to be assigned via an Assignment rule, using Bulk API v2, returning a list of Job IDs
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object (must be Lead or Case)
 - `records`: a slice of Lead or Case records
 - `batchSize`: `1 <= batchSize <= 10000`
@@ -967,15 +1090,16 @@ leads := []Lead{
         Company:  "The Avengers",
     },
 }
-jobIds, err := sf.UpdateBulkAssign("Lead", leads, 100, true, "01QDn00000112FHMAY")
+jobIds, err := sf.UpdateBulkAssign(context.Background(), "Lead", leads, 100, true, "01QDn00000112FHMAY")
 ```
 
 ## UpdateBulkFileAssign
 
-`func (sf *Salesforce) UpdateBulkFileAssign(sObjectName string, filePath string, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
+`func (sf *Salesforce) UpdateBulkFileAssign(ctx context.Context, sObjectName string, filePath string, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
 
 Updates a list of Lead or Case records to be assigned via an Assignment rule, from a csv file using Bulk API v2, returning a list of Job IDs
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object (must be Lead or Case)
 - `filePath`: path to a csv file containing Lead or Case data
 - `batchSize`: `1 <= batchSize <= 10000`
@@ -992,15 +1116,16 @@ Id,FirstName,LastName,Company
 ```
 
 ```go
-jobIds, err := sf.UpdateBulkFileAssign("Lead", "data/update_avengers.csv", 100, true, "01QDn00000112FHMAY")
+jobIds, err := sf.UpdateBulkFileAssign(context.Background(), "Lead", "data/update_avengers.csv", 100, true, "01QDn00000112FHMAY")
 ```
 
 ### UpsertBulk
 
-`func (sf *Salesforce) UpsertBulk(sObjectName string, externalIdFieldName string, records any, batchSize int, waitForResults bool) ([]string, error)`
+`func (sf *Salesforce) UpsertBulk(ctx context.Context, sObjectName string, externalIdFieldName string, records any, batchSize int, waitForResults bool) ([]string, error)`
 
 Updates (or inserts) a list of salesforce records using Bulk API v2, returning a list of Job IDs
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `externalIdFieldName`: field API name for an external Id that exists on the given object
 - `records`: a slice of salesforce records
@@ -1031,10 +1156,11 @@ jobIds, err := sf.UpsertBulk("Contact", "ContactExternalId__c", contacts, 1000, 
 
 ### UpsertBulkFile
 
-`func (sf *Salesforce) UpsertBulkFile(sObjectName string, externalIdFieldName string, filePath string, batchSize int, waitForResults bool) ([]string, error)`
+`func (sf *Salesforce) UpsertBulkFile(ctx context.Context, sObjectName string, externalIdFieldName string, filePath string, batchSize int, waitForResults bool) ([]string, error)`
 
 Updates (or inserts) a collection of salesforce records from a csv file using Bulk API v2, returning a list of Job IDs
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `externalIdFieldName`: field API name for an external Id that exists on the given object
 - `filePath`: path to a csv file containing salesforce data
@@ -1053,15 +1179,16 @@ Avng10,Danny,Rand
 ```
 
 ```go
-jobIds, err := sf.UpsertBulkFile("Contact", "ContactExternalId__c", "data/upsert_avengers.csv", 1000, false)
+jobIds, err := sf.UpsertBulkFile(context.Background(), "Contact", "ContactExternalId__c", "data/upsert_avengers.csv", 1000, false)
 ```
 
 ## UpsertBulkAssign
 
-`func (sf *Salesforce) UpsertBulkAssign(sObjectName string, externalIdFieldName string, records any, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
+`func (sf *Salesforce) UpsertBulkAssign(ctx context.Context, sObjectName string, externalIdFieldName string, records any, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
 
 Updates (or inserts) a list of Lead or Case records to be assigned via an Assignment rule, using Bulk API v2, returning a list of Job IDs
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object (must be Lead or Case)
 - `externalIdFieldName`: field API name for an external Id that exists on the given object
 - `records`: a slice of Lead or Case records
@@ -1085,15 +1212,16 @@ leads := []Lead{
         Company:           "The Avengers",
     },
 }
-jobIds, err := sf.UpsertBulkAssign("Lead", "LeadExternalId__c", leads, 100, true, "00QDn0000024r6FMAQ")
+jobIds, err := sf.UpsertBulkAssign(context.Background(), "Lead", "LeadExternalId__c", leads, 100, true, "00QDn0000024r6FMAQ")
 ```
 
 ## UpsertBulkFileAssign
 
-`func (sf *Salesforce) UpsertBulkFileAssign(sObjectName string, externalIdFieldName string, filePath string, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
+`func (sf *Salesforce) UpsertBulkFileAssign(ctx context.Context, sObjectName string, externalIdFieldName string, filePath string, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
 
 Updates (or inserts) a list of Lead or Case records to be assigned via an Assignment rule, from a csv file using Bulk API v2, returning a list of Job IDs
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object (must be Lead or Case)
 - `externalIdFieldName`: field API name for an external Id that exists on the given object
 - `filePath`: path to a csv file containing salesforce data
@@ -1112,15 +1240,16 @@ Avng13,Howard,Stark,The Avengers
 ```
 
 ```go
-jobIds, err := sf.UpsertBulkFileAssign("Lead", "LeadExternalId__c", "data/upsert_avengers.csv", 100, true, "01QDn00000112FHMAY")
+jobIds, err := sf.UpsertBulkFileAssign(context.Background(), "Lead", "LeadExternalId__c", "data/upsert_avengers.csv", 100, true, "01QDn00000112FHMAY")
 ```
 
 ### DeleteBulk
 
-`func (sf *Salesforce) DeleteBulk(sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error)`
+`func (sf *Salesforce) DeleteBulk(ctx context.Context, sObjectName string, records any, batchSize int, waitForResults bool) ([]string, error)`
 
 Deletes a list of salesforce records using Bulk API v2, returning a list of Job IDs
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `records`: a slice of salesforce records
   - should only contain Ids
@@ -1142,15 +1271,16 @@ contacts := []ContactIds{
         Id: "003Dn00000pEsoSIAS",
     },
 }
-jobIds, err := sf.DeleteBulk("Contact", contacts, 1000, false)
+jobIds, err := sf.DeleteBulk(context.Background(), "Contact", contacts, 1000, false)
 ```
 
 ### DeleteBulkFile
 
-`func (sf *Salesforce) DeleteBulkFile(sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error)`
+`func (sf *Salesforce) DeleteBulkFile(ctx context.Context, sObjectName string, filePath string, batchSize int, waitForResults bool) ([]string, error)`
 
 Deletes a collection of salesforce records from a csv file using Bulk API v2, returning a list of Job IDs
 
+- `ctx`: context for request cancellation and timeout control
 - `sObjectName`: API name of Salesforce object
 - `filePath`: path to a csv file containing salesforce data
   - should only contain Ids
@@ -1170,15 +1300,16 @@ Id
 ```
 
 ```go
-jobIds, err := sf.DeleteBulkFile("Contact", "data/delete_avengers.csv", 1000, false)
+jobIds, err := sf.DeleteBulkFile(context.Background(), "Contact", "data/delete_avengers.csv", 1000, false)
 ```
 
 ### GetJobResults
 
-`func (sf *Salesforce) GetJobResults(bulkJobId string) (BulkJobResults, error)`
+`func (sf *Salesforce) GetJobResults(ctx context.Context, bulkJobId string) (BulkJobResults, error)`
 
 Returns an instance of BulkJobResults given a Job Id
 
+- `ctx`: context for request cancellation and timeout control
 - `bulkJobId`: the Id for a bulk API job
 - Use to check results of Bulk Job, including successful and failed records
 
@@ -1194,7 +1325,7 @@ contacts := []Contact{
         LastName: "Grimm",
     },
 }
-jobIds, err := sf.InsertBulk("Contact", contacts, 1000, true)
+jobIds, err := sf.InsertBulk(context.Background(), "Contact", contacts, 1000, true)
 if err != nil {
     panic(err)
 }
@@ -1211,10 +1342,11 @@ for _, id := range jobIds {
 
 ### DoRequest
 
-`func (sf *Salesforce) DoRequest(method string, uri string, body []byte, opts ...RequestOption) (*http.Response, error)`
+`func (sf *Salesforce) DoRequest(ctx context.Context, method string, uri string, body []byte, opts ...RequestOption) (*http.Response, error)`
 
 Make a http call to Salesforce, returning a response to be parsed by the client
 
+- `ctx`: context for request cancellation and timeout control
 - `method`: request method ("GET", "POST", "PUT", "PATCH", "DELETE")
 - `uri`: uniform resource identifier (include everything after `/services/data/apiVersion`)
 - `body`: json encoded body to be included in request
@@ -1223,7 +1355,7 @@ Make a http call to Salesforce, returning a response to be parsed by the client
 Example to call the `/limits` endpoint
 
 ```go
-resp, err := sf.DoRequest(http.MethodGet, "/limits", nil)
+resp, err := sf.DoRequest(context.Background(), http.MethodGet, "/limits", nil)
 if err != nil {
     panic(err)
 }

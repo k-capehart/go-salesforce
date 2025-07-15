@@ -113,7 +113,7 @@ func Test_performQuery(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := performQuery(tt.args.sf, tt.args.query, &tt.args.sObject); (err != nil) != tt.wantErr {
+			if err := tt.args.sf.performQuery(t.Context(), tt.args.query, &tt.args.sObject); (err != nil) != tt.wantErr {
 				t.Errorf("performQuery() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !reflect.DeepEqual(tt.args.sObject, tt.want) {

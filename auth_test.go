@@ -101,7 +101,14 @@ func Test_usernamePasswordFlow(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := usernamePasswordFlow(tt.args.domain, tt.args.username, tt.args.password, tt.args.securityToken, tt.args.consumerKey, tt.args.consumerSecret)
+			got, err := usernamePasswordFlow(
+				tt.args.domain,
+				tt.args.username,
+				tt.args.password,
+				tt.args.securityToken,
+				tt.args.consumerKey,
+				tt.args.consumerSecret,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("loginPassword() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -162,7 +169,11 @@ func Test_clientCredentialsFlow(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := clientCredentialsFlow(tt.args.domain, tt.args.consumerKey, tt.args.consumerSecret)
+			got, err := clientCredentialsFlow(
+				tt.args.domain,
+				tt.args.consumerKey,
+				tt.args.consumerSecret,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("clientCredentialsFlow() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -225,7 +236,12 @@ func Test_setAccessToken(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := setAccessToken(tt.args.domain, tt.args.accessToken)
+			config := getDefaultConfig(t)
+			got, err := config.getAccessTokenAuthentication(
+				t.Context(),
+				tt.args.domain,
+				tt.args.accessToken,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("setAccessToken() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -246,7 +262,10 @@ func Test_refreshSession(t *testing.T) {
 		IssuedAt:    "01/01/1970",
 		Signature:   "signed",
 	}
-	serverClientCredentials, sfAuthClientCredentials := setupTestServer(refreshedAuth, http.StatusOK)
+	serverClientCredentials, sfAuthClientCredentials := setupTestServer(
+		refreshedAuth,
+		http.StatusOK,
+	)
 	sfAuthClientCredentials.creds = Creds{
 		Domain:         serverClientCredentials.URL,
 		ConsumerKey:    "key",
@@ -391,7 +410,13 @@ func Test_jwtFlow(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := jwtFlow(tt.args.domain, tt.args.username, tt.args.consumerKey, tt.args.consumerRSAPem, 1*time.Minute)
+			got, err := jwtFlow(
+				tt.args.domain,
+				tt.args.username,
+				tt.args.consumerKey,
+				tt.args.consumerRSAPem,
+				1*time.Minute,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("jwtFlow() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -401,4 +426,14 @@ func Test_jwtFlow(t *testing.T) {
 			}
 		})
 	}
+}
+
+// getDefaultConfig returns a default configuration for internal use
+func getDefaultConfig(t *testing.T) *configuration {
+	t.Helper()
+	config := &configuration{}
+	config.setDefaults()
+	config.configureHttpClient()
+	config.shouldValidateAuthentication = true
+	return config
 }
