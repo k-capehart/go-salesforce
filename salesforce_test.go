@@ -49,6 +49,17 @@ func setupTestServer(body any, status int) (*httptest.Server, authentication) {
 	return server, sfAuth
 }
 
+func setupTestServerWithCapture(body any, status int) (*httptest.Server, authentication, **http.Request) {
+	var capturedRequest *http.Request
+	server, auth := setupTestServer(body, status)
+	handler := server.Config.Handler
+	server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedRequest = r
+		handler.ServeHTTP(w, r)
+	})
+	return server, auth, &capturedRequest
+}
+
 func buildSalesforceStruct(auth *authentication) *Salesforce {
 	config := Configuration{}
 	config.SetDefaults()
@@ -581,7 +592,7 @@ func Test_validateBulk(t *testing.T) {
 }
 
 func TestSalesforce_DoRequest(t *testing.T) {
-	server, sfAuth := setupTestServer("response_body", http.StatusOK)
+	server, sfAuth, capturedRequest := setupTestServerWithCapture("response_body", http.StatusOK)
 	defer server.Close()
 
 	type fields struct {
@@ -597,7 +608,7 @@ func TestSalesforce_DoRequest(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *http.Response
+		want    any
 		wantErr bool
 	}{
 		{
@@ -617,7 +628,7 @@ func TestSalesforce_DoRequest(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "successful_request_with_header",
+			name: "request_with_header",
 			fields: fields{
 				auth: &sfAuth,
 			},
@@ -629,9 +640,8 @@ func TestSalesforce_DoRequest(t *testing.T) {
 					WithHeader("If-Modified-Since", "Wed, 21 Oct 2015 07:28:00 GMT"),
 				},
 			},
-			want: &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(strings.NewReader("\"response_body\"")),
+			want: http.Header{
+				"If-Modified-Since": []string{"Wed, 21 Oct 2015 07:28:00 GMT"},
 			},
 			wantErr: false,
 		},
@@ -656,14 +666,33 @@ func TestSalesforce_DoRequest(t *testing.T) {
 				t.Errorf("Salesforce.DoRequest() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if got != nil {
-				gotBody, _ := io.ReadAll(got.Body)
-				wantBody, _ := io.ReadAll(tt.want.Body)
-				if got.StatusCode != tt.want.StatusCode || string(gotBody) != string(wantBody) {
-					t.Errorf("Salesforce.DoRequest() = %v %v, want %v %v", got.StatusCode, string(gotBody), tt.want.StatusCode, string(wantBody))
+			switch expected := tt.want.(type) {
+			case *http.Response:
+				if got != nil {
+					gotBody, _ := io.ReadAll(got.Body)
+					wantBody, _ := io.ReadAll(expected.Body)
+					if got.StatusCode != expected.StatusCode || string(gotBody) != string(wantBody) {
+						t.Errorf("Salesforce.DoRequest() = %v %v, want %v %v", got.StatusCode, string(gotBody), expected.StatusCode, string(wantBody))
+					}
+				} else if !tt.wantErr {
+					t.Error("Salesforce.DoRequest() did not return a response")
 				}
-			} else if !tt.wantErr {
-				t.Error("Salesforce.DoRequest() did not return a response")
+			case http.Header:
+				if *capturedRequest != nil {
+					for key, expectedValues := range expected {
+						actualValues := (*capturedRequest).Header[key]
+						if !reflect.DeepEqual(actualValues, expectedValues) {
+							t.Errorf("DoRequest() Header[%s] = %v, want %v", key, actualValues, expectedValues)
+						}
+					}
+				} else {
+					t.Error("No request was captured for header validation")
+				}
+			case nil:
+				// Handle cases where want is nil
+				if got == nil && !tt.wantErr {
+					t.Error("Salesforce.DoRequest() did not return a response")
+				}
 			}
 		})
 	}
