@@ -5,11 +5,11 @@ go 1.24.1
 require github.com/forcedotcom/go-soql v0.0.0-20220705175410-00f698360bee
 
 require (
-	github.com/go-viper/mapstructure/v2 v2.3.0
-	github.com/golang-jwt/jwt/v5 v5.2.2
+	github.com/go-viper/mapstructure/v2 v2.4.0
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/jszwec/csvutil v1.10.0
 	github.com/spf13/afero v1.14.0
-	k8s.io/apimachinery v0.33.2
+	k8s.io/apimachinery v0.33.3
 )
 
 require (
