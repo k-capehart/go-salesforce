@@ -19,7 +19,10 @@ func Test_doRequest(t *testing.T) {
 	defer badServer.Close()
 
 	recordArrayResp := "{\"records\":[{\"Id\":\"123abc\"}]}"
-	serverWith300Resp, authWith300Resp := setupTestServer(recordArrayResp, http.StatusMultipleChoices)
+	serverWith300Resp, authWith300Resp := setupTestServer(
+		recordArrayResp,
+		http.StatusMultipleChoices,
+	)
 	defer serverWith300Resp.Close()
 
 	compressedServer, sfAuthCompressed := setupTestServer("test", http.StatusOK)
@@ -95,7 +98,8 @@ func Test_doRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doRequest(tt.args.auth, tt.args.payload)
+			config := getDefaultConfig(t)
+			got, err := doRequest(t.Context(), tt.args.auth, config, tt.args.payload)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doRequest() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -199,19 +203,21 @@ func Test_processSalesforceError(t *testing.T) {
 	defer serverRefreshFail.Close()
 	sfAuthRefreshFail.grantType = grantTypeClientCredentials
 
-	serverRetryFail := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.RequestURI, "/oauth2/token") {
-			body, err := json.Marshal(badSfAuth)
-			if err != nil {
-				panic(err)
+	serverRetryFail := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.RequestURI, "/oauth2/token") {
+				body, err := json.Marshal(badSfAuth)
+				if err != nil {
+					panic(err)
+				}
+				if _, err := w.Write(body); err != nil {
+					panic(err)
+				}
+			} else {
+				w.WriteHeader(http.StatusBadRequest)
 			}
-			if _, err := w.Write(body); err != nil {
-				panic(err)
-			}
-		} else {
-			w.WriteHeader(http.StatusBadRequest)
-		}
-	}))
+		}),
+	)
 	defer serverRetryFail.Close()
 	sfAuthRetryFail := authentication{
 		InstanceUrl: serverRetryFail.URL,
@@ -285,7 +291,14 @@ func Test_processSalesforceError(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := processSalesforceError(tt.args.resp, tt.args.auth, tt.args.payload)
+			config := getDefaultConfig(t)
+			got, err := processSalesforceError(
+				t.Context(),
+				tt.args.resp,
+				tt.args.auth,
+				config,
+				tt.args.payload,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("processSalesforceError() error = %v, wantErr %v", err, tt.wantErr)
 				return

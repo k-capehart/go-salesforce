@@ -1,6 +1,7 @@
 package salesforce
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,32 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 )
+
+// AuthFlowType represents the type of authentication flow used
+type AuthFlowType int
+
+const (
+	AuthFlowUnknown AuthFlowType = iota
+	AuthFlowUsernamePassword
+	AuthFlowClientCredentials
+	AuthFlowAccessToken
+	AuthFlowJWT
+)
+
+func (a AuthFlowType) String() string {
+	switch a {
+	case AuthFlowUsernamePassword:
+		return "Username/Password"
+	case AuthFlowClientCredentials:
+		return "Client Credentials"
+	case AuthFlowAccessToken:
+		return "Access Token"
+	case AuthFlowJWT:
+		return "JWT"
+	default:
+		return "Unknown"
+	}
+}
 
 type authentication struct {
 	AccessToken string `json:"access_token"`
@@ -53,11 +80,11 @@ func validateAuth(sf Salesforce) error {
 	return nil
 }
 
-func validateSession(auth authentication) error {
+func (conf *configuration) validateAuthentication(ctx context.Context, auth authentication) error {
 	if err := validateAuth(Salesforce{auth: &auth}); err != nil {
 		return err
 	}
-	_, err := doRequest(&auth, requestPayload{
+	_, err := doRequest(ctx, &auth, conf, requestPayload{
 		method:  http.MethodGet,
 		uri:     "/limits",
 		content: jsonType,
@@ -137,11 +164,20 @@ func doAuth(url string, body *strings.Reader) (*authentication, error) {
 		return nil, jsonError
 	}
 
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close() // Ignore error since we've already read what we need
+	}()
 	return auth, nil
 }
 
-func usernamePasswordFlow(domain string, username string, password string, securityToken string, consumerKey string, consumerSecret string) (*authentication, error) {
+func usernamePasswordFlow(
+	domain string,
+	username string,
+	password string,
+	securityToken string,
+	consumerKey string,
+	consumerSecret string,
+) (*authentication, error) {
 	payload := url.Values{
 		"grant_type":    {grantTypeUsernamePassword},
 		"client_id":     {consumerKey},
@@ -159,7 +195,11 @@ func usernamePasswordFlow(domain string, username string, password string, secur
 	return auth, nil
 }
 
-func clientCredentialsFlow(domain string, consumerKey string, consumerSecret string) (*authentication, error) {
+func clientCredentialsFlow(
+	domain string,
+	consumerKey string,
+	consumerSecret string,
+) (*authentication, error) {
 	payload := url.Values{
 		"grant_type":    {grantTypeClientCredentials},
 		"client_id":     {consumerKey},
@@ -175,16 +215,28 @@ func clientCredentialsFlow(domain string, consumerKey string, consumerSecret str
 	return auth, nil
 }
 
-func setAccessToken(domain string, accessToken string) (*authentication, error) {
+func (conf *configuration) getAccessTokenAuthentication(
+	ctx context.Context,
+	domain string,
+	accessToken string,
+) (*authentication, error) {
 	auth := &authentication{InstanceUrl: domain, AccessToken: accessToken}
-	if err := validateSession(*auth); err != nil {
-		return nil, err
+	if conf.shouldValidateAuthentication {
+		if err := conf.validateAuthentication(ctx, *auth); err != nil {
+			return nil, err
+		}
 	}
 	auth.grantType = grantTypeAccessToken
 	return auth, nil
 }
 
-func jwtFlow(domain string, username string, consumerKey string, consumerRSAPem string, expirationTime time.Duration) (*authentication, error) {
+func jwtFlow(
+	domain string,
+	username string,
+	consumerKey string,
+	consumerRSAPem string,
+	expirationTime time.Duration,
+) (*authentication, error) {
 	audience := domain
 	if strings.Contains(audience, "test.salesforce") || strings.Contains(audience, "sandbox") {
 		audience = "https://test.salesforce.com"
