@@ -1,0 +1,27 @@
+name: 'Go Lint'
+description: 'Run golangci-lint and summarize results'
+runs:
+  using: 'composite'
+  steps:
+    - name: Golangci-lint
+      uses: golangci/golangci-lint-action@v8
+      with:
+        version: latest
+        args: --issues-exit-code=1
+        only-new-issues: true
+        skip-cache: false
+
+    - name: Add linting summary
+      if: failure()
+      shell: bash
+      run: |
+        echo "## 🔍 Linting Issues Found" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "The code quality check found issues that need to be addressed." >> $GITHUB_STEP_SUMMARY
+        echo "Please review the annotations in the **Files** tab above to see specific issues." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### How to fix:" >> $GITHUB_STEP_SUMMARY
+        echo "1. Check the **Files** tab for inline annotations" >> $GITHUB_STEP_SUMMARY
+        echo "2. Fix the reported issues in your code" >> $GITHUB_STEP_SUMMARY
+        echo "3. Run \`golangci-lint run\` locally to verify fixes" >> $GITHUB_STEP_SUMMARY
+        echo "4. Push your changes to re-run the check" >> $GITHUB_STEP_SUMMARY

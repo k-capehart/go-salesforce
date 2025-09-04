@@ -89,7 +89,7 @@ func Test_createBulkJob(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := createBulkJob(tt.args.sf, tt.args.jobType, tt.args.body)
+			got, err := tt.args.sf.createBulkJob(t.Context(), tt.args.jobType, tt.args.body)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("createBulkJob() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -159,7 +159,7 @@ func Test_getJobResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getJobResults(tt.args.sf, tt.args.jobType, tt.args.bulkJobId)
+			got, err := tt.args.sf.getJobResults(t.Context(), tt.args.jobType, tt.args.bulkJobId)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getJobResults() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -303,7 +303,11 @@ func Test_getQueryJobResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getQueryJobResults(tt.args.sf, tt.args.bulkJobId, tt.args.locator)
+			got, err := tt.args.sf.getQueryJobResults(
+				t.Context(),
+				tt.args.bulkJobId,
+				tt.args.locator,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getQueryJobResults() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -380,11 +384,13 @@ func Test_constructBulkJobRequest(t *testing.T) {
 		State: jobStateAborted,
 	}
 	badJobByte, _ := json.Marshal(badJob)
-	badJobServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, err := w.Write(badJobByte); err != nil {
-			t.Fatal(err.Error())
-		}
-	}))
+	badJobServer := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if _, err := w.Write(badJobByte); err != nil {
+				t.Fatal(err.Error())
+			}
+		}),
+	)
 	badJobSfAuth := authentication{
 		InstanceUrl: badJobServer.URL,
 		AccessToken: "accesstokenvalue",
@@ -453,7 +459,13 @@ func Test_constructBulkJobRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := constructBulkJobRequest(tt.args.sf, tt.args.sObjectName, tt.args.operation, tt.args.fieldName, "")
+			got, err := tt.args.sf.constructBulkJobRequest(
+				t.Context(),
+				tt.args.sObjectName,
+				tt.args.operation,
+				tt.args.fieldName,
+				"",
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("constructBulkJobRequest() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -490,34 +502,38 @@ func Test_doBulkJob(t *testing.T) {
 	badReqServer, badReqSfAuth := setupTestServer("", http.StatusBadRequest)
 	defer badReqServer.Close()
 
-	waitingServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI[len(r.RequestURI)-8:] == "/batches" {
-			w.WriteHeader(http.StatusCreated)
-		}
-		if r.Method == http.MethodPost {
-			if _, err := w.Write(jobBody); err != nil {
-				panic(err.Error())
+	waitingServer := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.RequestURI[len(r.RequestURI)-8:] == "/batches" {
+				w.WriteHeader(http.StatusCreated)
 			}
-		} else {
-			if _, err := w.Write(jobResultsBody); err != nil {
-				panic(err.Error())
+			if r.Method == http.MethodPost {
+				if _, err := w.Write(jobBody); err != nil {
+					panic(err.Error())
+				}
+			} else {
+				if _, err := w.Write(jobResultsBody); err != nil {
+					panic(err.Error())
+				}
 			}
-		}
-	}))
+		}),
+	)
 	waitingSfAuth := authentication{
 		InstanceUrl: waitingServer.URL,
 		AccessToken: "accesstokenvalue",
 	}
 
-	uploadFailServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI[len(r.RequestURI)-8:] == "/batches" {
-			w.WriteHeader(http.StatusBadRequest)
-		} else {
-			if _, err := w.Write(jobBody); err != nil {
-				panic(err.Error())
+	uploadFailServer := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.RequestURI[len(r.RequestURI)-8:] == "/batches" {
+				w.WriteHeader(http.StatusBadRequest)
+			} else {
+				if _, err := w.Write(jobBody); err != nil {
+					panic(err.Error())
+				}
 			}
-		}
-	}))
+		}),
+	)
 	uploadFailSfAuth := authentication{
 		InstanceUrl: uploadFailServer.URL,
 		AccessToken: "accesstokenvalue",
@@ -653,7 +669,16 @@ func Test_doBulkJob(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doBulkJob(tt.args.sf, tt.args.sObjectName, tt.args.fieldName, tt.args.operation, tt.args.records, tt.args.batchSize, tt.args.waitForResults, "")
+			got, err := tt.args.sf.doBulkJob(
+				t.Context(),
+				tt.args.sObjectName,
+				tt.args.fieldName,
+				tt.args.operation,
+				tt.args.records,
+				tt.args.batchSize,
+				tt.args.waitForResults,
+				"",
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doBulkJob() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -724,7 +749,13 @@ func Test_waitForJobResultsAsync(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			go waitForJobResultsAsync(tt.args.sf, tt.args.bulkJobId, tt.args.jobType, tt.args.interval, tt.args.c)
+			go tt.args.sf.waitForJobResultsAsync(
+				t.Context(),
+				tt.args.bulkJobId,
+				tt.args.jobType,
+				tt.args.interval,
+				tt.args.c,
+			)
 			err := <-tt.args.c
 			if (err != nil) != tt.wantErr {
 				t.Errorf("waitForJobResult() error = %v, wantErr %v", err, tt.wantErr)
@@ -789,7 +820,12 @@ func Test_waitForJobResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := waitForJobResults(tt.args.sf, tt.args.bulkJobId, tt.args.jobType, tt.args.interval)
+			err := tt.args.sf.waitForJobResults(
+				t.Context(),
+				tt.args.bulkJobId,
+				tt.args.jobType,
+				tt.args.interval,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("waitForQueryResults() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -849,7 +885,7 @@ func Test_collectQueryResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := collectQueryResults(tt.args.sf, tt.args.bulkJobId)
+			got, err := tt.args.sf.collectQueryResults(t.Context(), tt.args.bulkJobId)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("collectQueryResults() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -865,22 +901,26 @@ func Test_uploadJobData(t *testing.T) {
 	server, sfAuth := setupTestServer("", http.StatusOK)
 	defer server.Close()
 
-	badBatchReqServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI[len(r.RequestURI)-8:] == "/batches" {
-			w.WriteHeader(http.StatusBadRequest)
-		} else {
-			w.WriteHeader(http.StatusOK)
-		}
-	}))
+	badBatchReqServer := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.RequestURI[len(r.RequestURI)-8:] == "/batches" {
+				w.WriteHeader(http.StatusBadRequest)
+			} else {
+				w.WriteHeader(http.StatusOK)
+			}
+		}),
+	)
 	badBatchReqAuth := authentication{
 		InstanceUrl: badBatchReqServer.URL,
 		AccessToken: "accesstokenvalue",
 	}
 	defer badBatchReqServer.Close()
 
-	badBatchReqAndJobStateServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadRequest)
-	}))
+	badBatchReqAndJobStateServer := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+		}),
+	)
 	badBatchAndUpdateJobStateReqAuth := authentication{
 		InstanceUrl: badBatchReqAndJobStateServer.URL,
 		AccessToken: "accesstokenvalue",
@@ -939,7 +979,7 @@ func Test_uploadJobData(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := uploadJobData(tt.args.sf, tt.args.data, tt.args.bulkJob); (err != nil) != tt.wantErr {
+			if err := tt.args.sf.uploadJobData(t.Context(), tt.args.data, tt.args.bulkJob); (err != nil) != tt.wantErr {
 				t.Errorf("uploadJobData() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -948,10 +988,10 @@ func Test_uploadJobData(t *testing.T) {
 
 func Test_readCSVFile(t *testing.T) {
 	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
-	if err := appFs.MkdirAll("data", 0755); err != nil {
+	if err := appFs.MkdirAll("data", 0o755); err != nil {
 		t.Fatalf("error creating directory in virtual file system")
 	}
-	if err := afero.WriteFile(appFs, "data/data.csv", []byte("123"), 0644); err != nil {
+	if err := afero.WriteFile(appFs, "data/data.csv", []byte("123"), 0o644); err != nil {
 		t.Fatalf("error creating file in virtual file system")
 	}
 
@@ -1061,7 +1101,7 @@ func Test_updateJobState(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := updateJobState(tt.args.job, tt.args.state, tt.args.sf); (err != nil) != tt.wantErr {
+			if err := tt.args.sf.updateJobState(t.Context(), tt.args.job, tt.args.state); (err != nil) != tt.wantErr {
 				t.Errorf("updateJobState() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1070,10 +1110,10 @@ func Test_updateJobState(t *testing.T) {
 
 func Test_doBulkJobWithFile(t *testing.T) {
 	appFs = afero.NewMemMapFs() // replace appFs with mocked file system
-	if err := appFs.MkdirAll("data", 0755); err != nil {
+	if err := appFs.MkdirAll("data", 0o755); err != nil {
 		t.Fatalf("error creating directory in virtual file system")
 	}
-	if err := afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow\nrow\n"), 0644); err != nil {
+	if err := afero.WriteFile(appFs, "data/data.csv", []byte("header\nrow\nrow\n"), 0o644); err != nil {
 		t.Fatalf("error creating file in virtual file system")
 	}
 
@@ -1097,34 +1137,38 @@ func Test_doBulkJobWithFile(t *testing.T) {
 	badReqServer, badReqSfAuth := setupTestServer("", http.StatusBadRequest)
 	defer badReqServer.Close()
 
-	waitingServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI[len(r.RequestURI)-8:] == "/batches" {
-			w.WriteHeader(http.StatusCreated)
-		}
-		if r.Method == http.MethodPost {
-			if _, err := w.Write(jobBody); err != nil {
-				panic(err.Error())
+	waitingServer := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.RequestURI[len(r.RequestURI)-8:] == "/batches" {
+				w.WriteHeader(http.StatusCreated)
 			}
-		} else {
-			if _, err := w.Write(jobResultsBody); err != nil {
-				panic(err.Error())
+			if r.Method == http.MethodPost {
+				if _, err := w.Write(jobBody); err != nil {
+					panic(err.Error())
+				}
+			} else {
+				if _, err := w.Write(jobResultsBody); err != nil {
+					panic(err.Error())
+				}
 			}
-		}
-	}))
+		}),
+	)
 	waitingSfAuth := authentication{
 		InstanceUrl: waitingServer.URL,
 		AccessToken: "accesstokenvalue",
 	}
 
-	uploadFailServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI[len(r.RequestURI)-8:] == "/batches" {
-			w.WriteHeader(http.StatusBadRequest)
-		} else {
-			if _, err := w.Write(jobBody); err != nil {
-				panic(err.Error())
+	uploadFailServer := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.RequestURI[len(r.RequestURI)-8:] == "/batches" {
+				w.WriteHeader(http.StatusBadRequest)
+			} else {
+				if _, err := w.Write(jobBody); err != nil {
+					panic(err.Error())
+				}
 			}
-		}
-	}))
+		}),
+	)
 	uploadFailSfAuth := authentication{
 		InstanceUrl: uploadFailServer.URL,
 		AccessToken: "accesstokenvalue",
@@ -1217,7 +1261,16 @@ func Test_doBulkJobWithFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doBulkJobWithFile(tt.args.sf, tt.args.sObjectName, tt.args.fieldName, tt.args.operation, tt.args.filePath, tt.args.batchSize, tt.args.waitForResults, "")
+			got, err := tt.args.sf.doBulkJobWithFile(
+				t.Context(),
+				tt.args.sObjectName,
+				tt.args.fieldName,
+				tt.args.operation,
+				tt.args.filePath,
+				tt.args.batchSize,
+				tt.args.waitForResults,
+				"",
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doBulkJobWithFile() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1241,30 +1294,34 @@ func Test_doQueryBulk(t *testing.T) {
 	}
 	badJobCreationRespBody, _ := json.Marshal(badJob)
 
-	badJobCreationServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI[len(r.RequestURI)-6:] == "/query" {
-			w.WriteHeader(http.StatusOK)
-			if _, err := w.Write(badJobCreationRespBody); err != nil {
-				t.Fatal(err.Error())
+	badJobCreationServer := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.RequestURI[len(r.RequestURI)-6:] == "/query" {
+				w.WriteHeader(http.StatusOK)
+				if _, err := w.Write(badJobCreationRespBody); err != nil {
+					t.Fatal(err.Error())
+				}
 			}
-		}
-	}))
+		}),
+	)
 	defer badJobCreationServer.Close()
 	badJobCreationSfAuth := authentication{
 		InstanceUrl: badJobCreationServer.URL,
 		AccessToken: "accesstokenvalue",
 	}
 
-	badResultsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI[len(r.RequestURI)-6:] == "/query" {
-			w.WriteHeader(http.StatusOK)
-			if _, err := w.Write(jobCreationRespBody); err != nil {
-				t.Fatal(err.Error())
+	badResultsServer := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.RequestURI[len(r.RequestURI)-6:] == "/query" {
+				w.WriteHeader(http.StatusOK)
+				if _, err := w.Write(jobCreationRespBody); err != nil {
+					t.Fatal(err.Error())
+				}
+			} else if r.RequestURI[len(r.RequestURI)-8:] == "/results" {
+				w.WriteHeader(http.StatusBadRequest)
 			}
-		} else if r.RequestURI[len(r.RequestURI)-8:] == "/results" {
-			w.WriteHeader(http.StatusBadRequest)
-		}
-	}))
+		}),
+	)
 	defer badResultsServer.Close()
 	badResultsSfAuth := authentication{
 		InstanceUrl: badResultsServer.URL,
@@ -1302,7 +1359,7 @@ func Test_doQueryBulk(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := doQueryBulk(tt.args.sf, tt.args.filePath, tt.args.query); (err != nil) != tt.wantErr {
+			if err := tt.args.sf.doQueryBulk(t.Context(), tt.args.filePath, tt.args.query); (err != nil) != tt.wantErr {
 				t.Errorf("doQueryBulk() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1325,15 +1382,17 @@ func Test_getJobRecordResults(t *testing.T) {
 	badRequestServer, badRequestAuth := setupTestServer("", http.StatusBadRequest)
 	defer badRequestServer.Close()
 
-	successThenFailServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.RequestURI, successfulResults) {
-			if _, err := w.Write([]byte(csvData)); err != nil {
-				t.Fatal(err.Error())
+	successThenFailServer := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.RequestURI, successfulResults) {
+				if _, err := w.Write([]byte(csvData)); err != nil {
+					t.Fatal(err.Error())
+				}
+			} else {
+				w.WriteHeader(http.StatusBadRequest)
 			}
-		} else {
-			w.WriteHeader(http.StatusBadRequest)
-		}
-	}))
+		}),
+	)
 	successThenFailAuth := authentication{
 		InstanceUrl: successThenFailServer.URL,
 		AccessToken: "accesstokenvalue",
@@ -1393,7 +1452,7 @@ func Test_getJobRecordResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getJobRecordResults(tt.args.sf, tt.args.bulkJobResults)
+			got, err := tt.args.sf.getJobRecordResults(t.Context(), tt.args.bulkJobResults)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getJobRecordResults() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1421,11 +1480,13 @@ func Test_getBulkJobRecords(t *testing.T) {
 	badReqServer, badReqAuth := setupTestServer("", http.StatusBadRequest)
 	defer badReqServer.Close()
 
-	badDataServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, err := w.Write([]byte("name,type\ntest")); err != nil {
-			t.Fatal(err.Error())
-		}
-	}))
+	badDataServer := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if _, err := w.Write([]byte("name,type\ntest")); err != nil {
+				t.Fatal(err.Error())
+			}
+		}),
+	)
 	badDataAuth := authentication{
 		InstanceUrl: badDataServer.URL,
 		AccessToken: "accesstokenvalue",
@@ -1478,7 +1539,11 @@ func Test_getBulkJobRecords(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getBulkJobRecords(tt.args.sf, tt.args.bulkJobId, tt.args.resultType)
+			got, err := tt.args.sf.getBulkJobRecords(
+				t.Context(),
+				tt.args.bulkJobId,
+				tt.args.resultType,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getBulkJobRecords() error = %v, wantErr %v", err, tt.wantErr)
 				return
