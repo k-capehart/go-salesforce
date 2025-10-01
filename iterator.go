@@ -1,7 +1,6 @@
 package salesforce
 
 import (
-	"context"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -13,8 +12,8 @@ import (
 )
 
 type IteratorJob interface {
-	Next(ctx context.Context) bool
-	Error(ctx context.Context) error
+	Next() bool
+	Error() error
 	Decode(any) error
 }
 
@@ -28,11 +27,8 @@ type bulkJobQueryIterator struct {
 	config          *configuration
 }
 
-func (sf *Salesforce) newBulkJobQueryIterator(
-	ctx context.Context,
-	bulkJobId string,
-) (*bulkJobQueryIterator, error) {
-	pollErr := sf.waitForJobResults(ctx, bulkJobId, queryJobType, (time.Second / 2))
+func newBulkJobQueryIterator(sf *Salesforce, bulkJobId string) (*bulkJobQueryIterator, error) {
+	pollErr := waitForJobResults(sf, bulkJobId, queryJobType, (time.Second / 2))
 	if pollErr != nil {
 		return nil, pollErr
 	}
@@ -43,7 +39,7 @@ func (sf *Salesforce) newBulkJobQueryIterator(
 	}, nil
 }
 
-func (it *bulkJobQueryIterator) Next(ctx context.Context) bool {
+func (it *bulkJobQueryIterator) Next() bool {
 	if it.reader != nil {
 		it.err = it.reader.Close()
 		if it.Locator == "" {
@@ -55,7 +51,6 @@ func (it *bulkJobQueryIterator) Next(ctx context.Context) bool {
 		uri += "/?locator=" + it.Locator
 	}
 	resp, err := doRequest(
-		ctx,
 		it.auth,
 		it.config,
 		requestPayload{
@@ -93,6 +88,6 @@ func (it *bulkJobQueryIterator) Decode(val any) error {
 	return nil
 }
 
-func (it *bulkJobQueryIterator) Error(_ context.Context) error {
+func (it *bulkJobQueryIterator) Error() error {
 	return it.err
 }

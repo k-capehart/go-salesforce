@@ -1,7 +1,6 @@
 package salesforce
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,15 +33,12 @@ type compositeSubRequestResult struct {
 	ReferenceId    string             `json:"referenceId"`
 }
 
-func (sf *Salesforce) doCompositeRequest(
-	ctx context.Context,
-	compReq compositeRequest,
-) (SalesforceResults, error) {
+func doCompositeRequest(sf *Salesforce, compReq compositeRequest) (SalesforceResults, error) {
 	body, jsonErr := json.Marshal(compReq)
 	if jsonErr != nil {
 		return SalesforceResults{}, jsonErr
 	}
-	resp, httpErr := doRequest(ctx, sf.auth, sf.config, requestPayload{
+	resp, httpErr := doRequest(sf.auth, sf.config, requestPayload{
 		method:   http.MethodPost,
 		uri:      "/composite",
 		content:  jsonType,
@@ -140,8 +136,8 @@ func processCompositeResponse(resp http.Response, allOrNone bool) (SalesforceRes
 	return results, nil
 }
 
-func (sf *Salesforce) doInsertComposite(
-	ctx context.Context,
+func doInsertComposite(
+	sf *Salesforce,
 	sObjectName string,
 	records any,
 	allOrNone bool,
@@ -168,7 +164,7 @@ func (sf *Salesforce) doInsertComposite(
 	if compositeErr != nil {
 		return SalesforceResults{}, compositeErr
 	}
-	results, compositeReqErr := sf.doCompositeRequest(ctx, compReq)
+	results, compositeReqErr := doCompositeRequest(sf, compReq)
 	if compositeReqErr != nil {
 		return SalesforceResults{}, compositeReqErr
 	}
@@ -176,8 +172,8 @@ func (sf *Salesforce) doInsertComposite(
 	return results, nil
 }
 
-func (sf *Salesforce) doUpdateComposite(
-	ctx context.Context,
+func doUpdateComposite(
+	sf *Salesforce,
 	sObjectName string,
 	records any,
 	allOrNone bool,
@@ -207,7 +203,7 @@ func (sf *Salesforce) doUpdateComposite(
 	if compositeErr != nil {
 		return SalesforceResults{}, compositeErr
 	}
-	results, compositeReqErr := sf.doCompositeRequest(ctx, compReq)
+	results, compositeReqErr := doCompositeRequest(sf, compReq)
 	if compositeReqErr != nil {
 		return SalesforceResults{}, compositeReqErr
 	}
@@ -215,8 +211,8 @@ func (sf *Salesforce) doUpdateComposite(
 	return results, nil
 }
 
-func (sf *Salesforce) doUpsertComposite(
-	ctx context.Context,
+func doUpsertComposite(
+	sf *Salesforce,
 	sObjectName string,
 	fieldName string,
 	records any,
@@ -251,7 +247,7 @@ func (sf *Salesforce) doUpsertComposite(
 	if compositeErr != nil {
 		return SalesforceResults{}, compositeErr
 	}
-	results, compositeReqErr := sf.doCompositeRequest(ctx, compReq)
+	results, compositeReqErr := doCompositeRequest(sf, compReq)
 	if compositeReqErr != nil {
 		return SalesforceResults{}, compositeReqErr
 	}
@@ -259,8 +255,8 @@ func (sf *Salesforce) doUpsertComposite(
 	return results, nil
 }
 
-func (sf *Salesforce) doDeleteComposite(
-	ctx context.Context,
+func doDeleteComposite(
+	sf *Salesforce,
 	sObjectName string,
 	records any,
 	allOrNone bool,
@@ -312,7 +308,7 @@ func (sf *Salesforce) doDeleteComposite(
 		AllOrNone:        allOrNone,
 		CompositeRequest: subReqs,
 	}
-	results, compositeReqErr := sf.doCompositeRequest(ctx, compReq)
+	results, compositeReqErr := doCompositeRequest(sf, compReq)
 	if compositeReqErr != nil {
 		return SalesforceResults{}, compositeReqErr
 	}

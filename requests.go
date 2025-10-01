@@ -3,7 +3,6 @@ package salesforce
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -32,7 +31,6 @@ type requestPayload struct {
 }
 
 func doRequest(
-	ctx context.Context,
 	auth *authentication,
 	config *configuration,
 	payload requestPayload,
@@ -51,9 +49,9 @@ func doRequest(
 		} else {
 			reader = strings.NewReader(payload.body)
 		}
-		req, err = http.NewRequestWithContext(ctx, payload.method, endpoint, reader)
+		req, err = http.NewRequest(payload.method, endpoint, reader)
 	} else {
-		req, err = http.NewRequestWithContext(ctx, payload.method, endpoint, nil)
+		req, err = http.NewRequest(payload.method, endpoint, nil)
 	}
 	if err != nil {
 		return nil, err
@@ -78,7 +76,7 @@ func doRequest(
 		return resp, err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode > 300 {
-		resp, err = processSalesforceError(ctx, *resp, auth, config, payload)
+		resp, err = processSalesforceError(*resp, auth, config, payload)
 		if err != nil {
 			return resp, err
 		}
@@ -122,7 +120,6 @@ func decompress(body io.ReadCloser) (io.ReadCloser, error) {
 }
 
 func processSalesforceError(
-	ctx context.Context,
 	resp http.Response,
 	auth *authentication,
 	config *configuration,
@@ -146,7 +143,6 @@ func processSalesforceError(
 			}
 
 			newResp, err := doRequest(
-				ctx,
 				auth,
 				config,
 				requestPayload{

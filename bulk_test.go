@@ -89,7 +89,7 @@ func Test_createBulkJob(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.args.sf.createBulkJob(t.Context(), tt.args.jobType, tt.args.body)
+			got, err := createBulkJob(tt.args.sf, tt.args.jobType, tt.args.body)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("createBulkJob() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -159,7 +159,7 @@ func Test_getJobResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.args.sf.getJobResults(t.Context(), tt.args.jobType, tt.args.bulkJobId)
+			got, err := getJobResults(tt.args.sf, tt.args.jobType, tt.args.bulkJobId)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getJobResults() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -303,11 +303,7 @@ func Test_getQueryJobResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.args.sf.getQueryJobResults(
-				t.Context(),
-				tt.args.bulkJobId,
-				tt.args.locator,
-			)
+			got, err := getQueryJobResults(tt.args.sf, tt.args.bulkJobId, tt.args.locator)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getQueryJobResults() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -459,8 +455,8 @@ func Test_constructBulkJobRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.args.sf.constructBulkJobRequest(
-				t.Context(),
+			got, err := constructBulkJobRequest(
+				tt.args.sf,
 				tt.args.sObjectName,
 				tt.args.operation,
 				tt.args.fieldName,
@@ -669,8 +665,8 @@ func Test_doBulkJob(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.args.sf.doBulkJob(
-				t.Context(),
+			got, err := doBulkJob(
+				tt.args.sf,
 				tt.args.sObjectName,
 				tt.args.fieldName,
 				tt.args.operation,
@@ -749,8 +745,8 @@ func Test_waitForJobResultsAsync(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			go tt.args.sf.waitForJobResultsAsync(
-				t.Context(),
+			go waitForJobResultsAsync(
+				tt.args.sf,
 				tt.args.bulkJobId,
 				tt.args.jobType,
 				tt.args.interval,
@@ -820,8 +816,8 @@ func Test_waitForJobResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.args.sf.waitForJobResults(
-				t.Context(),
+			err := waitForJobResults(
+				tt.args.sf,
 				tt.args.bulkJobId,
 				tt.args.jobType,
 				tt.args.interval,
@@ -885,7 +881,7 @@ func Test_collectQueryResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.args.sf.collectQueryResults(t.Context(), tt.args.bulkJobId)
+			got, err := collectQueryResults(tt.args.sf, tt.args.bulkJobId)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("collectQueryResults() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -979,7 +975,7 @@ func Test_uploadJobData(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.args.sf.uploadJobData(t.Context(), tt.args.data, tt.args.bulkJob); (err != nil) != tt.wantErr {
+			if err := uploadJobData(tt.args.sf, tt.args.data, tt.args.bulkJob); (err != nil) != tt.wantErr {
 				t.Errorf("uploadJobData() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1101,7 +1097,7 @@ func Test_updateJobState(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.args.sf.updateJobState(t.Context(), tt.args.job, tt.args.state); (err != nil) != tt.wantErr {
+			if err := updateJobState(tt.args.job, tt.args.state, tt.args.sf); (err != nil) != tt.wantErr {
 				t.Errorf("updateJobState() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1261,8 +1257,8 @@ func Test_doBulkJobWithFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.args.sf.doBulkJobWithFile(
-				t.Context(),
+			got, err := doBulkJobWithFile(
+				tt.args.sf,
 				tt.args.sObjectName,
 				tt.args.fieldName,
 				tt.args.operation,
@@ -1359,7 +1355,7 @@ func Test_doQueryBulk(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.args.sf.doQueryBulk(t.Context(), tt.args.filePath, tt.args.query); (err != nil) != tt.wantErr {
+			if err := doQueryBulk(tt.args.sf, tt.args.filePath, tt.args.query); (err != nil) != tt.wantErr {
 				t.Errorf("doQueryBulk() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1452,7 +1448,7 @@ func Test_getJobRecordResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.args.sf.getJobRecordResults(t.Context(), tt.args.bulkJobResults)
+			got, err := getJobRecordResults(tt.args.sf, tt.args.bulkJobResults)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getJobRecordResults() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1539,11 +1535,7 @@ func Test_getBulkJobRecords(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.args.sf.getBulkJobRecords(
-				t.Context(),
-				tt.args.bulkJobId,
-				tt.args.resultType,
-			)
+			got, err := getBulkJobRecords(tt.args.sf, tt.args.bulkJobId, tt.args.resultType)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getBulkJobRecords() error = %v, wantErr %v", err, tt.wantErr)
 				return

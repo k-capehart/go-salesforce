@@ -1,7 +1,6 @@
 package salesforce
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -56,8 +55,8 @@ func processSalesforceResponse(resp http.Response) ([]SalesforceResult, error) {
 	return results, nil
 }
 
-func (sf *Salesforce) doBatchedRequestsForCollection(
-	ctx context.Context,
+func doBatchedRequestsForCollection(
+	sf *Salesforce,
 	method string,
 	url string,
 	batchSize int,
@@ -84,7 +83,7 @@ func (sf *Salesforce) doBatchedRequestsForCollection(
 			return SalesforceResults{Results: results}, err
 		}
 
-		resp, err := doRequest(ctx, sf.auth, sf.config, requestPayload{
+		resp, err := doRequest(sf.auth, sf.config, requestPayload{
 			method:   method,
 			uri:      url,
 			content:  jsonType,
@@ -125,11 +124,7 @@ func decodeResponseBody(response *http.Response) (value SalesforceResult, err er
 	return value, err
 }
 
-func (sf *Salesforce) doInsertOne(
-	ctx context.Context,
-	sObjectName string,
-	record any,
-) (SalesforceResult, error) {
+func doInsertOne(sf *Salesforce, sObjectName string, record any) (SalesforceResult, error) {
 	recordMap, err := convertToMap(record)
 	if err != nil {
 		return SalesforceResult{}, err
@@ -142,7 +137,7 @@ func (sf *Salesforce) doInsertOne(
 		return SalesforceResult{}, err
 	}
 
-	resp, err := doRequest(ctx, sf.auth, sf.config, requestPayload{
+	resp, err := doRequest(sf.auth, sf.config, requestPayload{
 		method:   http.MethodPost,
 		uri:      "/sobjects/" + sObjectName,
 		content:  jsonType,
@@ -162,7 +157,7 @@ func (sf *Salesforce) doInsertOne(
 	return data, nil
 }
 
-func (sf *Salesforce) doUpdateOne(ctx context.Context, sObjectName string, record any) error {
+func doUpdateOne(sf *Salesforce, sObjectName string, record any) error {
 	recordMap, err := convertToMap(record)
 	if err != nil {
 		return err
@@ -181,7 +176,7 @@ func (sf *Salesforce) doUpdateOne(ctx context.Context, sObjectName string, recor
 		return err
 	}
 
-	_, err = doRequest(ctx, sf.auth, sf.config, requestPayload{
+	_, err = doRequest(sf.auth, sf.config, requestPayload{
 		method:   http.MethodPatch,
 		uri:      "/sobjects/" + sObjectName + "/" + recordId,
 		content:  jsonType,
@@ -195,8 +190,8 @@ func (sf *Salesforce) doUpdateOne(ctx context.Context, sObjectName string, recor
 	return nil
 }
 
-func (sf *Salesforce) doUpsertOne(
-	ctx context.Context,
+func doUpsertOne(
+	sf *Salesforce,
 	sObjectName string,
 	fieldName string,
 	record any,
@@ -224,7 +219,7 @@ func (sf *Salesforce) doUpsertOne(
 		return SalesforceResult{}, err
 	}
 
-	resp, err := doRequest(ctx, sf.auth, sf.config, requestPayload{
+	resp, err := doRequest(sf.auth, sf.config, requestPayload{
 		method:   http.MethodPatch,
 		uri:      "/sobjects/" + sObjectName + "/" + fieldName + "/" + externalIdValue,
 		content:  jsonType,
@@ -244,7 +239,7 @@ func (sf *Salesforce) doUpsertOne(
 	return data, nil
 }
 
-func (sf *Salesforce) doDeleteOne(ctx context.Context, sObjectName string, record any) error {
+func doDeleteOne(sf *Salesforce, sObjectName string, record any) error {
 	recordMap, err := convertToMap(record)
 	if err != nil {
 		return err
@@ -255,7 +250,7 @@ func (sf *Salesforce) doDeleteOne(ctx context.Context, sObjectName string, recor
 		return errors.New("salesforce id not found in object data")
 	}
 
-	_, err = doRequest(ctx, sf.auth, sf.config, requestPayload{
+	_, err = doRequest(sf.auth, sf.config, requestPayload{
 		method:   http.MethodDelete,
 		uri:      "/sobjects/" + sObjectName + "/" + recordId,
 		content:  jsonType,
@@ -268,8 +263,8 @@ func (sf *Salesforce) doDeleteOne(ctx context.Context, sObjectName string, recor
 	return nil
 }
 
-func (sf *Salesforce) doInsertCollection(
-	ctx context.Context,
+func doInsertCollection(
+	sf *Salesforce,
 	sObjectName string,
 	records any,
 	batchSize int,
@@ -283,8 +278,8 @@ func (sf *Salesforce) doInsertCollection(
 		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
 	}
 
-	return sf.doBatchedRequestsForCollection(
-		ctx,
+	return doBatchedRequestsForCollection(
+		sf,
 		http.MethodPost,
 		"/composite/sobjects/",
 		batchSize,
@@ -292,8 +287,8 @@ func (sf *Salesforce) doInsertCollection(
 	)
 }
 
-func (sf *Salesforce) doUpdateCollection(
-	ctx context.Context,
+func doUpdateCollection(
+	sf *Salesforce,
 	sObjectName string,
 	records any,
 	batchSize int,
@@ -310,8 +305,8 @@ func (sf *Salesforce) doUpdateCollection(
 		}
 	}
 
-	return sf.doBatchedRequestsForCollection(
-		ctx,
+	return doBatchedRequestsForCollection(
+		sf,
 		http.MethodPatch,
 		"/composite/sobjects/",
 		batchSize,
@@ -319,8 +314,8 @@ func (sf *Salesforce) doUpdateCollection(
 	)
 }
 
-func (sf *Salesforce) doUpsertCollection(
-	ctx context.Context,
+func doUpsertCollection(
+	sf *Salesforce,
 	sObjectName string,
 	fieldName string,
 	records any,
@@ -343,11 +338,11 @@ func (sf *Salesforce) doUpsertCollection(
 	}
 
 	uri := "/composite/sobjects/" + sObjectName + "/" + fieldName
-	return sf.doBatchedRequestsForCollection(ctx, http.MethodPatch, uri, batchSize, recordMap)
+	return doBatchedRequestsForCollection(sf, http.MethodPatch, uri, batchSize, recordMap)
 }
 
-func (sf *Salesforce) doDeleteCollection(
-	ctx context.Context,
+func doDeleteCollection(
+	sf *Salesforce,
 	sObjectName string,
 	records any,
 	batchSize int,
@@ -387,7 +382,7 @@ func (sf *Salesforce) doDeleteCollection(
 	results := []SalesforceResult{}
 
 	for i := range batchedIds {
-		resp, err := doRequest(ctx, sf.auth, sf.config, requestPayload{
+		resp, err := doRequest(sf.auth, sf.config, requestPayload{
 			method:   http.MethodDelete,
 			uri:      "/composite/sobjects/?ids=" + batchedIds[i] + "&allOrNone=false",
 			content:  jsonType,
