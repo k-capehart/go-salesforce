@@ -12,6 +12,7 @@ A REST API wrapper for interacting with Salesforce using the Go programming lang
 - Check out [go-salesforce-examples](https://github.com/k-capehart/go-salesforce-examples) for more examples
 - Read the [Salesforce REST API documentation](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_list.htm)
 - Read the [Golang documentation](https://go.dev/doc/)
+- [Contributing](https://github.com/k-capehart/go-salesforce/blob/main/CONTRIBUTING.md)
 
 ## Table of Contents
 
@@ -25,7 +26,6 @@ A REST API wrapper for interacting with Salesforce using the Go programming lang
 - [Composite Requests](#composite-requests)
 - [Bulk v2](#bulk-v2)
 - [Other](#other)
-- [Contributing](#contributing)
 
 ## Installation
 
@@ -1260,23 +1260,3 @@ resp, err := sf.DoRequest("GET", "/sobjects", nil,
     salesforce.WithHeader("If-Modified-Since", "Wed, 21 Oct 2015 07:28:00 GMT"),
     salesforce.WithHeader("Accept-Language", "en-US"))
 ```
-
-## Contributing
-
-Anyone is welcome to contribute.
-
-- open an issue or discussion post to track the effort
-- fork this repository, then clone it
-- place this in your own module's `go.mod` to enable testing local changes
-  - `replace github.com/k-capehart/go-salesforce/v2 => /path_to_local_fork/`
-- run format checks locally
-  - `make install-tools`
-  - `make fmt`
-- run tests
-  - `make test`
-  - `make test-ouput` (with html output)
-  - note that [codecov](https://app.codecov.io/gh/k-capehart/go-salesforce) does not count partial lines so calculations may differ
-- linting
-  - install [golangci-lint](https://golangci-lint.run/welcome/install/)
-  - `make lint`
-- Create a PR and link the issue
