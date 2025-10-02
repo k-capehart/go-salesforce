@@ -1232,7 +1232,7 @@ if err != nil {
 fmt.Println(string(respBody))
 ```
 
-#### WithHeader
+### WithHeader
 
 `func WithHeader(key, value string) RequestOption`
 
