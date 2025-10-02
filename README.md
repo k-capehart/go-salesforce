@@ -9,6 +9,7 @@ A REST API wrapper for interacting with Salesforce using the Go programming lang
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)
 
 - Read my [blog post](https://www.kylecapehart.com/posts/go-salesforce/) for an in-depth example
+- Check out [go-salesforce-examples](https://github.com/k-capehart/go-salesforce-examples) for more examples
 - Read the [Salesforce REST API documentation](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_list.htm)
 - Read the [Golang documentation](https://go.dev/doc/)
 
@@ -177,7 +178,7 @@ url := sf.GetInstanceUrl()
 
 ## Configuration
 
-- Configure optional parameters for your Salesforce instance
+Configure optional parameters for your Salesforce instance
 
 Optional configuration: 
 - `func WithCompressionHeaders(compression bool) Option` - see [docs](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_rest_compression.htm)
@@ -188,9 +189,9 @@ Optional configuration:
 - `func WithHTTPTimeout(timeout time.Duration) Option` - set custom timeout
 - `func WithValidateAuthentication(validate bool) Option` - optionally skip validation during certain auth flows 
 
-See `HTTP_CLIENT_CONFIG.md` for additional documentation
+See [HTTP_CLIENT_CONFIG](https://github.com/k-capehart/go-salesforce/blob/main/HTTP_CLIENT_CONFIG.md) for additional documentation
 
-See `examples/functional-config` and `examples/http-config` for usage
+See [examples/functional-config](https://github.com/k-capehart/go-salesforce/blob/main/examples/functional-config/main.go) and [examples/http-config](https://github.com/k-capehart/go-salesforce/blob/main/examples/http-config/main.go) for usage
 
 See [WithHeader](#withheader) for custom header options
 
