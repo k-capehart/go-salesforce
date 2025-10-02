@@ -188,6 +188,8 @@ Optional configuration:
 - `func WithHTTPTimeout(timeout time.Duration) Option` - set custom timeout
 - `func WithValidateAuthentication(validate bool) Option` - optionally skip validation during certain auth flows 
 
+See `HTTP_CLIENT_CONFIG.md` for additional documentation
+
 See `examples/functional-config` and `examples/http-config` for usage
 
 See [WithHeader](#withheader) for custom header options
