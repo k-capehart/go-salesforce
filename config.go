@@ -3,6 +3,8 @@ package salesforce
 import (
 	"errors"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -64,6 +66,21 @@ func WithAPIVersion(version string) Option {
 	return func(c *configuration) error {
 		if version == "" {
 			return errors.New("API version cannot be empty")
+		}
+		formatError := "API version must be of the format v62.0"
+		versionNumber, found := strings.CutPrefix(version, "v")
+		if !found {
+			return errors.New(formatError)
+		}
+		before, after, found := strings.Cut(versionNumber, ".")
+		if !found {
+			return errors.New(formatError)
+		}
+		if _, err := strconv.ParseUint(before, 10, 64); err != nil {
+			return errors.Join(err, errors.New(formatError))
+		}
+		if _, err := strconv.ParseUint(after, 10, 64); err != nil {
+			return errors.Join(err, errors.New(formatError))
 		}
 		c.apiVersion = version
 		return nil

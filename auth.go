@@ -164,9 +164,9 @@ func doAuth(url string, body *strings.Reader) (*authentication, error) {
 	}
 
 	defer func() {
-		_ = resp.Body.Close() // Ignore error since we've already read what we need
+		err = resp.Body.Close()
 	}()
-	return auth, nil
+	return auth, err
 }
 
 func usernamePasswordFlow(

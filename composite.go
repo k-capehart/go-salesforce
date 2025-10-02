@@ -58,10 +58,10 @@ func doCompositeRequest(sf *Salesforce, compReq compositeRequest) (SalesforceRes
 func validateNumberOfSubrequests(dataSize int, batchSize int) error {
 	numberOfBatches := int(math.Ceil(float64(float64(dataSize) / float64(batchSize))))
 	if numberOfBatches > 25 {
-		errorMessage := strconv.Itoa(
+		return fmt.Errorf(
+			"%d subrequests exceed max of 25. max records = 25 * (batch size)",
 			numberOfBatches,
-		) + " subrequests exceed max of 25. max records = 25 * (batch size)"
-		return errors.New(errorMessage)
+		)
 	}
 	return nil
 }

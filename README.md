@@ -1267,16 +1267,18 @@ resp, err := sf.DoRequest("GET", "/sobjects", nil,
 
 Anyone is welcome to contribute.
 
-- Open an issue or discussion post to track the effort
-- Fork this repository, then clone it
-- Place this in your own module's `go.mod` to enable testing local changes
+- open an issue or discussion post to track the effort
+- fork this repository, then clone it
+- place this in your own module's `go.mod` to enable testing local changes
   - `replace github.com/k-capehart/go-salesforce/v2 => /path_to_local_fork/`
-- Run tests
-  - `go test -cover`
-- Generate code coverage output
-  - `go test -v -coverprofile cover.out && go tool cover -html cover.out -o cover.html`
-  - Note that [codecov](https://app.codecov.io/gh/k-capehart/go-salesforce) does not count partial lines so calculations may differ
-- Linting
-  - Install [golangci-lint](https://golangci-lint.run/welcome/install/)
-  - `golangci-lint run`
+- run format checks locally
+  - `make install-tools`
+  - `make fmt`
+- run tests
+  - `make test`
+  - `make test-ouput` (with html output)
+  - note that [codecov](https://app.codecov.io/gh/k-capehart/go-salesforce) does not count partial lines so calculations may differ
+- linting
+  - install [golangci-lint](https://golangci-lint.run/welcome/install/)
+  - `make lint`
 - Create a PR and link the issue

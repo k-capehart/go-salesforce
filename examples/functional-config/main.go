@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	salesforce "github.com/k-capehart/go-salesforce/v2"
+	"github.com/k-capehart/go-salesforce/v2"
 )
 
 func main() {
