@@ -42,14 +42,14 @@ type Salesforce struct {
 }
 
 type configuration struct {
-	compressionHeaders           bool
-	apiVersion                   string
-	batchSizeMax                 int
-	bulkBatchSizeMax             int
-	httpClient                   *http.Client
-	roundTripper                 http.RoundTripper
-	shouldValidateAuthentication bool
-	httpTimeout                  time.Duration
+    compressionHeaders           bool
+    apiVersion                   string
+    batchSizeMax                 int
+    bulkBatchSizeMax             int
+    httpClient                   *http.Client
+    roundTripper                 http.RoundTripper
+    shouldValidateAuthentication bool
+    httpTimeout                  time.Duration
 }
 
 type Creds struct {
