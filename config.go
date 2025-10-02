@@ -20,7 +20,6 @@ type configuration struct {
 	httpTimeout                  time.Duration     // HTTP client timeout
 }
 
-// setDefaults sets the default configuration values
 func (c *configuration) setDefaults() {
 	c.compressionHeaders = false
 	c.shouldValidateAuthentication = true // Default to validating authentication

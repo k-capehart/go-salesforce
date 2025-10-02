@@ -37,11 +37,18 @@ go get github.com/k-capehart/go-salesforce/v2
 ```go
 type Salesforce struct {
     auth   *authentication
-    Config Configuration
+    config configuration
 }
 
-type Configuration struct {
-    CompressionHeaders bool
+type configuration struct {
+	compressionHeaders           bool
+	apiVersion                   string
+	batchSizeMax                 int
+	bulkBatchSizeMax             int
+	httpClient                   *http.Client
+	roundTripper                 http.RoundTripper
+	shouldValidateAuthentication bool
+	httpTimeout                  time.Duration
 }
 
 type Creds struct {
@@ -89,11 +96,12 @@ type BulkJobResults struct {
 
 ### Init
 
-`func Init(creds Creds) *Salesforce`
+`func Init(creds Creds, options ...Option) *Salesforce`
 
 Returns a new Salesforce instance given a user's credentials.
 
 - `creds`: a struct containing the necessary credentials to authenticate into a Salesforce org
+- `options`: optional configuration - see [Configuration](#configuration)
 - [Creating a Connected App in Salesforce](https://help.salesforce.com/s/articleView?id=sf.connected_app_create.htm&type=5)
 - [Review Salesforce oauth flows](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_flows.htm&type=5)
 - If an operation fails with the Error Code `INVALID_SESSION_ID`, go-salesforce will attempt to refresh the session by resubmitting the same credentials used during initialization
@@ -171,27 +179,18 @@ url := sf.GetInstanceUrl()
 
 - Configure optional parameters for your Salesforce instance
 
-### SetDefaults
+Optional configuration: 
+- `func WithCompressionHeaders(compression bool) Option` - see [docs](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_rest_compression.htm)
+- `func WithAPIVersion(version string) Option` - set API version manually instead of using default
+- `func WithBatchSizeMax(size int)` - for collections API
+- `func WithBulkBatchSizeMax(size int) Option` - for Bulk API
+- `func WithRoundTripper(rt http.RoundTripper) Option` - for http requests
+- `func WithHTTPTimeout(timeout time.Duration) Option` - set custom timeout
+- `func WithValidateAuthentication(validate bool) Option` - optionally skip validation during certain auth flows 
 
-`func (c *Configuration) SetDefaults()`
+See `examples/functional-config` and `examples/http-config` for usage
 
-Set the default configuration values
-
-- CompressionHeaders: false
-
-```go
-sf.Config.SetDefaults()
-```
-
-### SetCompressionHeaders
-
-`func (c *Configuration) SetCompressionHeaders(compression bool)`
-
-Enable or disable [Compression Headers](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_rest_compression.htm) when sending requests and receiving responses
-
-```go
-sf.Config.SetCompressionHeaders(true)
-```
+See [WithHeader](#withheader) for custom header options
 
 ## SOQL
 
@@ -730,6 +729,7 @@ for it.Next() {
     if err := it.Decode(&data); err != nil {
         panic(err)
     }
+    fmt.Println(data)
 }
 
 if err := it.Error(); err != nil {
@@ -743,18 +743,12 @@ if err := it.Error(); err != nil {
 - The `csv` tag should be formatted as `csv:"APIFieldName.,inline"`
 
 ```go
-type Address struct {
-    Street string
+type ContactWithAltOwner struct {
+    Id                 string
+    AlternateOwnerName User `csv:"Alternate_Owner__r.,inline"`
 }
 
-type Contact struct {
-    Id      string
-    Address Address `csv:"Address__r.,inline"`
-}
-
-contacts := []Contact{}
-
-it, err := sf.QueryBulkIterator("SELECT Id, Address__r.Street FROM Contact")
+it, err = sf.QueryBulkIterator("SELECT Id, Alternate_Owner__r.Name FROM Contact")
 if err != nil {
     panic(err)
 }
@@ -764,6 +758,7 @@ for it.Next() {
     if err := it.Decode(&data); err != nil {
         panic(err)
     }
+    fmt.Println(data)
 }
 
 if err := it.Error(); err != nil {
@@ -824,7 +819,7 @@ Bruce,Banner
 jobIds, err := sf.InsertBulkFile("Contact", "data/avengers.csv", 1000, false)
 ```
 
-## InsertBulkAssign
+### InsertBulkAssign
 
 `func (sf *Salesforce) InsertBulkAssign(sObjectName string, records any, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
 
@@ -853,7 +848,7 @@ leads := []Lead{
 jobIds, err := sf.InsertBulkAssign("Lead", leads, 100, true, "01QDn00000112FHMAY")
 ```
 
-## InsertBulkFileAssign
+### InsertBulkFileAssign
 
 `func (sf *Salesforce) InsertBulkFileAssign(sObjectName string, filePath string, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
 
@@ -875,7 +870,7 @@ Bruce,Banner,The Avengers
 ```
 
 ```go
-jobIds, err := sf.InsertBulkFileAssign("Contact", "data/avengers.csv", 1000, false, "01QDn00000112FHMAY")
+jobIds, err := sf.InsertBulkFileAssign("Lead", "data/avengers.csv", 1000, false, "01QDn00000112FHMAY")
 ```
 
 ### UpdateBulk
@@ -939,7 +934,7 @@ Id,FirstName,LastName
 jobIds, err := sf.UpdateBulkFile("Contact", "data/update_avengers.csv", 1000, false)
 ```
 
-## UpdateBulkAssign
+### UpdateBulkAssign
 
 `func (sf *Salesforce) UpdateBulkAssign(sObjectName string, records any, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
 
@@ -970,7 +965,7 @@ leads := []Lead{
 jobIds, err := sf.UpdateBulkAssign("Lead", leads, 100, true, "01QDn00000112FHMAY")
 ```
 
-## UpdateBulkFileAssign
+### UpdateBulkFileAssign
 
 `func (sf *Salesforce) UpdateBulkFileAssign(sObjectName string, filePath string, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
 
@@ -1056,7 +1051,7 @@ Avng10,Danny,Rand
 jobIds, err := sf.UpsertBulkFile("Contact", "ContactExternalId__c", "data/upsert_avengers.csv", 1000, false)
 ```
 
-## UpsertBulkAssign
+### UpsertBulkAssign
 
 `func (sf *Salesforce) UpsertBulkAssign(sObjectName string, externalIdFieldName string, records any, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
 
@@ -1088,7 +1083,7 @@ leads := []Lead{
 jobIds, err := sf.UpsertBulkAssign("Lead", "LeadExternalId__c", leads, 100, true, "00QDn0000024r6FMAQ")
 ```
 
-## UpsertBulkFileAssign
+### UpsertBulkFileAssign
 
 `func (sf *Salesforce) UpsertBulkFileAssign(sObjectName string, externalIdFieldName string, filePath string, batchSize int, waitForResults bool, assignmentRuleId string) ([]string, error)`
 
@@ -1105,7 +1100,7 @@ Updates (or inserts) a list of Lead or Case records to be assigned via an Assign
 `data/upsert_avengers`
 
 ```
-LeadExternalId,FirstName,LastName,Company
+LeadExternalId__c,FirstName,LastName,Company
 Avng11,Nick,Fury,The Avengers
 Avng12,Maria,Hill,The Avengers
 Avng13,Howard,Stark,The Avengers
