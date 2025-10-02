@@ -30,11 +30,15 @@ type requestPayload struct {
 	options  []RequestOption
 }
 
-func doRequest(auth *authentication, payload requestPayload) (*http.Response, error) {
+func doRequest(
+	auth *authentication,
+	config *configuration,
+	payload requestPayload,
+) (*http.Response, error) {
 	var reader io.Reader
 	var req *http.Request
 	var err error
-	endpoint := auth.InstanceUrl + "/services/data/" + apiVersion + payload.uri
+	endpoint := auth.InstanceUrl + "/services/data/" + config.apiVersion + payload.uri
 
 	if payload.body != "" {
 		if payload.compress {
@@ -67,12 +71,12 @@ func doRequest(auth *authentication, payload requestPayload) (*http.Response, er
 		option(req)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := config.httpClient.Do(req)
 	if err != nil {
 		return resp, err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode > 300 {
-		resp, err = processSalesforceError(*resp, auth, payload)
+		resp, err = processSalesforceError(*resp, auth, config, payload)
 		if err != nil {
 			return resp, err
 		}
@@ -103,7 +107,9 @@ func decompress(body io.ReadCloser) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer gzReader.Close()
+	defer func() {
+		_ = gzReader.Close() // Ignore error since we've read what we need
+	}()
 
 	decompressed, err := io.ReadAll(gzReader)
 	if err != nil {
@@ -113,7 +119,12 @@ func decompress(body io.ReadCloser) (io.ReadCloser, error) {
 	return io.NopCloser(bytes.NewReader(decompressed)), nil
 }
 
-func processSalesforceError(resp http.Response, auth *authentication, payload requestPayload) (*http.Response, error) {
+func processSalesforceError(
+	resp http.Response,
+	auth *authentication,
+	config *configuration,
+	payload requestPayload,
+) (*http.Response, error) {
 	responseData, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return &resp, err
@@ -124,12 +135,26 @@ func processSalesforceError(resp http.Response, auth *authentication, payload re
 		return &resp, err
 	}
 	for _, sfError := range sfErrors {
-		if sfError.ErrorCode == invalidSessionIdError && !payload.retry { // only attempt to refresh the session once
+		if sfError.ErrorCode == invalidSessionIdError &&
+			!payload.retry { // only attempt to refresh the session once
 			err = refreshSession(auth)
 			if err != nil {
 				return &resp, err
 			}
-			newResp, err := doRequest(auth, requestPayload{payload.method, payload.uri, payload.content, payload.body, true, payload.compress, payload.options})
+
+			newResp, err := doRequest(
+				auth,
+				config,
+				requestPayload{
+					payload.method,
+					payload.uri,
+					payload.content,
+					payload.body,
+					true,
+					payload.compress,
+					payload.options,
+				},
+			)
 			if err != nil {
 				return &resp, err
 			}

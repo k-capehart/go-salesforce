@@ -4,3 +4,5 @@ coverage:
       default:
         target: 80
     patch: false
+ignore: 
+ - "examples"

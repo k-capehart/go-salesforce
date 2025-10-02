@@ -141,9 +141,19 @@ func Test_createCompositeRequestForCollection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := createCompositeRequestForCollection(tt.args.method, tt.args.url, tt.args.allOrNone, tt.args.batchSize, tt.args.recordMap)
+			got, err := createCompositeRequestForCollection(
+				tt.args.method,
+				tt.args.url,
+				tt.args.allOrNone,
+				tt.args.batchSize,
+				tt.args.recordMap,
+			)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("createCompositeRequestForCollection() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf(
+					"createCompositeRequestForCollection() error = %v, wantErr %v",
+					err,
+					tt.wantErr,
+				)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
@@ -427,7 +437,13 @@ func Test_doInsertComposite(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doInsertComposite(tt.args.sf, tt.args.sObjectName, tt.args.records, tt.args.allOrNone, tt.args.batchSize)
+			got, err := doInsertComposite(
+				tt.args.sf,
+				tt.args.sObjectName,
+				tt.args.records,
+				tt.args.allOrNone,
+				tt.args.batchSize,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doInsertComposite() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -525,7 +541,13 @@ func Test_doUpdateComposite(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doUpdateComposite(tt.args.sf, tt.args.sObjectName, tt.args.records, tt.args.allOrNone, tt.args.batchSize)
+			got, err := doUpdateComposite(
+				tt.args.sf,
+				tt.args.sObjectName,
+				tt.args.records,
+				tt.args.allOrNone,
+				tt.args.batchSize,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doUpdateComposite() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -627,7 +649,14 @@ func Test_doUpsertComposite(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doUpsertComposite(tt.args.sf, tt.args.sObjectName, tt.args.fieldName, tt.args.records, tt.args.allOrNone, tt.args.batchSize)
+			got, err := doUpsertComposite(
+				tt.args.sf,
+				tt.args.sObjectName,
+				tt.args.fieldName,
+				tt.args.records,
+				tt.args.allOrNone,
+				tt.args.batchSize,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doUpsertComposite() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -740,7 +769,13 @@ func Test_doDeleteComposite(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doDeleteComposite(tt.args.sf, tt.args.sObjectName, tt.args.records, tt.args.allOrNone, tt.args.batchSize)
+			got, err := doDeleteComposite(
+				tt.args.sf,
+				tt.args.sObjectName,
+				tt.args.records,
+				tt.args.allOrNone,
+				tt.args.batchSize,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("doDeleteComposite() error = %v, wantErr %v", err, tt.wantErr)
 			}
