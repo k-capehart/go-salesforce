@@ -1,4 +1,4 @@
-module github.com/k-capehart/go-salesforce/v2
+module github.com/k-capehart/go-salesforce/v3
 
 go 1.24.5
 
