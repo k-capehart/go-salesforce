@@ -125,7 +125,11 @@ func decodeResponseBody(response *http.Response) (value SalesforceResult, err er
 	return value, err
 }
 
-func checkForExternalIdInList(sObjectName string, fieldName string, recordMap []map[string]any) error {
+func checkForExternalIdInList(
+	sObjectName string,
+	fieldName string,
+	recordMap []map[string]any,
+) error {
 	for i := range recordMap {
 		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
 		_, err := checkForExternalId(sObjectName, fieldName, recordMap[i])
@@ -136,7 +140,11 @@ func checkForExternalIdInList(sObjectName string, fieldName string, recordMap []
 	return nil
 }
 
-func checkForExternalId(sObjectName string, fieldName string, recordMap map[string]any) (any, error) {
+func checkForExternalId(
+	sObjectName string,
+	fieldName string,
+	recordMap map[string]any,
+) (any, error) {
 	externalIdValue, ok := convertToString(recordMap[fieldName])
 	if !ok || externalIdValue == "" {
 		return nil, fmt.Errorf(
