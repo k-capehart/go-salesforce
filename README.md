@@ -12,7 +12,6 @@ A REST API wrapper for interacting with Salesforce using the Go programming lang
 - Check out [go-salesforce-examples](https://github.com/k-capehart/go-salesforce-examples) for more examples
 - Read the [Salesforce REST API documentation](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_list.htm)
 - Read the [Golang documentation](https://go.dev/doc/)
-- [Contributing](https://github.com/k-capehart/go-salesforce?tab=contributing-ov-file)
 
 ## Table of Contents
 
