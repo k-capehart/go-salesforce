@@ -176,6 +176,12 @@ Returns the current session's Instance URL as a string.
 url := sf.GetInstanceUrl()
 ```
 
+### GetAuthFlow
+
+`func (sf *Salesforce) GetAuthFlow() AuthFlowType`
+
+Returns the auth flow used for authentication.
+
 ## Configuration
 
 Configure optional parameters for your Salesforce instance
@@ -187,9 +193,16 @@ Optional configuration:
 - `func WithBulkBatchSizeMax(size int) Option` - for Bulk API
 - `func WithRoundTripper(rt http.RoundTripper) Option` - for http requests
 - `func WithHTTPTimeout(timeout time.Duration) Option` - set custom timeout
-- `func WithValidateAuthentication(validate bool) Option` - optionally skip validation during certain auth flows 
+- `func WithValidateAuthentication(validate bool) Option` - optionally skip validation during certain auth flows
 
-See [HTTP_CLIENT_CONFIG](https://github.com/k-capehart/go-salesforce/blob/main/HTTP_CLIENT_CONFIG.md) for additional documentation
+Get configuration:
+- `func (sf *Salesforce) GetAPIVersion() string`
+- `func (sf *Salesforce) GetBatchSizeMax() int`
+- `func (sf *Salesforce) GetBulkBatchSizeMax() int`
+- `func (sf *Salesforce) GetCompressionHeaders() bool`
+- `func (sf *Salesforce) GetHTTPClient() *http.Client`
+
+See [HTTP_CLIENT_CONFIG](https://github.com/k-capehart/go-salesforce/blob/main/HTTP_CLIENT_CONFIG.md) for additional documentation on round trippers
 
 See [examples/functional-config](https://github.com/k-capehart/go-salesforce/blob/main/examples/functional-config/main.go) and [examples/http-config](https://github.com/k-capehart/go-salesforce/blob/main/examples/http-config/main.go) for usage
 
