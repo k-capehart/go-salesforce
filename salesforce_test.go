@@ -1007,6 +1007,16 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 		Name          string
 	}
 
+	type accountWithIntId struct {
+		NumberExternalId__c int
+		Name                string
+	}
+
+	type accountWithFloatId struct {
+		NumberExternalId__c float64
+		Name                string
+	}
+
 	successfulResult := SalesforceResult{
 		Id:      "1234",
 		Errors:  []SalesforceErrorMessage{},
@@ -1048,6 +1058,38 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "successful_upsert_with_int",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:         "Account",
+				externalIdFieldName: "NumberExternalId__c",
+				record: accountWithIntId{
+					NumberExternalId__c: 1234,
+					Name:                "test account",
+				},
+			},
+			want:    successfulResult,
+			wantErr: false,
+		},
+		{
+			name: "successful_upsert_with_float",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:         "Account",
+				externalIdFieldName: "NumberExternalId__c",
+				record: accountWithFloatId{
+					NumberExternalId__c: 1234.1,
+					Name:                "test account",
+				},
+			},
+			want:    successfulResult,
+			wantErr: false,
+		},
+		{
 			name: "validation_fail",
 			fields: fields{
 				auth: &sfAuth,
@@ -1069,6 +1111,36 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 				sObjectName:         "Account",
 				externalIdFieldName: "ExternalId__c",
 				record: account{
+					Name: "test account",
+				},
+			},
+			want:    SalesforceResult{},
+			wantErr: true,
+		},
+		{
+			name: "fail_no_external_id_with_int",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:         "Account",
+				externalIdFieldName: "NumberExternalId__c",
+				record: accountWithIntId{
+					Name: "test account",
+				},
+			},
+			want:    SalesforceResult{},
+			wantErr: true,
+		},
+		{
+			name: "fail_no_external_id_with_float",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:         "Account",
+				externalIdFieldName: "NumberExternalId__c",
+				record: accountWithFloatId{
 					Name: "test account",
 				},
 			},

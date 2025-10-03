@@ -223,17 +223,9 @@ func doUpsertComposite(
 	if err != nil {
 		return SalesforceResults{}, err
 	}
-
-	for i := range recordMap {
-		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
-		externalIdValue, ok := recordMap[i][fieldName].(string)
-		if !ok || externalIdValue == "" {
-			return SalesforceResults{}, fmt.Errorf(
-				"salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'",
-				fieldName,
-				sObjectName,
-			)
-		}
+	err = checkForExternalIdInList(sObjectName, fieldName, recordMap)
+	if err != nil {
+		return SalesforceResults{}, err
 	}
 
 	uri := "/services/data/" + apiVersion + "/composite/sobjects/" + sObjectName + "/" + fieldName
