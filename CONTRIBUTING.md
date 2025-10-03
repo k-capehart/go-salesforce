@@ -5,7 +5,7 @@ Anyone is welcome to contribute.
 1. open an issue or discussion post to track the effort
 2. fork this repository, then clone it
 3. place this in your own module's `go.mod` to enable testing local changes
-    - `replace github.com/k-capehart/go-salesforce/v2 => /path_to_local_fork/`
+    - `replace github.com/k-capehart/go-salesforce/v3 => /path_to_local_fork/`
 4. run format checks locally
     - `make install-tools`
     - `make fmt`

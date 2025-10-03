@@ -433,3 +433,46 @@ func getDefaultConfig(t *testing.T) *configuration {
 	config.shouldValidateAuthentication = true
 	return config
 }
+
+func TestAuthFlowType_String(t *testing.T) {
+	tests := []struct {
+		name     string
+		want     string
+		receiver AuthFlowType
+	}{
+		{
+			name:     "username_password",
+			want:     "Username/Password",
+			receiver: 1,
+		},
+		{
+			name:     "client_credentials",
+			want:     "Client Credentials",
+			receiver: 2,
+		},
+		{
+			name:     "access_token",
+			want:     "Access Token",
+			receiver: 3,
+		},
+		{
+			name:     "jwt",
+			want:     "JWT",
+			receiver: 4,
+		},
+		{
+			name:     "unknown",
+			want:     "Unknown",
+			receiver: 23,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			receiver := tt.receiver
+			got := receiver.String()
+			if tt.want != got {
+				t.Errorf("String() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/go-viper/mapstructure/v2"
 )
@@ -124,6 +125,56 @@ func decodeResponseBody(response *http.Response) (value SalesforceResult, err er
 	return value, err
 }
 
+func checkForExternalIdInList(
+	sObjectName string,
+	fieldName string,
+	recordMap []map[string]any,
+) error {
+	for i := range recordMap {
+		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
+		_, err := checkForExternalId(sObjectName, fieldName, recordMap[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func checkForExternalId(
+	sObjectName string,
+	fieldName string,
+	recordMap map[string]any,
+) (any, error) {
+	externalIdValue, ok := convertToString(recordMap[fieldName])
+	if !ok || externalIdValue == "" {
+		return nil, fmt.Errorf(
+			"salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'",
+			fieldName,
+			sObjectName,
+		)
+	}
+	return externalIdValue, nil
+}
+
+func convertToString(value any) (string, bool) {
+	switch typedValue := value.(type) {
+	case int:
+		if typedValue == 0 {
+			return "", false
+		}
+		return strconv.Itoa(typedValue), true
+	case float64:
+		if typedValue == 0 {
+			return "", false
+		}
+		return strconv.FormatFloat(typedValue, 'f', -1, 64), true
+	case string:
+		return typedValue, true
+	default:
+		return "", false
+	}
+}
+
 func doInsertOne(sf *Salesforce, sObjectName string, record any) (SalesforceResult, error) {
 	recordMap, err := convertToMap(record)
 	if err != nil {
@@ -200,14 +251,9 @@ func doUpsertOne(
 	if err != nil {
 		return SalesforceResult{}, err
 	}
-
-	externalIdValue, ok := recordMap[fieldName].(string)
-	if !ok || externalIdValue == "" {
-		return SalesforceResult{}, fmt.Errorf(
-			"salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'",
-			fieldName,
-			sObjectName,
-		)
+	externalIdValue, err := checkForExternalId(sObjectName, fieldName, recordMap)
+	if err != nil {
+		return SalesforceResult{}, err
 	}
 
 	recordMap["attributes"] = map[string]string{"type": sObjectName}
@@ -219,9 +265,21 @@ func doUpsertOne(
 		return SalesforceResult{}, err
 	}
 
+	var uri string
+	switch typedExternalId := externalIdValue.(type) {
+	case int:
+		uri = "/sobjects/" + sObjectName + "/" + fieldName + "/" + strconv.Itoa(typedExternalId)
+	case float64:
+		uri = "/sobjects/" + sObjectName + "/" + fieldName + "/" + strconv.FormatFloat(typedExternalId, 'f', -1, 64)
+	case string:
+		uri = "/sobjects/" + sObjectName + "/" + fieldName + "/" + typedExternalId
+	default:
+		return SalesforceResult{}, errors.New("external id should be a string or number")
+	}
+
 	resp, err := doRequest(sf.auth, sf.config, requestPayload{
 		method:   http.MethodPatch,
-		uri:      "/sobjects/" + sObjectName + "/" + fieldName + "/" + externalIdValue,
+		uri:      uri,
 		content:  jsonType,
 		body:     string(body),
 		compress: sf.config.compressionHeaders,
@@ -325,18 +383,10 @@ func doUpsertCollection(
 	if err != nil {
 		return SalesforceResults{}, err
 	}
-	for i := range recordMap {
-		recordMap[i]["attributes"] = map[string]string{"type": sObjectName}
-		externalIdValue, ok := recordMap[i][fieldName].(string)
-		if !ok || externalIdValue == "" {
-			return SalesforceResults{}, fmt.Errorf(
-				"salesforce externalId: %s not found in %s data. make sure to append custom fields with '__c'",
-				fieldName,
-				sObjectName,
-			)
-		}
+	err = checkForExternalIdInList(sObjectName, fieldName, recordMap)
+	if err != nil {
+		return SalesforceResults{}, err
 	}
-
 	uri := "/composite/sobjects/" + sObjectName + "/" + fieldName
 	return doBatchedRequestsForCollection(sf, http.MethodPatch, uri, batchSize, recordMap)
 }
