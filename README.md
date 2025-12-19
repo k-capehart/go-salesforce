@@ -102,7 +102,7 @@ Returns a new Salesforce instance given a user's credentials.
 
 - `creds`: a struct containing the necessary credentials to authenticate into a Salesforce org
 - `options`: optional configuration - see [Configuration](#configuration)
-- [Creating a Connected App in Salesforce](https://help.salesforce.com/s/articleView?id=sf.connected_app_create.htm&type=5)
+- [Creating an External Client App in Salesforce](https://help.salesforce.com/s/articleView?id=xcloud.external_client_apps.htm&type=5)
 - [Review Salesforce oauth flows](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_flows.htm&type=5)
 - If an operation fails with the Error Code `INVALID_SESSION_ID`, go-salesforce will attempt to refresh the session by resubmitting the same credentials used during initialization
 - Configuration values are set to the defaults
