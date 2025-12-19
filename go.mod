@@ -2,7 +2,7 @@ module github.com/k-capehart/go-salesforce/v3
 
 go 1.24.5
 
-require github.com/forcedotcom/go-soql v0.0.0-20220705175410-00f698360bee
+require github.com/forcedotcom/go-soql v0.0.0-20240507183026-011ceab61b9e
 
 require (
 	github.com/go-viper/mapstructure/v2 v2.4.0
@@ -12,9 +12,8 @@ require (
 )
 
 require (
-	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/onsi/gomega v1.35.1 // indirect
-	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
+	github.com/onsi/gomega v1.38.3 // indirect
+	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
 )
