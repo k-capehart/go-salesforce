@@ -93,6 +93,8 @@ type BulkJobResults struct {
 
 - To begin using, create an instance of the `Salesforce` type by calling `salesforce.Init()` and passing your credentials as arguments
 - Once authenticated, all other functions can be called as methods using the resulting `Salesforce` instance
+- [Creating an External Client App in Salesforce](https://help.salesforce.com/s/articleView?id=xcloud.external_client_apps.htm&type=5)
+- [Review Salesforce OAuth flows](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_flows.htm&type=5)
 
 ### Init
 
@@ -102,10 +104,8 @@ Returns a new Salesforce instance given a user's credentials.
 
 - `creds`: a struct containing the necessary credentials to authenticate into a Salesforce org
 - `options`: optional configuration - see [Configuration](#configuration)
-- [Creating an External Client App in Salesforce](https://help.salesforce.com/s/articleView?id=xcloud.external_client_apps.htm&type=5)
-- [Review Salesforce oauth flows](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_flows.htm&type=5)
 - If an operation fails with the Error Code `INVALID_SESSION_ID`, go-salesforce will attempt to refresh the session by resubmitting the same credentials used during initialization
-- Configuration values are set to the defaults
+- Configuration values are set to the defaults if not specified
 
 [Client Credentials Flow](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_client_credentials_flow.htm&type=5)
 
@@ -115,9 +115,6 @@ sf, err := salesforce.Init(salesforce.Creds{
     ConsumerKey:    CONSUMER_KEY,
     ConsumerSecret: CONSUMER_SECRET,
 })
-if err != nil {
-    panic(err)
-}
 ```
 
 [Username-Password Flow](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_username_password_flow.htm&type=5)
@@ -180,6 +177,10 @@ url := sf.GetInstanceUrl()
 `func (sf *Salesforce) GetAuthFlow() AuthFlowType`
 
 Returns the auth flow used for authentication.
+
+```go
+authType := sf.GetAuthFlow()
+```
 
 ## Configuration
 
@@ -537,8 +538,7 @@ Make numerous 'subrequests' contained within a single 'composite request', reduc
   - For DML operations, max number of records to be processed is determined by batch size (`25 * (batch size)`)
   - So if batch size is 1, then max number of records to be included in request is 25
   - If batch size is 200, then max is 5000
-- Can optionally allow partial successes by setting allOrNone parameter
-  - If true, then successes are still committed to the database even if a record fails
+- If allOrNone is true, then records are only committed to database if everything succeeds
 - Will return an instance of SalesforceResults which contains information on each affected record and whether DML errors were encountered
 
 ### InsertComposite
