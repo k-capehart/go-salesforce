@@ -111,7 +111,7 @@ Returns a new Salesforce instance given a user's credentials.
 
 ```go
 sf, err := salesforce.Init(salesforce.Creds{
-    Domain:         DOMAIN,
+    Domain:         DOMAIN, // ex: https://myslug.my.salesforce.com
     ConsumerKey:    CONSUMER_KEY,
     ConsumerSecret: CONSUMER_SECRET,
 })
