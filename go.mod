@@ -9,12 +9,12 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/jszwec/csvutil v1.10.0
 	github.com/spf13/afero v1.15.0
-	k8s.io/apimachinery v0.34.2
 )
 
 require (
-	github.com/go-logr/logr v1.4.2 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/onsi/gomega v1.35.1 // indirect
+	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
-	k8s.io/klog/v2 v2.130.1 // indirect
-	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397 // indirect
 )
