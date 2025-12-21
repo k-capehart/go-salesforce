@@ -21,7 +21,7 @@ func convertToMap(obj any) (map[string]any, error) {
 	if _, ok := obj.(map[string]any); ok {
 		recordMap = obj.(map[string]any)
 	} else {
-		err := mapstructure.Decode(obj, &recordMap)
+		err := mapstructureDecode(obj, &recordMap)
 		if err != nil {
 			return nil, errors.New("issue decoding salesforce object, need a key value pair (custom struct or map)")
 		}
@@ -34,7 +34,7 @@ func convertToSliceOfMaps(obj any) ([]map[string]any, error) {
 	if _, ok := obj.(map[string]any); ok {
 		recordMap = obj.([]map[string]any)
 	} else {
-		err := mapstructure.Decode(obj, &recordMap)
+		err := mapstructureDecode(obj, &recordMap)
 		if err != nil {
 			return nil, errors.New("issue decoding salesforce object, need a key value pair (custom struct or map)")
 		}
@@ -456,4 +456,19 @@ func doDeleteCollection(
 	}
 
 	return SalesforceResults{Results: results}, nil
+}
+
+func mapstructureDecode(input any, output any) error {
+	config := &mapstructure.DecoderConfig{
+		Metadata: nil,
+		Result:   output,
+		TagName:  "salesforce",
+	}
+
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return err
+	}
+
+	return decoder.Decode(input)
 }
