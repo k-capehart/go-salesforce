@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-
-	"github.com/go-viper/mapstructure/v2"
 )
 
 type queryResponse struct {
@@ -57,7 +55,7 @@ func performQuery(sf *Salesforce, query string, sObject any) error {
 		}
 	}
 
-	sObjectError := mapstructure.Decode(queryResp.Records, sObject)
+	sObjectError := mapstructureDecode(queryResp.Records, sObject)
 	if sObjectError != nil {
 		return sObjectError
 	}
