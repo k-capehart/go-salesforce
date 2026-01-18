@@ -210,7 +210,8 @@ func doInsertOne(sf *Salesforce, sObjectName string, record any) (SalesforceResu
 		compress: sf.config.compressionHeaders,
 	})
 	if reqErr != nil {
-		return SalesforceResult{}, reqErr
+		data, _ := processSingleSalesforceResult(resp)
+		return data, reqErr
 	}
 
 	data, err := processSingleSalesforceResult(resp)
@@ -295,7 +296,8 @@ func doUpsertOne(
 		compress: sf.config.compressionHeaders,
 	})
 	if reqErr != nil {
-		return SalesforceResult{}, reqErr
+		data, _ := processSingleSalesforceResult(resp)
+		return data, reqErr
 	}
 
 	data, err := processSingleSalesforceResult(resp)
