@@ -163,6 +163,11 @@ func convertToString(value any) (string, bool) {
 			return "", false
 		}
 		return strconv.Itoa(typedValue), true
+	case int64:
+		if typedValue == 0 {
+			return "", false
+		}
+		return strconv.FormatInt(typedValue, 10), true
 	case float64:
 		if typedValue == 0 {
 			return "", false
