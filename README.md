@@ -89,6 +89,17 @@ type BulkJobResults struct {
 }
 ```
 
+### Salesforce tag
+
+- tag struct fields with the `salesforce` tag to decode them into their Salesforce API field names
+
+```go
+type Account struct {
+    ExternalID string `salesforce:"ExternalId__c"`
+    Name       string
+}
+```
+
 ## Authentication
 
 - To begin using, create an instance of the `Salesforce` type by calling `salesforce.Init()` and passing your credentials as arguments
