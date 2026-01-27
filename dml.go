@@ -56,6 +56,34 @@ func processSalesforceResponse(resp http.Response) ([]SalesforceResult, error) {
 	return results, nil
 }
 
+func processSingleSalesforceResult(response *http.Response) (SalesforceResult, error) {
+	responseData, err := io.ReadAll(response.Body)
+	if err != nil {
+		return SalesforceResult{}, err
+	}
+	defer func() {
+		_ = response.Body.Close()
+	}()
+
+	// if a single DML operation is successful, the response will be a SalesforceResult
+	var result SalesforceResult
+	if err := json.Unmarshal(responseData, &result); err == nil &&
+		(result.Success || result.Id != "") {
+		return result, nil
+	}
+
+	// if a single DML operation is not successful, the response will be an array of SalesforceErrorMessage
+	var sfErrors []SalesforceErrorMessage
+	if err := json.Unmarshal(responseData, &sfErrors); err == nil && len(sfErrors) > 0 {
+		return SalesforceResult{
+			Success: false,
+			Errors:  sfErrors,
+		}, nil
+	}
+
+	return SalesforceResult{}, fmt.Errorf("unable to decode response: %s", string(responseData))
+}
+
 func doBatchedRequestsForCollection(
 	sf *Salesforce,
 	method string,
@@ -109,20 +137,6 @@ func doBatchedRequestsForCollection(
 	}
 
 	return SalesforceResults{Results: results}, nil
-}
-
-func decodeResponseBody(response *http.Response) (value SalesforceResult, err error) {
-	defer func() {
-		if closeErr := response.Body.Close(); closeErr != nil {
-			// If we don't already have an error, use the close error
-			if err == nil {
-				err = closeErr
-			}
-		}
-	}()
-	decoder := json.NewDecoder(response.Body)
-	err = decoder.Decode(&value)
-	return value, err
 }
 
 func checkForExternalIdInList(
@@ -193,24 +207,21 @@ func doInsertOne(sf *Salesforce, sObjectName string, record any) (SalesforceResu
 		return SalesforceResult{}, err
 	}
 
-	resp, err := doRequest(sf.auth, sf.config, requestPayload{
+	resp, reqErr := doRequest(sf.auth, sf.config, requestPayload{
 		method:   http.MethodPost,
 		uri:      "/sobjects/" + sObjectName,
 		content:  jsonType,
 		body:     string(body),
 		compress: sf.config.compressionHeaders,
 	})
-	if err != nil {
-		return SalesforceResult{}, err
+	if reqErr != nil {
+		data, _ := processSingleSalesforceResult(resp)
+		return data, reqErr
 	}
 
-	data, err := decodeResponseBody(resp)
-	if err != nil {
-		fmt.Println("Error decoding: ", err)
-		return SalesforceResult{}, err
-	}
+	data, err := processSingleSalesforceResult(resp)
 
-	return data, nil
+	return data, err
 }
 
 func doUpdateOne(sf *Salesforce, sObjectName string, record any) error {
@@ -282,24 +293,21 @@ func doUpsertOne(
 		return SalesforceResult{}, errors.New("external id should be a string or number")
 	}
 
-	resp, err := doRequest(sf.auth, sf.config, requestPayload{
+	resp, reqErr := doRequest(sf.auth, sf.config, requestPayload{
 		method:   http.MethodPatch,
 		uri:      uri,
 		content:  jsonType,
 		body:     string(body),
 		compress: sf.config.compressionHeaders,
 	})
-	if err != nil {
-		return SalesforceResult{}, err
+	if reqErr != nil {
+		data, _ := processSingleSalesforceResult(resp)
+		return data, reqErr
 	}
 
-	data, err := decodeResponseBody(resp)
-	if err != nil {
-		fmt.Println("Error decoding: ", err)
-		return SalesforceResult{}, err
-	}
+	data, err := processSingleSalesforceResult(resp)
 
-	return data, nil
+	return data, err
 }
 
 func doDeleteOne(sf *Salesforce, sObjectName string, record any) error {
