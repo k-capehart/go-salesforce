@@ -309,9 +309,9 @@ Note that any DML operation that includes an uninitialized struct field, or 0 or
 
 ```go
 type Contact struct {
-	Id        string
-	LastName  string
-	FirstName string
+    Id        string
+    LastName  string
+    FirstName string
 }
 
 contact := Contact{
