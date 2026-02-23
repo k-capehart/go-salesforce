@@ -14,7 +14,7 @@ type configuration struct {
 	apiVersion                   string
 	batchSizeMax                 int
 	bulkBatchSizeMax             int
-	bulkPollTimeout              time.Duration // timeout for waiting on bulk job completion
+	bulkPollTimeout              time.Duration     // timeout for waiting on bulk job completion
 	httpClient                   *http.Client      // HTTP client (created internally)
 	roundTripper                 http.RoundTripper // Custom round tripper
 	shouldValidateAuthentication bool              // Validate session on client creation
