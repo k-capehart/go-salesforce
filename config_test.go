@@ -2,6 +2,7 @@ package salesforce
 
 import (
 	"testing"
+	"time"
 )
 
 func TestWithCompressionHeaders(t *testing.T) {
@@ -181,6 +182,56 @@ func TestWithBulkBatchSizeMax(t *testing.T) {
 	}
 }
 
+func TestWithBulkPollTimeout(t *testing.T) {
+	tests := []struct {
+		name      string
+		timeout   time.Duration
+		wantErr   bool
+		wantValue time.Duration
+	}{
+		{
+			name:      "valid_timeout",
+			timeout:   10 * time.Minute,
+			wantErr:   false,
+			wantValue: 10 * time.Minute,
+		},
+		{
+			name:      "zero_timeout",
+			timeout:   0,
+			wantErr:   true,
+			wantValue: 0,
+		},
+		{
+			name:      "negative_timeout",
+			timeout:   -1 * time.Second,
+			wantErr:   true,
+			wantValue: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := configuration{}
+			config.setDefaults()
+
+			option := WithBulkPollTimeout(tt.timeout)
+			err := option(&config)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("WithBulkPollTimeout() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr && config.bulkPollTimeout != tt.wantValue {
+				t.Errorf(
+					"WithBulkPollTimeout() = %v, want %v",
+					config.bulkPollTimeout,
+					tt.wantValue,
+				)
+			}
+		})
+	}
+}
+
 func TestConfigurationDefaults(t *testing.T) {
 	config := configuration{}
 	config.setDefaults()
@@ -209,6 +260,14 @@ func TestConfigurationDefaults(t *testing.T) {
 			"Expected bulkBatchSizeMax default to be %v, got %v",
 			bulkBatchSizeMax,
 			config.bulkBatchSizeMax,
+		)
+	}
+
+	if config.bulkPollTimeout != bulkPollTimeout {
+		t.Errorf(
+			"Expected bulkPollTimeout default to be %v, got %v",
+			bulkPollTimeout,
+			config.bulkPollTimeout,
 		)
 	}
 }

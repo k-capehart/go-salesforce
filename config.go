@@ -14,6 +14,7 @@ type configuration struct {
 	apiVersion                   string
 	batchSizeMax                 int
 	bulkBatchSizeMax             int
+	bulkPollTimeout              time.Duration     // timeout for waiting on bulk job completion
 	httpClient                   *http.Client      // HTTP client (created internally)
 	roundTripper                 http.RoundTripper // Custom round tripper
 	shouldValidateAuthentication bool              // Validate session on client creation
@@ -26,6 +27,7 @@ func (c *configuration) setDefaults() {
 	c.apiVersion = apiVersion
 	c.batchSizeMax = batchSizeMax
 	c.bulkBatchSizeMax = bulkBatchSizeMax
+	c.bulkPollTimeout = bulkPollTimeout
 	c.httpTimeout = httpDefaultTimeout
 }
 
@@ -104,6 +106,17 @@ func WithBulkBatchSizeMax(size int) Option {
 			return errors.New("bulk batch size max must be between 1 and 10000")
 		}
 		c.bulkBatchSizeMax = size
+		return nil
+	}
+}
+
+// WithBulkPollTimeout sets the timeout for polling bulk job results.
+func WithBulkPollTimeout(timeout time.Duration) Option {
+	return func(c *configuration) error {
+		if timeout <= 0 {
+			return errors.New("bulk poll timeout must be greater than 0")
+		}
+		c.bulkPollTimeout = timeout
 		return nil
 	}
 }
