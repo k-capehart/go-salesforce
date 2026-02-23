@@ -43,6 +43,7 @@ const (
 	csvType                       = "text/csv"
 	batchSizeMax                  = 200
 	bulkBatchSizeMax              = 10000
+	bulkPollTimeout               = time.Duration(1 * time.Minute)
 	invalidSessionIdError         = "INVALID_SESSION_ID"
 	httpDefaultMaxIdleConnections = 10
 	httpDefaultIdleConnTimeout    = time.Duration(30 * time.Second)

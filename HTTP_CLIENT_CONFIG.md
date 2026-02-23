@@ -57,6 +57,7 @@ func main() {
 | `WithCompressionHeaders(enabled bool)` | Enable/disable compression | false |
 | `WithBatchSizeMax(size int)` | Set max batch size for collections | 200 |
 | `WithBulkBatchSizeMax(size int)` | Set max batch size for bulk operations | 10000 |
+| `WithBulkPollTimeout(timeout time.Duration)` | Set timeout for polling bulk results | 1m |
 
 ## Default HTTP Client Configuration
 
