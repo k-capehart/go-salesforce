@@ -48,6 +48,7 @@ const (
 	httpDefaultMaxIdleConnections = 10
 	httpDefaultIdleConnTimeout    = time.Duration(30 * time.Second)
 	httpDefaultTimeout            = time.Duration(120 * time.Second)
+	bulkQueryMaxRecords           = -1 // use server default
 )
 
 func validateOfTypeSlice(data any) error {
