@@ -1,8 +1,10 @@
 package salesforce
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -826,6 +828,54 @@ func Test_waitForJobResults(t *testing.T) {
 				t.Errorf("waitForQueryResults() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func Test_waitForJobResults_UsesConfiguredTimeout(t *testing.T) {
+	jobResults := BulkJobResults{
+		Id:    "1234",
+		State: jobStateOpen,
+	}
+	server, sfAuth := setupTestServer(jobResults, http.StatusOK)
+	defer server.Close()
+
+	sf := buildSalesforceStruct(&sfAuth)
+	sf.config.bulkPollTimeout = 2 * time.Millisecond
+
+	err := waitForJobResults(
+		sf,
+		"1234",
+		ingestJobType,
+		time.Millisecond,
+	)
+
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("waitForJobResults() error = %v, want %v", err, context.DeadlineExceeded)
+	}
+}
+
+func Test_waitForJobResultsAsync_UsesConfiguredTimeout(t *testing.T) {
+	jobResults := BulkJobResults{
+		Id:    "1234",
+		State: jobStateOpen,
+	}
+	server, sfAuth := setupTestServer(jobResults, http.StatusOK)
+	defer server.Close()
+
+	sf := buildSalesforceStruct(&sfAuth)
+	sf.config.bulkPollTimeout = 2 * time.Millisecond
+	c := make(chan error)
+
+	go waitForJobResultsAsync(
+		sf,
+		"1234",
+		ingestJobType,
+		time.Millisecond,
+		c,
+	)
+	err := <-c
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("waitForJobResultsAsync() error = %v, want %v", err, context.DeadlineExceeded)
 	}
 }
 

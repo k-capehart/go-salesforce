@@ -202,7 +202,7 @@ func waitForJobResultsAsync(
 	err := pollUntilContextTimeout(
 		context.Background(),
 		interval,
-		time.Minute,
+		sf.config.bulkPollTimeout,
 		func(context.Context) (bool, error) {
 			bulkJob, reqErr := getJobResults(sf, jobType, bulkJobId)
 			if reqErr != nil {
@@ -223,7 +223,7 @@ func waitForJobResults(
 	err := pollUntilContextTimeout(
 		context.Background(),
 		interval,
-		time.Minute,
+		sf.config.bulkPollTimeout,
 		func(context.Context) (bool, error) {
 			bulkJob, reqErr := getJobResults(sf, jobType, bulkJobId)
 			if reqErr != nil {
