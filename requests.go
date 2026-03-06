@@ -137,7 +137,7 @@ func processSalesforceError(
 	for _, sfError := range sfErrors {
 		if sfError.ErrorCode == invalidSessionIdError &&
 			!payload.retry { // only attempt to refresh the session once
-			err = refreshSession(auth)
+			err = refreshSession(config, auth)
 			if err != nil {
 				return &resp, err
 			}

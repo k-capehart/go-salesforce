@@ -191,7 +191,7 @@ Optional configuration:
 - `func WithAPIVersion(version string) Option` - set API version manually instead of using default
 - `func WithBatchSizeMax(size int)` - for collections API
 - `func WithBulkBatchSizeMax(size int) Option` - for Bulk API
-- `func WithRoundTripper(rt http.RoundTripper) Option` - for http requests
+- `func WithRoundTripper(rt http.RoundTripper) Option` - for http requests (e.g., custom transport with proxy)
 - `func WithHTTPTimeout(timeout time.Duration) Option` - set custom timeout
 - `func WithValidateAuthentication(validate bool) Option` - optionally skip validation during certain auth flows
 

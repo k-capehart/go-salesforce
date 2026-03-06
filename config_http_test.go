@@ -1,7 +1,10 @@
 package salesforce
 
 import (
+	"io"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 )
@@ -145,6 +148,70 @@ func TestConfigurationHTTPClientDefaults(t *testing.T) {
 			)
 		}
 	})
+}
+
+func TestConfigurationWithProxy(t *testing.T) {
+	// 1. Create a dummy target server (we expect the proxy to intercept before this is hit)
+	targetHit := false
+	targetServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		targetHit = true
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("target reached"))
+	}))
+	defer targetServer.Close()
+
+	// 2. Create a proxy server
+	proxyHit := false
+	proxyServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxyHit = true
+		// Verify this is a proxy request for the target server
+		if r.URL.Host != targetServer.Listener.Addr().String() {
+			t.Errorf("Proxy received request for unexpected host: %s", r.URL.Host)
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("proxy reached"))
+	}))
+	defer proxyServer.Close()
+
+	proxyURL, _ := url.Parse(proxyServer.URL)
+
+	// 3. Configure custom round tripper with proxy
+	customRoundTripper := &http.Transport{
+		Proxy: http.ProxyURL(proxyURL),
+	}
+
+	config := &configuration{}
+	config.setDefaults()
+	err := WithRoundTripper(customRoundTripper)(config)
+	if err != nil {
+		t.Fatalf("Expected no error from WithRoundTripper, got %v", err)
+	}
+	config.configureHttpClient()
+
+	// 4. Make a request to the target server using the configured client
+	req, err := http.NewRequest(http.MethodGet, targetServer.URL, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	resp, err := config.httpClient.Do(req)
+	if err != nil {
+		t.Fatalf("Expected no error executing request, got %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	// 5. Verify the request went through the proxy and not directly to the target
+	if !proxyHit {
+		t.Errorf("Expected request to go through proxy but it did not")
+	}
+	if targetHit {
+		t.Errorf("Expected request to be intercepted by proxy but target was hit directly")
+	}
+	if string(body) != "proxy reached" {
+		t.Errorf("Expected response from proxy, got %s", string(body))
+	}
 }
 
 func TestSalesforceGetHTTPClient(t *testing.T) {

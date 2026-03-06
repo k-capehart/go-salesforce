@@ -41,6 +41,38 @@ func main() {
 }
 ```
 
+### Custom Round Tripper with Proxy
+
+```go
+func main() {
+    proxyURL, _ := url.Parse("http://my-proxy:8080")
+    
+    // Create a custom round tripper that uses a proxy
+    customRoundTripper := &http.Transport{
+        Proxy: http.ProxyURL(proxyURL),
+        TLSClientConfig: &tls.Config{
+            MinVersion: tls.VersionTLS12,
+        },
+        MaxIdleConns:       10,
+        IdleConnTimeout:    30 * time.Second,
+        DisableCompression: false,
+    }
+
+    creds := salesforce.Creds{
+        // ... your credentials
+    }
+
+    // Initialize with custom round tripper
+    sf, err := salesforce.Init(creds, 
+        salesforce.WithRoundTripper(customRoundTripper),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+
 ## Configuration Options
 
 ### HTTP Client Options
