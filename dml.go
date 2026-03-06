@@ -21,7 +21,7 @@ func convertToMap(obj any) (map[string]any, error) {
 	if _, ok := obj.(map[string]any); ok {
 		recordMap = obj.(map[string]any)
 	} else {
-		err := mapstructure.Decode(obj, &recordMap)
+		err := mapstructureDecode(obj, &recordMap)
 		if err != nil {
 			return nil, errors.New("issue decoding salesforce object, need a key value pair (custom struct or map)")
 		}
@@ -34,7 +34,7 @@ func convertToSliceOfMaps(obj any) ([]map[string]any, error) {
 	if _, ok := obj.(map[string]any); ok {
 		recordMap = obj.([]map[string]any)
 	} else {
-		err := mapstructure.Decode(obj, &recordMap)
+		err := mapstructureDecode(obj, &recordMap)
 		if err != nil {
 			return nil, errors.New("issue decoding salesforce object, need a key value pair (custom struct or map)")
 		}
@@ -163,6 +163,11 @@ func convertToString(value any) (string, bool) {
 			return "", false
 		}
 		return strconv.Itoa(typedValue), true
+	case int64:
+		if typedValue == 0 {
+			return "", false
+		}
+		return strconv.FormatInt(typedValue, 10), true
 	case float64:
 		if typedValue == 0 {
 			return "", false
@@ -456,4 +461,21 @@ func doDeleteCollection(
 	}
 
 	return SalesforceResults{Results: results}, nil
+}
+
+func mapstructureDecode(input any, output any) error {
+	config := &mapstructure.DecoderConfig{
+		Metadata: nil,
+		Result:   output,
+		// mapstructure is included here to maintain strict backwards compatibility, even though there was no
+		// documentation that this tag was supported. It should be removed in the next major version.
+		TagName: "salesforce,mapstructure",
+	}
+
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return err
+	}
+
+	return decoder.Decode(input)
 }

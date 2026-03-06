@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/k-capehart/go-salesforce/v3"
 )
@@ -37,6 +38,7 @@ func main() {
 		salesforce.WithAPIVersion("v58.0"),
 		salesforce.WithBatchSizeMax(150),
 		salesforce.WithBulkBatchSizeMax(8000),
+		salesforce.WithBulkPollTimeout(10*time.Minute),
 		salesforce.WithCompressionHeaders(true),
 	)
 	if err != nil {

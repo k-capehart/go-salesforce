@@ -1017,6 +1017,11 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 		Name                string
 	}
 
+	type accountWithInt64Id struct {
+		NumberExternalId__c int64
+		Name                string
+	}
+
 	successfulResult := SalesforceResult{
 		Id:      "1234",
 		Errors:  []SalesforceErrorMessage{},
@@ -1090,6 +1095,22 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "successful_upsert_with_int64",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:         "Account",
+				externalIdFieldName: "NumberExternalId__c",
+				record: accountWithInt64Id{
+					NumberExternalId__c: 1234,
+					Name:                "test account",
+				},
+			},
+			want:    successfulResult,
+			wantErr: false,
+		},
+		{
 			name: "validation_fail",
 			fields: fields{
 				auth: &sfAuth,
@@ -1141,6 +1162,21 @@ func TestSalesforce_UpsertOne(t *testing.T) {
 				sObjectName:         "Account",
 				externalIdFieldName: "NumberExternalId__c",
 				record: accountWithFloatId{
+					Name: "test account",
+				},
+			},
+			want:    SalesforceResult{},
+			wantErr: true,
+		},
+		{
+			name: "fail_no_external_id_with_int64",
+			fields: fields{
+				auth: &sfAuth,
+			},
+			args: args{
+				sObjectName:         "Account",
+				externalIdFieldName: "NumberExternalId__c",
+				record: accountWithInt64Id{
 					Name: "test account",
 				},
 			},
