@@ -1010,8 +1010,8 @@ func Test_mapstructureDecode_StringToTime(t *testing.T) {
 	}
 
 	input := map[string]any{
-		"timeField":  "2023-10-25T12:00:00Z",
-		"ptrField":   "2023-10-25T12:00:00Z",
+		"timeField":  "2023-10-25T12:00:00.000+0000",
+		"ptrField":   "2023-10-25T12:00:00.000+0000",
 		"emptyTime":  "",
 		"emptyPtr":   "",
 		"otherField": "test",
@@ -1024,7 +1024,7 @@ func Test_mapstructureDecode_StringToTime(t *testing.T) {
 		t.Fatalf("mapstructureDecode failed: %v", err)
 	}
 
-	expectedTime, _ := time.Parse(time.RFC3339, "2023-10-25T12:00:00Z")
+	expectedTime, _ := time.Parse("2006-01-02T15:04:05.000-0700", "2023-10-25T12:00:00.000+0000")
 
 	if !output.TimeField.Equal(expectedTime) {
 		t.Errorf("expected TimeField %v, got %v", expectedTime, output.TimeField)
