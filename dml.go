@@ -472,7 +472,7 @@ func mapstructureDecode(input any, output any) error {
 		// mapstructure is included here to maintain strict backwards compatibility, even though there was no
 		// documentation that this tag was supported. It should be removed in the next major version.
 		TagName:    "salesforce,mapstructure",
-		DecodeHook: TimeToStringHookFunc(time.RFC3339),
+		DecodeHook: StringToTimeHookFunc(time.RFC3339),
 	}
 
 	decoder, err := mapstructure.NewDecoder(config)
@@ -483,16 +483,31 @@ func mapstructureDecode(input any, output any) error {
 	return decoder.Decode(input)
 }
 
-func TimeToStringHookFunc(layout string) mapstructure.DecodeHookFunc {
+func StringToTimeHookFunc(layout string) mapstructure.DecodeHookFunc {
 	return func(f reflect.Type, t reflect.Type, data any) (any, error) {
-		// Handle both time.Time and *time.Time
-		if t.Kind() == reflect.String || t.Kind() == reflect.Interface {
-			if tm, ok := data.(time.Time); ok {
-				return tm.Format(layout), nil
+		if t == reflect.TypeOf(time.Time{}) {
+			str, ok := data.(string)
+			if !ok {
+				return data, nil
 			}
-			if tm, ok := data.(*time.Time); ok && tm != nil {
-				return tm.Format(layout), nil
+			if str == "" {
+				return time.Time{}, nil
 			}
+			return time.Parse(layout, str)
+		}
+		if t == reflect.TypeOf((*time.Time)(nil)) {
+			str, ok := data.(string)
+			if !ok {
+				return data, nil
+			}
+			if str == "" {
+				return nil, nil
+			}
+			parsedTime, err := time.Parse(layout, str)
+			if err != nil {
+				return nil, err
+			}
+			return &parsedTime, nil
 		}
 		return data, nil
 	}
