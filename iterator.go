@@ -82,6 +82,8 @@ func (it *bulkJobQueryIterator) Decode(val any) error {
 		return fmt.Errorf("NewDecoder: %w", err)
 	}
 
+	dec.Tag = it.config.tagName
+
 	if err := dec.Decode(val); err != nil && err != io.EOF {
 		return fmt.Errorf("Decode: %w", err)
 	}

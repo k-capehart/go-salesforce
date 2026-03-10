@@ -16,12 +16,12 @@ type sObjectCollection struct {
 	Records   []map[string]any `json:"records"`
 }
 
-func convertToMap(obj any) (map[string]any, error) {
+func convertToMap(obj any, tagName string) (map[string]any, error) {
 	var recordMap map[string]any
 	if _, ok := obj.(map[string]any); ok {
 		recordMap = obj.(map[string]any)
 	} else {
-		err := mapstructureDecode(obj, &recordMap)
+		err := mapstructureDecode(obj, &recordMap, tagName)
 		if err != nil {
 			return nil, errors.New("issue decoding salesforce object, need a key value pair (custom struct or map)")
 		}
@@ -29,12 +29,12 @@ func convertToMap(obj any) (map[string]any, error) {
 	return recordMap, nil
 }
 
-func convertToSliceOfMaps(obj any) ([]map[string]any, error) {
+func convertToSliceOfMaps(obj any, tagName string) ([]map[string]any, error) {
 	var recordMap []map[string]any
 	if _, ok := obj.(map[string]any); ok {
 		recordMap = obj.([]map[string]any)
 	} else {
-		err := mapstructureDecode(obj, &recordMap)
+		err := mapstructureDecode(obj, &recordMap, tagName)
 		if err != nil {
 			return nil, errors.New("issue decoding salesforce object, need a key value pair (custom struct or map)")
 		}
@@ -181,7 +181,7 @@ func convertToString(value any) (string, bool) {
 }
 
 func doInsertOne(sf *Salesforce, sObjectName string, record any) (SalesforceResult, error) {
-	recordMap, err := convertToMap(record)
+	recordMap, err := convertToMap(record, sf.config.tagName)
 	if err != nil {
 		return SalesforceResult{}, err
 	}
@@ -214,7 +214,7 @@ func doInsertOne(sf *Salesforce, sObjectName string, record any) (SalesforceResu
 }
 
 func doUpdateOne(sf *Salesforce, sObjectName string, record any) error {
-	recordMap, err := convertToMap(record)
+	recordMap, err := convertToMap(record, sf.config.tagName)
 	if err != nil {
 		return err
 	}
@@ -252,7 +252,7 @@ func doUpsertOne(
 	fieldName string,
 	record any,
 ) (SalesforceResult, error) {
-	recordMap, err := convertToMap(record)
+	recordMap, err := convertToMap(record, sf.config.tagName)
 	if err != nil {
 		return SalesforceResult{}, err
 	}
@@ -303,7 +303,7 @@ func doUpsertOne(
 }
 
 func doDeleteOne(sf *Salesforce, sObjectName string, record any) error {
-	recordMap, err := convertToMap(record)
+	recordMap, err := convertToMap(record, sf.config.tagName)
 	if err != nil {
 		return err
 	}
@@ -332,7 +332,7 @@ func doInsertCollection(
 	records any,
 	batchSize int,
 ) (SalesforceResults, error) {
-	recordMap, err := convertToSliceOfMaps(records)
+	recordMap, err := convertToSliceOfMaps(records, sf.config.tagName)
 	if err != nil {
 		return SalesforceResults{}, err
 	}
@@ -356,7 +356,7 @@ func doUpdateCollection(
 	records any,
 	batchSize int,
 ) (SalesforceResults, error) {
-	recordMap, err := convertToSliceOfMaps(records)
+	recordMap, err := convertToSliceOfMaps(records, sf.config.tagName)
 	if err != nil {
 		return SalesforceResults{}, err
 	}
@@ -384,7 +384,7 @@ func doUpsertCollection(
 	records any,
 	batchSize int,
 ) (SalesforceResults, error) {
-	recordMap, err := convertToSliceOfMaps(records)
+	recordMap, err := convertToSliceOfMaps(records, sf.config.tagName)
 	if err != nil {
 		return SalesforceResults{}, err
 	}
@@ -402,7 +402,7 @@ func doDeleteCollection(
 	records any,
 	batchSize int,
 ) (SalesforceResults, error) {
-	recordMap, err := convertToSliceOfMaps(records)
+	recordMap, err := convertToSliceOfMaps(records, sf.config.tagName)
 	if err != nil {
 		return SalesforceResults{}, err
 	}
@@ -463,13 +463,16 @@ func doDeleteCollection(
 	return SalesforceResults{Results: results}, nil
 }
 
-func mapstructureDecode(input any, output any) error {
+func mapstructureDecode(input any, output any, tagName string) error {
+	if tagName == "" {
+		tagName = "salesforce"
+	}
 	config := &mapstructure.DecoderConfig{
 		Metadata: nil,
 		Result:   output,
 		// mapstructure is included here to maintain strict backwards compatibility, even though there was no
 		// documentation that this tag was supported. It should be removed in the next major version.
-		TagName: "salesforce,mapstructure",
+		TagName: tagName + ",mapstructure",
 	}
 
 	decoder, err := mapstructure.NewDecoder(config)

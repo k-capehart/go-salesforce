@@ -482,7 +482,7 @@ func doBulkJob(
 	waitForResults bool,
 	assignmentRuleId string,
 ) ([]string, error) {
-	recordMap, err := convertToSliceOfMaps(records)
+	recordMap, err := convertToSliceOfMaps(records, sf.config.tagName)
 	if err != nil {
 		return []string{}, err
 	}

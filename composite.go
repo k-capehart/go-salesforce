@@ -143,7 +143,7 @@ func doInsertComposite(
 	allOrNone bool,
 	batchSize int,
 ) (SalesforceResults, error) {
-	recordMap, err := convertToSliceOfMaps(records)
+	recordMap, err := convertToSliceOfMaps(records, sf.config.tagName)
 	if err != nil {
 		return SalesforceResults{}, err
 	}
@@ -179,7 +179,7 @@ func doUpdateComposite(
 	allOrNone bool,
 	batchSize int,
 ) (SalesforceResults, error) {
-	recordMap, err := convertToSliceOfMaps(records)
+	recordMap, err := convertToSliceOfMaps(records, sf.config.tagName)
 	if err != nil {
 		return SalesforceResults{}, err
 	}
@@ -219,7 +219,7 @@ func doUpsertComposite(
 	allOrNone bool,
 	batchSize int,
 ) (SalesforceResults, error) {
-	recordMap, err := convertToSliceOfMaps(records)
+	recordMap, err := convertToSliceOfMaps(records, sf.config.tagName)
 	if err != nil {
 		return SalesforceResults{}, err
 	}
@@ -254,7 +254,7 @@ func doDeleteComposite(
 	allOrNone bool,
 	batchSize int,
 ) (SalesforceResults, error) {
-	recordMap, err := convertToSliceOfMaps(records)
+	recordMap, err := convertToSliceOfMaps(records, sf.config.tagName)
 	if err != nil {
 		return SalesforceResults{}, err
 	}
