@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/go-viper/mapstructure/v2"
 )
@@ -469,7 +471,8 @@ func mapstructureDecode(input any, output any) error {
 		Result:   output,
 		// mapstructure is included here to maintain strict backwards compatibility, even though there was no
 		// documentation that this tag was supported. It should be removed in the next major version.
-		TagName: "salesforce,mapstructure",
+		TagName:    "salesforce,mapstructure",
+		DecodeHook: TimeToStringHookFunc(time.RFC3339),
 	}
 
 	decoder, err := mapstructure.NewDecoder(config)
@@ -478,4 +481,19 @@ func mapstructureDecode(input any, output any) error {
 	}
 
 	return decoder.Decode(input)
+}
+
+func TimeToStringHookFunc(layout string) mapstructure.DecodeHookFunc {
+	return func(f reflect.Type, t reflect.Type, data any) (any, error) {
+		// Handle both time.Time and *time.Time
+		if t.Kind() == reflect.String || t.Kind() == reflect.Interface {
+			if tm, ok := data.(time.Time); ok {
+				return tm.Format(layout), nil
+			}
+			if tm, ok := data.(*time.Time); ok && tm != nil {
+				return tm.Format(layout), nil
+			}
+		}
+		return data, nil
+	}
 }
