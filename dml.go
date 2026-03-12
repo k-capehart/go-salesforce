@@ -464,9 +464,6 @@ func doDeleteCollection(
 }
 
 func mapstructureDecode(input any, output any, tagName string) error {
-	if tagName == "" {
-		tagName = "salesforce"
-	}
 	config := &mapstructure.DecoderConfig{
 		Metadata: nil,
 		Result:   output,
