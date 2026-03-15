@@ -856,6 +856,11 @@ func (sf *Salesforce) GetHTTPClient() *http.Client {
 	return sf.config.httpClient
 }
 
+// GetBulkQueryMaxRecords returns the configured maximum number of records per set of results in a bulk query
+func (sf *Salesforce) GetBulkQueryMaxRecords() int {
+	return sf.config.bulkQueryMaxRecords
+}
+
 func (sf *Salesforce) GetAccessToken() string {
 	if sf.auth == nil {
 		return ""
