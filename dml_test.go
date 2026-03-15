@@ -998,3 +998,44 @@ func Test_doDeleteCollection(t *testing.T) {
 		})
 	}
 }
+
+func Test_convertToString(t *testing.T) {
+	strVal := "test"
+	intVal := 123
+	int64Val := int64(123)
+	floatVal := 123.45
+
+	tests := []struct {
+		name      string
+		value     any
+		wantStr   string
+		wantValid bool
+	}{
+		{"string", "test", "test", true},
+		{"int", 123, "123", true},
+		{"int64", int64(123), "123", true},
+		{"float64", 123.45, "123.45", true},
+		{"zero int", 0, "", false},
+		{"zero int64", int64(0), "", false},
+		{"zero float64", float64(0), "", false},
+		{"pointer to string", &strVal, "test", true},
+		{"pointer to int", &intVal, "123", true},
+		{"pointer to int64", &int64Val, "123", true},
+		{"pointer to float64", &floatVal, "123.45", true},
+		{"nil", nil, "", false},
+		{"nil pointer", (*string)(nil), "", false},
+		{"unsupported type", []string{}, "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotStr, gotValid := convertToString(tt.value)
+			if gotStr != tt.wantStr {
+				t.Errorf("convertToString() gotStr = %v, want %v", gotStr, tt.wantStr)
+			}
+			if gotValid != tt.wantValid {
+				t.Errorf("convertToString() gotValid = %v, want %v", gotValid, tt.wantValid)
+			}
+		})
+	}
+}
