@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -363,11 +364,11 @@ func mapsToCSV(maps []map[string]any) (string, error) {
 	for _, m := range maps {
 		row := make([]string, 0, len(headers))
 		for _, header := range headers {
-			val := m[header]
-			if val == nil {
+			val := reflect.Indirect(reflect.ValueOf(m[header]))
+			if !val.IsValid() {
 				row = append(row, "")
 			} else {
-				row = append(row, fmt.Sprintf("%v", val))
+				row = append(row, fmt.Sprintf("%v", val.Interface()))
 			}
 		}
 		err := w.Write(row)
