@@ -271,3 +271,53 @@ func TestConfigurationDefaults(t *testing.T) {
 		)
 	}
 }
+
+func TestWithBulkQueryMaxRecords(t *testing.T) {
+	tests := []struct {
+		name       string
+		maxRecords int
+		wantErr    bool
+		wantValue  int
+	}{
+		{
+			name:       "valid_max_records",
+			maxRecords: 5000,
+			wantErr:    false,
+			wantValue:  5000,
+		},
+		{
+			name:       "zero_max_records",
+			maxRecords: 0,
+			wantErr:    true,
+			wantValue:  0,
+		},
+		{
+			name:       "negative_max_records",
+			maxRecords: -1,
+			wantErr:    true,
+			wantValue:  0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := configuration{}
+			config.setDefaults()
+
+			option := WithBulkQueryMaxRecords(tt.maxRecords)
+			err := option(&config)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("WithBulkQueryMaxRecords() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr && config.bulkQueryMaxRecords != tt.wantValue {
+				t.Errorf(
+					"WithBulkQueryMaxRecords() = %v, want %v",
+					config.bulkQueryMaxRecords,
+					tt.wantValue,
+				)
+			}
+		})
+	}
+}

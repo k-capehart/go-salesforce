@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/afero"
@@ -290,9 +291,7 @@ func getQueryJobResults(
 	locator string,
 ) (bulkJobQueryResults, error) {
 	uri := "/jobs/query/" + bulkJobId + "/results"
-	if locator != "" {
-		uri = uri + "/?locator=" + locator
-	}
+	uri = addParametersToBulkQueryURI(uri, locator, sf.config.bulkQueryMaxRecords)
 	resp, err := doRequest(
 		sf.auth,
 		sf.config,
@@ -641,4 +640,18 @@ func doQueryBulk(sf *Salesforce, filePath string, query string) error {
 	}
 
 	return nil
+}
+
+func addParametersToBulkQueryURI(uri string, locator string, maxRecords int) string {
+	if locator != "" {
+		uri = uri + "/?locator=" + locator
+	}
+	if maxRecords > 0 {
+		if strings.Contains(uri, "?") {
+			uri = uri + "&maxRecords=" + strconv.Itoa(maxRecords)
+		} else {
+			uri = uri + "/?maxRecords=" + strconv.Itoa(maxRecords)
+		}
+	}
+	return uri
 }
