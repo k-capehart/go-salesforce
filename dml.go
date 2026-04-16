@@ -159,6 +159,12 @@ func checkForExternalId(
 }
 
 func convertToString(value any) (string, bool) {
+	// Handle pointers
+	v := reflect.Indirect(reflect.ValueOf(value))
+	if !v.IsValid() {
+		return "", false
+	}
+	value = v.Interface()
 	switch typedValue := value.(type) {
 	case int:
 		if typedValue == 0 {
