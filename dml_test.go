@@ -47,7 +47,7 @@ func Test_convertToMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := convertToMap(tt.args.obj)
+			got, err := convertToMap(tt.args.obj, "salesforce")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("convertToMap() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -106,7 +106,7 @@ func Test_convertToSliceOfMaps(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := convertToSliceOfMaps(tt.args.obj)
+			got, err := convertToSliceOfMaps(tt.args.obj, "salesforce")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("convertToSliceOfMaps() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1018,7 +1018,7 @@ func Test_mapstructureDecode_StringToTime(t *testing.T) {
 	}
 
 	var output TestStruct
-	err := mapstructureDecode(input, &output)
+	err := mapstructureDecode(input, &output, "salesforce")
 	if err != nil {
 		t.Fatalf("mapstructureDecode failed: %v", err)
 	}
@@ -1085,4 +1085,162 @@ func Test_convertToString(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_mapstructureDecode_CustomTag(t *testing.T) {
+	t.Run("json_tag", func(t *testing.T) {
+		type TestStruct struct {
+			Field1 string `json:"field1"`
+			Field2 int    `json:"field2"`
+		}
+
+		input := map[string]any{
+			"field1": "test value",
+			"field2": 42,
+		}
+
+		var output TestStruct
+		err := mapstructureDecode(input, &output, "json")
+		if err != nil {
+			t.Errorf("mapstructureDecode() error = %v", err)
+			return
+		}
+
+		if output.Field1 != "test value" {
+			t.Errorf("Field1 = %v, want 'test value'", output.Field1)
+		}
+		if output.Field2 != 42 {
+			t.Errorf("Field2 = %v, want 42", output.Field2)
+		}
+	})
+
+	t.Run("csv_tag", func(t *testing.T) {
+		type TestStruct struct {
+			Field1 string `csv:"csvField1"`
+			Field2 int    `csv:"csvField2"`
+		}
+
+		input := map[string]any{
+			"csvField1": "csv test",
+			"csvField2": 100,
+		}
+
+		var output TestStruct
+		err := mapstructureDecode(input, &output, "csv")
+		if err != nil {
+			t.Errorf("mapstructureDecode() error = %v", err)
+			return
+		}
+
+		if output.Field1 != "csv test" {
+			t.Errorf("Field1 = %v, want 'csv test'", output.Field1)
+		}
+		if output.Field2 != 100 {
+			t.Errorf("Field2 = %v, want 100", output.Field2)
+		}
+	})
+
+	t.Run("salesforce_tag", func(t *testing.T) {
+		type TestStruct struct {
+			Field1 string `salesforce:"Name"`
+			Field2 int    `salesforce:"Active"`
+		}
+
+		input := map[string]any{
+			"Name":   "Account Name",
+			"Active": 1,
+		}
+
+		var output TestStruct
+		err := mapstructureDecode(input, &output, "salesforce")
+		if err != nil {
+			t.Errorf("mapstructureDecode() error = %v", err)
+			return
+		}
+
+		if output.Field1 != "Account Name" {
+			t.Errorf("Field1 = %v, want 'Account Name'", output.Field1)
+		}
+		if output.Field2 != 1 {
+			t.Errorf("Field2 = %v, want 1", output.Field2)
+		}
+	})
+
+	t.Run("mapstructure_tag_backward_compatibility", func(t *testing.T) {
+		type TestStruct struct {
+			Field1 string `mapstructure:"mapField1"`
+			Field2 int    `mapstructure:"mapField2"`
+		}
+
+		input := map[string]any{
+			"mapField1": "mapstructure value",
+			"mapField2": 999,
+		}
+
+		var output TestStruct
+		err := mapstructureDecode(input, &output, "salesforce")
+		if err != nil {
+			t.Errorf("mapstructureDecode() error = %v", err)
+			return
+		}
+
+		if output.Field1 != "mapstructure value" {
+			t.Errorf("Field1 = %v, want 'mapstructure value'", output.Field1)
+		}
+		if output.Field2 != 999 {
+			t.Errorf("Field2 = %v, want 999", output.Field2)
+		}
+	})
+
+	t.Run("mixed_tags_salesforce_and_mapstructure", func(t *testing.T) {
+		type TestStruct struct {
+			Field1 string `salesforce:"sfField"`
+			Field2 int    `                     mapstructure:"mapField"`
+		}
+
+		input := map[string]any{
+			"sfField":  "salesforce field",
+			"mapField": 123,
+		}
+
+		var output TestStruct
+		err := mapstructureDecode(input, &output, "salesforce")
+		if err != nil {
+			t.Errorf("mapstructureDecode() error = %v", err)
+			return
+		}
+
+		if output.Field1 != "salesforce field" {
+			t.Errorf("Field1 = %v, want 'salesforce field'", output.Field1)
+		}
+		if output.Field2 != 123 {
+			t.Errorf("Field2 = %v, want 123", output.Field2)
+		}
+	})
+
+	t.Run("custom_tag_with_mapstructure_fallback", func(t *testing.T) {
+		type TestStruct struct {
+			Field1 string `json:"jsonField"`
+			Field2 int    `                 mapstructure:"mapField"`
+		}
+
+		input := map[string]any{
+			"jsonField": "json value",
+			"mapField":  456,
+		}
+
+		var output TestStruct
+		err := mapstructureDecode(input, &output, "json")
+		if err != nil {
+			t.Errorf("mapstructureDecode() error = %v", err)
+			return
+		}
+
+		if output.Field1 != "json value" {
+			t.Errorf("Field1 = %v, want 'json value'", output.Field1)
+		}
+		if output.Field2 != 456 {
+			t.Errorf("Field2 = %v, want 456", output.Field2)
+		}
+	})
 }

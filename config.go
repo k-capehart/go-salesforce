@@ -19,6 +19,7 @@ type configuration struct {
 	roundTripper                 http.RoundTripper // Custom round tripper
 	shouldValidateAuthentication bool              // Validate session on client creation
 	httpTimeout                  time.Duration     // HTTP client timeout
+	tagName                      string            // Tag name for mapstructure and csvutil decoders
 	bulkQueryMaxRecords          int               // query parameter for bulk queries to use to split up large results
 }
 
@@ -30,6 +31,7 @@ func (c *configuration) setDefaults() {
 	c.bulkBatchSizeMax = bulkBatchSizeMax
 	c.bulkPollTimeout = bulkPollTimeout
 	c.httpTimeout = httpDefaultTimeout
+	c.tagName = "salesforce"
 	c.bulkQueryMaxRecords = bulkQueryMaxRecords
 }
 
@@ -149,6 +151,17 @@ func WithHTTPTimeout(timeout time.Duration) Option {
 func WithValidateAuthentication(validate bool) Option {
 	return func(c *configuration) error {
 		c.shouldValidateAuthentication = validate
+		return nil
+	}
+}
+
+// WithTagName sets the default tag name used for decoding responses
+func WithTagName(tagName string) Option {
+	return func(c *configuration) error {
+		if tagName == "" {
+			return errors.New("tag name cannot be empty")
+		}
+		c.tagName = tagName
 		return nil
 	}
 }

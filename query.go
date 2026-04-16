@@ -55,7 +55,7 @@ func performQuery(sf *Salesforce, query string, sObject any) error {
 		}
 	}
 
-	sObjectError := mapstructureDecode(queryResp.Records, sObject)
+	sObjectError := mapstructureDecode(queryResp.Records, sObject, sf.config.tagName)
 	if sObjectError != nil {
 		return sObjectError
 	}
