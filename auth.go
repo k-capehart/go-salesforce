@@ -173,7 +173,11 @@ func doAuth(config *configuration, url string, body *strings.Reader) (*authentic
 	}
 
 	defer func() {
-		err = resp.Body.Close()
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			if err == nil {
+				err = closeErr
+			}
+		}
 	}()
 	return auth, err
 }

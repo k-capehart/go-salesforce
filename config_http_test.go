@@ -153,24 +153,34 @@ func TestConfigurationHTTPClientDefaults(t *testing.T) {
 func TestConfigurationWithProxy(t *testing.T) {
 	// 1. Create a dummy target server (we expect the proxy to intercept before this is hit)
 	targetHit := false
-	targetServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		targetHit = true
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("target reached"))
-	}))
+	targetServer := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			targetHit = true
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte("target reached"))
+			if err != nil {
+				t.Errorf("Failed to write response: %v", err)
+			}
+		}),
+	)
 	defer targetServer.Close()
 
 	// 2. Create a proxy server
 	proxyHit := false
-	proxyServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		proxyHit = true
-		// Verify this is a proxy request for the target server
-		if r.URL.Host != targetServer.Listener.Addr().String() {
-			t.Errorf("Proxy received request for unexpected host: %s", r.URL.Host)
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("proxy reached"))
-	}))
+	proxyServer := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			proxyHit = true
+			// Verify this is a proxy request for the target server
+			if r.URL.Host != targetServer.Listener.Addr().String() {
+				t.Errorf("Proxy received request for unexpected host: %s", r.URL.Host)
+			}
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte("proxy reached"))
+			if err != nil {
+				t.Errorf("Failed to write response: %v", err)
+			}
+		}),
+	)
 	defer proxyServer.Close()
 
 	proxyURL, _ := url.Parse(proxyServer.URL)
@@ -198,7 +208,11 @@ func TestConfigurationWithProxy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected no error executing request, got %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			t.Errorf("Failed to close response body: %v", closeErr)
+		}
+	}()
 
 	body, _ := io.ReadAll(resp.Body)
 
