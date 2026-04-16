@@ -14,7 +14,9 @@ The Salesforce Go client now supports custom HTTP transport layer configuration,
 
 ```go
 func main() {
-    // Create a custom round tripper for fine-grained HTTP control
+    // Create a custom round tripper for fine-grained HTTP control\
+    // options include proxy, tls, etc
+    proxyURL, _ := url.Parse("http://my-proxy:8080")
     customRoundTripper := &http.Transport{
         TLSClientConfig: &tls.Config{
             MinVersion: tls.VersionTLS12,
@@ -24,6 +26,7 @@ func main() {
         DisableCompression:  false,
         DisableKeepAlives:   false,
         MaxIdleConnsPerHost: 5,
+        Proxy: http.ProxyURL(proxyURL), // optional
     }
 
     creds := salesforce.Creds{
