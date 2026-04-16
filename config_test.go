@@ -270,6 +270,56 @@ func TestConfigurationDefaults(t *testing.T) {
 			config.bulkPollTimeout,
 		)
 	}
+
+	if config.tagName != "salesforce" {
+		t.Errorf("Expected tagName default to be 'salesforce', got %v", config.tagName)
+	}
+}
+
+func TestWithTagName(t *testing.T) {
+	tests := []struct {
+		name      string
+		tagName   string
+		wantErr   bool
+		wantValue string
+	}{
+		{
+			name:      "valid_tag_name",
+			tagName:   "json",
+			wantErr:   false,
+			wantValue: "json",
+		},
+		{
+			name:      "valid_tag_name_csv",
+			tagName:   "csv",
+			wantErr:   false,
+			wantValue: "csv",
+		},
+		{
+			name:      "empty_tag_name",
+			tagName:   "",
+			wantErr:   true,
+			wantValue: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := configuration{}
+			config.setDefaults()
+
+			option := WithTagName(tt.tagName)
+			err := option(&config)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("WithTagName() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr && config.tagName != tt.wantValue {
+				t.Errorf("WithTagName() = %v, want %v", config.tagName, tt.wantValue)
+			}
+		})
+	}
 }
 
 func TestWithBulkQueryMaxRecords(t *testing.T) {

@@ -478,7 +478,6 @@ func mapstructureDecode(input any, output any, tagName string) error {
 		// mapstructure is included here to maintain strict backwards compatibility, even though there was no
 		// documentation that this tag was supported. It should be removed in the next major version.
 		TagName: tagName + ",mapstructure",
-		TagName: "salesforce,mapstructure",
 		// https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_valid_date_formats.htm
 		DecodeHook: StringToTimeHookFunc("2006-01-02T15:04:05.000-0700"),
 	}
