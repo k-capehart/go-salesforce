@@ -1019,7 +1019,6 @@ func Test_mapstructureDecode_StringToTime(t *testing.T) {
 
 	var output TestStruct
 	err := mapstructureDecode(input, &output)
-
 	if err != nil {
 		t.Fatalf("mapstructureDecode failed: %v", err)
 	}
