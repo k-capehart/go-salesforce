@@ -75,16 +75,14 @@ func doRequest(
 	if err != nil {
 		return resp, err
 	}
-	if resp.StatusCode < 200 || resp.StatusCode > 300 {
-		resp, err = processSalesforceError(*resp, auth, config, payload)
-		if err != nil {
-			return resp, err
-		}
-	}
 
 	// salesforce does not guarantee that the response will be compressed
 	if resp.Header.Get("Content-Encoding") == "gzip" {
 		resp.Body, err = decompress(resp.Body)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 300 {
+		resp, err = processSalesforceError(*resp, auth, config, payload)
 	}
 
 	return resp, err
@@ -129,6 +127,10 @@ func processSalesforceError(
 	if err != nil {
 		return &resp, err
 	}
+	// Restore the response body so it can be read again by the caller
+	// Consider checking for response.StatusCode == 401 and then refreshing the session instead of decoding
+	resp.Body = io.NopCloser(bytes.NewReader(responseData))
+
 	var sfErrors []SalesforceErrorMessage
 	err = json.Unmarshal(responseData, &sfErrors)
 	if err != nil {
