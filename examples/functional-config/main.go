@@ -40,6 +40,7 @@ func main() {
 		salesforce.WithBulkBatchSizeMax(8000),
 		salesforce.WithBulkPollTimeout(10*time.Minute),
 		salesforce.WithCompressionHeaders(true),
+		salesforce.WithBulkQueryMaxRecords(1000),
 	)
 	if err != nil {
 		log.Fatal(err)

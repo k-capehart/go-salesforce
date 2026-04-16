@@ -205,9 +205,10 @@ Optional configuration:
 - `func WithBulkBatchSizeMax(size int) Option` - for Bulk API
 - `func WithBulkPollTimeout(timeout time.Duration) Option` - set max wait when polling bulk results with `waitForResults=true`
 - `func WithRoundTripper(rt http.RoundTripper) Option` - for http requests
-- `func WithHTTPTimeout(timeout time.Duration) Option` - set custom timeout
+- `func WithHTTPTimeout(timeout time.Duration) Option` - set custom timeout, e.g. for proxy
 - `func WithValidateAuthentication(validate bool) Option` - optionally skip validation during certain auth flows
 - `func WithTagName(tagName string) Option` - set custom struct tag for mapstructure and csvutil decoders
+- `func WithBulkQueryMaxRecords(maxRecords int) Option` - for max number of records per set of results in a bulk query
 
 Get configuration:
 - `func (sf *Salesforce) GetAPIVersion() string`
@@ -215,6 +216,7 @@ Get configuration:
 - `func (sf *Salesforce) GetBulkBatchSizeMax() int`
 - `func (sf *Salesforce) GetCompressionHeaders() bool`
 - `func (sf *Salesforce) GetHTTPClient() *http.Client`
+- `func (sf *Salesforce) GetBulkQueryMaxRecords() int`
 
 See [HTTP_CLIENT_CONFIG](https://github.com/k-capehart/go-salesforce/blob/main/HTTP_CLIENT_CONFIG.md) for additional documentation on round trippers
 

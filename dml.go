@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/go-viper/mapstructure/v2"
 )
@@ -157,6 +159,12 @@ func checkForExternalId(
 }
 
 func convertToString(value any) (string, bool) {
+	// Handle pointers
+	v := reflect.Indirect(reflect.ValueOf(value))
+	if !v.IsValid() {
+		return "", false
+	}
+	value = v.Interface()
 	switch typedValue := value.(type) {
 	case int:
 		if typedValue == 0 {
@@ -470,6 +478,9 @@ func mapstructureDecode(input any, output any, tagName string) error {
 		// mapstructure is included here to maintain strict backwards compatibility, even though there was no
 		// documentation that this tag was supported. It should be removed in the next major version.
 		TagName: tagName + ",mapstructure",
+		TagName: "salesforce,mapstructure",
+		// https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_valid_date_formats.htm
+		DecodeHook: StringToTimeHookFunc("2006-01-02T15:04:05.000-0700"),
 	}
 
 	decoder, err := mapstructure.NewDecoder(config)
@@ -478,4 +489,34 @@ func mapstructureDecode(input any, output any, tagName string) error {
 	}
 
 	return decoder.Decode(input)
+}
+
+func StringToTimeHookFunc(layout string) mapstructure.DecodeHookFunc {
+	return func(f reflect.Type, t reflect.Type, data any) (any, error) {
+		if t == reflect.TypeOf(time.Time{}) {
+			str, ok := data.(string)
+			if !ok {
+				return data, nil
+			}
+			if str == "" {
+				return time.Time{}, nil
+			}
+			return time.Parse(layout, str)
+		}
+		if t == reflect.TypeOf((*time.Time)(nil)) {
+			str, ok := data.(string)
+			if !ok {
+				return data, nil
+			}
+			if str == "" {
+				return nil, nil
+			}
+			parsedTime, err := time.Parse(layout, str)
+			if err != nil {
+				return nil, err
+			}
+			return &parsedTime, nil
+		}
+		return data, nil
+	}
 }

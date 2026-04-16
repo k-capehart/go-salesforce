@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func Test_convertToMap(t *testing.T) {
@@ -994,6 +995,93 @@ func Test_doDeleteCollection(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("doDeleteCollection() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_mapstructureDecode_StringToTime(t *testing.T) {
+	type TestStruct struct {
+		TimeField  time.Time  `salesforce:"timeField"`
+		PtrField   *time.Time `salesforce:"ptrField"`
+		EmptyTime  time.Time  `salesforce:"emptyTime"`
+		EmptyPtr   *time.Time `salesforce:"emptyPtr"`
+		OtherField string     `salesforce:"otherField"`
+	}
+
+	input := map[string]any{
+		"timeField":  "2023-10-25T12:00:00.000+0000",
+		"ptrField":   "2023-10-25T12:00:00.000+0000",
+		"emptyTime":  "",
+		"emptyPtr":   "",
+		"otherField": "test",
+	}
+
+	var output TestStruct
+	err := mapstructureDecode(input, &output)
+	if err != nil {
+		t.Fatalf("mapstructureDecode failed: %v", err)
+	}
+
+	expectedTime, _ := time.Parse("2006-01-02T15:04:05.000-0700", "2023-10-25T12:00:00.000+0000")
+
+	if !output.TimeField.Equal(expectedTime) {
+		t.Errorf("expected TimeField %v, got %v", expectedTime, output.TimeField)
+	}
+
+	if output.PtrField == nil || !output.PtrField.Equal(expectedTime) {
+		t.Errorf("expected PtrField %v, got %v", expectedTime, output.PtrField)
+	}
+
+	if !output.EmptyTime.IsZero() {
+		t.Errorf("expected EmptyTime to be zero time, got %v", output.EmptyTime)
+	}
+
+	if output.EmptyPtr != nil {
+		t.Errorf("expected EmptyPtr to be nil, got %v", output.EmptyPtr)
+	}
+
+	if output.OtherField != "test" {
+		t.Errorf("expected OtherField 'test', got '%s'", output.OtherField)
+	}
+}
+
+func Test_convertToString(t *testing.T) {
+	strVal := "test"
+	intVal := 123
+	int64Val := int64(123)
+	floatVal := 123.45
+
+	tests := []struct {
+		name      string
+		value     any
+		wantStr   string
+		wantValid bool
+	}{
+		{"string", "test", "test", true},
+		{"int", 123, "123", true},
+		{"int64", int64(123), "123", true},
+		{"float64", 123.45, "123.45", true},
+		{"zero int", 0, "", false},
+		{"zero int64", int64(0), "", false},
+		{"zero float64", float64(0), "", false},
+		{"pointer to string", &strVal, "test", true},
+		{"pointer to int", &intVal, "123", true},
+		{"pointer to int64", &int64Val, "123", true},
+		{"pointer to float64", &floatVal, "123.45", true},
+		{"nil", nil, "", false},
+		{"nil pointer", (*string)(nil), "", false},
+		{"unsupported type", []string{}, "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotStr, gotValid := convertToString(tt.value)
+			if gotStr != tt.wantStr {
+				t.Errorf("convertToString() gotStr = %v, want %v", gotStr, tt.wantStr)
+			}
+			if gotValid != tt.wantValid {
+				t.Errorf("convertToString() gotValid = %v, want %v", gotValid, tt.wantValid)
 			}
 		})
 	}

@@ -47,9 +47,7 @@ func (it *bulkJobQueryIterator) Next() bool {
 		}
 	}
 	uri := it.uri
-	if it.Locator != "" {
-		uri += "/?locator=" + it.Locator
-	}
+	uri = addParametersToBulkQueryURI(uri, it.Locator, it.config.bulkQueryMaxRecords)
 	resp, err := doRequest(
 		it.auth,
 		it.config,
