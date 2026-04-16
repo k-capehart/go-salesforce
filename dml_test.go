@@ -1043,7 +1043,7 @@ func Test_mapstructureDecode_StringToTime(t *testing.T) {
 
 	if output.OtherField != "test" {
 		t.Errorf("expected OtherField 'test', got '%s'", output.OtherField)
-  }
+	}
 }
 
 func Test_convertToString(t *testing.T) {
