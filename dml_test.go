@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func Test_convertToMap(t *testing.T) {
@@ -996,6 +997,52 @@ func Test_doDeleteCollection(t *testing.T) {
 				t.Errorf("doDeleteCollection() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func Test_mapstructureDecode_StringToTime(t *testing.T) {
+	type TestStruct struct {
+		TimeField  time.Time  `salesforce:"timeField"`
+		PtrField   *time.Time `salesforce:"ptrField"`
+		EmptyTime  time.Time  `salesforce:"emptyTime"`
+		EmptyPtr   *time.Time `salesforce:"emptyPtr"`
+		OtherField string     `salesforce:"otherField"`
+	}
+
+	input := map[string]any{
+		"timeField":  "2023-10-25T12:00:00.000+0000",
+		"ptrField":   "2023-10-25T12:00:00.000+0000",
+		"emptyTime":  "",
+		"emptyPtr":   "",
+		"otherField": "test",
+	}
+
+	var output TestStruct
+	err := mapstructureDecode(input, &output)
+	if err != nil {
+		t.Fatalf("mapstructureDecode failed: %v", err)
+	}
+
+	expectedTime, _ := time.Parse("2006-01-02T15:04:05.000-0700", "2023-10-25T12:00:00.000+0000")
+
+	if !output.TimeField.Equal(expectedTime) {
+		t.Errorf("expected TimeField %v, got %v", expectedTime, output.TimeField)
+	}
+
+	if output.PtrField == nil || !output.PtrField.Equal(expectedTime) {
+		t.Errorf("expected PtrField %v, got %v", expectedTime, output.PtrField)
+	}
+
+	if !output.EmptyTime.IsZero() {
+		t.Errorf("expected EmptyTime to be zero time, got %v", output.EmptyTime)
+	}
+
+	if output.EmptyPtr != nil {
+		t.Errorf("expected EmptyPtr to be nil, got %v", output.EmptyPtr)
+	}
+
+	if output.OtherField != "test" {
+		t.Errorf("expected OtherField 'test', got '%s'", output.OtherField)
 	}
 }
 
