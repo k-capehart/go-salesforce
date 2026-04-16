@@ -19,6 +19,7 @@ type configuration struct {
 	roundTripper                 http.RoundTripper // Custom round tripper
 	shouldValidateAuthentication bool              // Validate session on client creation
 	httpTimeout                  time.Duration     // HTTP client timeout
+	bulkQueryMaxRecords          int               // query parameter for bulk queries to use to split up large results
 }
 
 func (c *configuration) setDefaults() {
@@ -29,6 +30,7 @@ func (c *configuration) setDefaults() {
 	c.bulkBatchSizeMax = bulkBatchSizeMax
 	c.bulkPollTimeout = bulkPollTimeout
 	c.httpTimeout = httpDefaultTimeout
+	c.bulkQueryMaxRecords = bulkQueryMaxRecords
 }
 
 func (c *configuration) configureHttpClient() {
@@ -147,6 +149,17 @@ func WithHTTPTimeout(timeout time.Duration) Option {
 func WithValidateAuthentication(validate bool) Option {
 	return func(c *configuration) error {
 		c.shouldValidateAuthentication = validate
+		return nil
+	}
+}
+
+// WithBulkQueryMaxRecords sets the maximum number of records per set in a bulk query
+func WithBulkQueryMaxRecords(maxRecords int) Option {
+	return func(c *configuration) error {
+		if maxRecords < 1 {
+			return errors.New("bulk query max records must be greater than 0")
+		}
+		c.bulkQueryMaxRecords = maxRecords
 		return nil
 	}
 }

@@ -1647,3 +1647,79 @@ func Test_csvToMap(t *testing.T) {
 		})
 	}
 }
+
+func Test_addParametersToBulkQueryURI(t *testing.T) {
+	type args struct {
+		uri        string
+		locator    string
+		maxRecords int
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "no_parameters",
+			args: args{
+				uri:        "/jobs/query/123/results",
+				locator:    "",
+				maxRecords: 0,
+			},
+			want: "/jobs/query/123/results",
+		},
+		{
+			name: "locator_only",
+			args: args{
+				uri:        "/jobs/query/123/results",
+				locator:    "abc123",
+				maxRecords: 0,
+			},
+			want: "/jobs/query/123/results/?locator=abc123",
+		},
+		{
+			name: "maxRecords_only",
+			args: args{
+				uri:        "/jobs/query/123/results",
+				locator:    "",
+				maxRecords: 5000,
+			},
+			want: "/jobs/query/123/results/?maxRecords=5000",
+		},
+		{
+			name: "both_locator_and_maxRecords",
+			args: args{
+				uri:        "/jobs/query/123/results",
+				locator:    "abc123",
+				maxRecords: 5000,
+			},
+			want: "/jobs/query/123/results/?locator=abc123&maxRecords=5000",
+		},
+		{
+			name: "uri_already_has_query_params",
+			args: args{
+				uri:        "/jobs/query/123/results/?existing=param",
+				locator:    "",
+				maxRecords: 5000,
+			},
+			want: "/jobs/query/123/results/?existing=param&maxRecords=5000",
+		},
+		{
+			name: "uri_already_has_query_params_with_locator_and_maxRecords",
+			args: args{
+				uri:        "/jobs/query/123/results/?existing=param",
+				locator:    "abc123",
+				maxRecords: 5000,
+			},
+			want: "/jobs/query/123/results/?existing=param/?locator=abc123&maxRecords=5000",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := addParametersToBulkQueryURI(tt.args.uri, tt.args.locator, tt.args.maxRecords)
+			if got != tt.want {
+				t.Errorf("addParametersToBulkQueryURI() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
