@@ -95,19 +95,21 @@ func (conf *configuration) validateAuthentication(auth authentication) error {
 	return nil
 }
 
-func refreshSession(auth *authentication) error {
+func refreshSession(config *configuration, auth *authentication) error {
 	var refreshedAuth *authentication
 	var err error
 
 	switch grantType := auth.grantType; grantType {
 	case grantTypeClientCredentials:
 		refreshedAuth, err = clientCredentialsFlow(
+			config,
 			auth.InstanceUrl,
 			auth.creds.ConsumerKey,
 			auth.creds.ConsumerSecret,
 		)
 	case grantTypeUsernamePassword:
 		refreshedAuth, err = usernamePasswordFlow(
+			config,
 			auth.InstanceUrl,
 			auth.creds.Username,
 			auth.creds.Password,
@@ -117,6 +119,7 @@ func refreshSession(auth *authentication) error {
 		)
 	case grantTypeJWT:
 		refreshedAuth, err = jwtFlow(
+			config,
 			auth.InstanceUrl,
 			auth.creds.Username,
 			auth.creds.ConsumerKey,
@@ -143,8 +146,14 @@ func refreshSession(auth *authentication) error {
 	return nil
 }
 
-func doAuth(url string, body *strings.Reader) (*authentication, error) {
-	resp, err := http.Post(url, "application/x-www-form-urlencoded", body)
+func doAuth(config *configuration, url string, body *strings.Reader) (*authentication, error) {
+	req, err := http.NewRequest(http.MethodPost, url, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := config.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -164,12 +173,17 @@ func doAuth(url string, body *strings.Reader) (*authentication, error) {
 	}
 
 	defer func() {
-		err = resp.Body.Close()
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			if err == nil {
+				err = closeErr
+			}
+		}
 	}()
 	return auth, err
 }
 
 func usernamePasswordFlow(
+	config *configuration,
 	domain string,
 	username string,
 	password string,
@@ -186,7 +200,7 @@ func usernamePasswordFlow(
 	}
 	endpoint := "/services/oauth2/token"
 	body := strings.NewReader(payload.Encode())
-	auth, err := doAuth(domain+endpoint, body)
+	auth, err := doAuth(config, domain+endpoint, body)
 	if err != nil {
 		return nil, err
 	}
@@ -195,6 +209,7 @@ func usernamePasswordFlow(
 }
 
 func clientCredentialsFlow(
+	config *configuration,
 	domain string,
 	consumerKey string,
 	consumerSecret string,
@@ -206,7 +221,7 @@ func clientCredentialsFlow(
 	}
 	endpoint := "/services/oauth2/token"
 	body := strings.NewReader(payload.Encode())
-	auth, err := doAuth(domain+endpoint, body)
+	auth, err := doAuth(config, domain+endpoint, body)
 	if err != nil {
 		return nil, err
 	}
@@ -229,6 +244,7 @@ func (conf *configuration) getAccessTokenAuthentication(
 }
 
 func jwtFlow(
+	config *configuration,
 	domain string,
 	username string,
 	consumerKey string,
@@ -263,7 +279,7 @@ func jwtFlow(
 	}
 	endpoint := "/services/oauth2/token"
 	body := strings.NewReader(payload.Encode())
-	auth, err := doAuth(domain+endpoint, body)
+	auth, err := doAuth(config, domain+endpoint, body)
 	if err != nil {
 		return nil, err
 	}

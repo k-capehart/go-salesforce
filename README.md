@@ -49,6 +49,7 @@ type configuration struct {
     roundTripper                 http.RoundTripper
     shouldValidateAuthentication bool
     httpTimeout                  time.Duration
+    tagName                      string
 }
 
 type Creds struct {
@@ -91,7 +92,7 @@ type BulkJobResults struct {
 
 ### Salesforce tag
 
-- tag struct fields with the `salesforce` tag to decode them into their Salesforce API field names
+- tag struct fields with the configured tag (default `salesforce`) to decode them into their Salesforce API field names
 
 ```go
 type Account struct {
@@ -204,8 +205,9 @@ Optional configuration:
 - `func WithBulkBatchSizeMax(size int) Option` - for Bulk API
 - `func WithBulkPollTimeout(timeout time.Duration) Option` - set max wait when polling bulk results with `waitForResults=true`
 - `func WithRoundTripper(rt http.RoundTripper) Option` - for http requests
-- `func WithHTTPTimeout(timeout time.Duration) Option` - set custom timeout
+- `func WithHTTPTimeout(timeout time.Duration) Option` - set custom timeout, e.g. for proxy
 - `func WithValidateAuthentication(validate bool) Option` - optionally skip validation during certain auth flows
+- `func WithTagName(tagName string) Option` - set custom struct tag for mapstructure and csvutil decoders
 - `func WithBulkQueryMaxRecords(maxRecords int) Option` - for max number of records per set of results in a bulk query
 
 Get configuration:
@@ -761,9 +763,9 @@ Performs a query and return a IteratorJob to decode data
 
 ```go
 type Contact struct {
-    Id        string `json:"Id" csv:"Id"`
-    FirstName string `json:"FirstName" csv:"FirstName"`
-    LastName  string `json:"LastName" csv:"LastName"`
+	Id        string `json:"Id" salesforce:"Id"`
+	FirstName string `json:"FirstName" salesforce:"FirstName"`
+	LastName  string `json:"LastName" salesforce:"LastName"`
 }
 
 it, err := sf.QueryBulkIterator("SELECT Id, FirstName, LastName FROM Contact")
@@ -786,13 +788,13 @@ if err := it.Error(); err != nil {
 
 #### Bulk with nested objects
 
-- Nested objects are supported using the `csv` tag
-- The `csv` tag should be formatted as `csv:"APIFieldName.,inline"`
+- Nested objects are supported using the customized tag (default `salesforce`)
+- The tag should be formatted as `salesforce:"APIFieldName.,inline"`
 
 ```go
 type ContactWithAltOwner struct {
-    Id                 string
-    AlternateOwnerName User `csv:"Alternate_Owner__r.,inline"`
+	Id                 string
+	AlternateOwnerName User `salesforce:"Alternate_Owner__r.,inline"`
 }
 
 it, err = sf.QueryBulkIterator("SELECT Id, Alternate_Owner__r.Name FROM Contact")

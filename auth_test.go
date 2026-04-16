@@ -101,7 +101,9 @@ func Test_usernamePasswordFlow(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			config := getDefaultConfig(t)
 			got, err := usernamePasswordFlow(
+				config,
 				tt.args.domain,
 				tt.args.username,
 				tt.args.password,
@@ -169,7 +171,9 @@ func Test_clientCredentialsFlow(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			config := getDefaultConfig(t)
 			got, err := clientCredentialsFlow(
+				config,
 				tt.args.domain,
 				tt.args.consumerKey,
 				tt.args.consumerSecret,
@@ -345,7 +349,8 @@ func Test_refreshSession(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := refreshSession(tt.args.auth); (err != nil) != tt.wantErr {
+			config := getDefaultConfig(t)
+			if err := refreshSession(config, tt.args.auth); (err != nil) != tt.wantErr {
 				t.Errorf("refreshSession() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -406,7 +411,9 @@ func Test_jwtFlow(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			config := getDefaultConfig(t)
 			got, err := jwtFlow(
+				config,
 				tt.args.domain,
 				tt.args.username,
 				tt.args.consumerKey,
