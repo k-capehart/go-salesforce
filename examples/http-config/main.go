@@ -23,7 +23,8 @@ func main() {
 	}
 
 	// Initialize Salesforce client with custom HTTP client
-	sf, err := salesforce.Init(creds,
+	sf, err := salesforce.Init(
+		creds,
 		salesforce.WithRoundTripper(&http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: false, // Set to true if you need to skip SSL verification
@@ -53,7 +54,8 @@ func main() {
 		MaxIdleConnsPerHost: 5,
 	}
 
-	sf2, err := salesforce.Init(creds,
+	sf2, err := salesforce.Init(
+		creds,
 		salesforce.WithRoundTripper(customRoundTripper),
 		salesforce.WithAPIVersion("v64.0"),
 	)
@@ -75,7 +77,8 @@ func main() {
 	fmt.Printf("Compression headers enabled: %v\n", sf3.GetCompressionHeaders())
 
 	// Example of combining multiple configuration options
-	sf4, err := salesforce.Init(creds,
+	sf4, err := salesforce.Init(
+		creds,
 		salesforce.WithRoundTripper(http.DefaultTransport),
 		salesforce.WithCompressionHeaders(true),
 		salesforce.WithAPIVersion("v65.0"),

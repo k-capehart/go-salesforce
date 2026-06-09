@@ -28,6 +28,12 @@ func Test_doRequest(t *testing.T) {
 	compressedServer, sfAuthCompressed := setupTestServer("test", http.StatusOK)
 	defer compressedServer.Close()
 
+	serverWith304Resp, authWith304Resp := setupTestServer(
+		"",
+		http.StatusNotModified,
+	)
+	defer serverWith304Resp.Close()
+
 	type args struct {
 		auth    *authentication
 		payload requestPayload
@@ -93,6 +99,23 @@ func Test_doRequest(t *testing.T) {
 				},
 			},
 			want:    http.StatusOK,
+			wantErr: false,
+		},
+		{
+			name: "handle_not_modified_statusCode_304",
+			args: args{
+				auth: &authWith304Resp,
+				payload: requestPayload{
+					method:  http.MethodGet,
+					uri:     "/sobjects/Account/describe",
+					content: jsonType,
+					body:    "",
+					options: []RequestOption{
+						WithHeader("If-Modified-Since", "Wed, 21 Oct 2015 07:28:00 GMT"),
+					},
+				},
+			},
+			want:    http.StatusNotModified,
 			wantErr: false,
 		},
 	}
