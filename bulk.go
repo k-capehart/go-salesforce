@@ -339,7 +339,8 @@ func collectQueryResults(sf *Salesforce, bulkJobId string) ([][]string, error) {
 		}
 		records = append(
 			records,
-			queryResults.Data[1:]...) // don't include headers in subsequent batches
+			queryResults.Data[1:]...,
+		) // don't include headers in subsequent batches
 	}
 	return records, nil
 }

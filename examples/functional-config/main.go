@@ -34,7 +34,8 @@ func main() {
 	fmt.Printf("Auth Flow: %s\n", sf.GetAuthFlow())
 
 	// Example with custom configuration using functional options
-	sfCustom, err := salesforce.Init(creds,
+	sfCustom, err := salesforce.Init(
+		creds,
 		salesforce.WithAPIVersion("v58.0"),
 		salesforce.WithBatchSizeMax(150),
 		salesforce.WithBulkBatchSizeMax(8000),
@@ -53,7 +54,8 @@ func main() {
 	fmt.Printf("Auth Flow: %s\n", sfCustom.GetAuthFlow())
 
 	// Example with error handling in functional options
-	_, err = salesforce.Init(creds,
+	_, err = salesforce.Init(
+		creds,
 		salesforce.WithAPIVersion(""), // This will cause an error
 	)
 	if err != nil {
@@ -61,7 +63,8 @@ func main() {
 	}
 
 	// Example with invalid batch size
-	_, err = salesforce.Init(creds,
+	_, err = salesforce.Init(
+		creds,
 		salesforce.WithBatchSizeMax(300), // This will cause an error (max is 200)
 	)
 	if err != nil {

@@ -428,9 +428,10 @@ func Test_validateCollections(t *testing.T) {
 		{
 			name: "validation_success",
 			args: args{
-				sf: *buildSalesforceStruct(&authentication{
-					AccessToken: "1234",
-				},
+				sf: *buildSalesforceStruct(
+					&authentication{
+						AccessToken: "1234",
+					},
 				),
 				records:   []account{},
 				batchSize: 200,
@@ -591,9 +592,10 @@ func Test_validateBulk(t *testing.T) {
 		{
 			name: "validation_success_assignment_case",
 			args: args{
-				sf: *buildSalesforceStruct(&authentication{
-					AccessToken: "1234",
-				},
+				sf: *buildSalesforceStruct(
+					&authentication{
+						AccessToken: "1234",
+					},
 				),
 
 				records:          nil,
