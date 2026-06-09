@@ -75,7 +75,7 @@ func doRequest(
 	if err != nil {
 		return resp, err
 	}
-	if resp.StatusCode < 200 || resp.StatusCode > 300 {
+	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		resp, err = processSalesforceError(*resp, auth, config, payload)
 		if err != nil {
 			return resp, err
