@@ -1,6 +1,6 @@
 module github.com/k-capehart/go-salesforce/v3
 
-go 1.24.5
+go 1.25.0
 
 require github.com/forcedotcom/go-soql v0.0.0-20240507183026-011ceab61b9e
 
@@ -13,7 +13,7 @@ require (
 
 require (
 	github.com/onsi/gomega v1.38.3 // indirect
-	golang.org/x/net v0.48.0 // indirect
-	golang.org/x/sys v0.39.0 // indirect
-	golang.org/x/text v0.32.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 )
