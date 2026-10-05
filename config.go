@@ -41,6 +41,7 @@ func (c *configuration) configureHttpClient() {
 		c.httpClient = &http.Client{
 			Timeout: c.httpTimeout,
 			Transport: &http.Transport{
+        Proxy:              http.ProxyFromEnvironment,
 				MaxIdleConns:       httpDefaultMaxIdleConnections,
 				IdleConnTimeout:    httpDefaultIdleConnTimeout,
 				DisableCompression: false,
