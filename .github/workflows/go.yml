@@ -16,6 +16,7 @@ jobs:
     if: github.event_name == 'pull_request'
     permissions:
       contents: read
+      issues: write
       pull-requests: write
     steps:
       - uses: actions/checkout@v3
